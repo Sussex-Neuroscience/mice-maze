@@ -28,3 +28,5 @@ Maker beams have optional lengths of 40mm premade, which is close to thee 40.63m
 To form a T-maze only, these are the number of parts needed.  
 Number of panels needed: 29  
 Number of (40mm) makerbeams needed: 58
+
+
