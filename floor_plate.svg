@@ -26,9 +26,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="1.115625"
-     inkscape:cx="366.16246"
-     inkscape:cy="-19.271709"
+     inkscape:zoom="0.27890625"
+     inkscape:cx="625.65826"
+     inkscape:cy="650.7563"
      inkscape:window-width="1920"
      inkscape:window-height="1017"
      inkscape:window-x="-8"
@@ -42,6 +42,16 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1">
+    <rect
+       style="fill:#ffffff;stroke:none;stroke-width:0.55;fill-opacity:1"
+       id="rect1016"
+       width="215.78957"
+       height="87.485176"
+       x="0.2645835"
+       y="0.2645835"
+       inkscape:export-filename="C:\Users\Andre Maia Chagas\Documents\GitHub\sussex\mice-maze\floor_plate.png"
+       inkscape:export-xdpi="200"
+       inkscape:export-ydpi="200" />
     <g
        id="g22767"
        transform="translate(5.3000001,5.3000001)"
