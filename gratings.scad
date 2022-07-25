@@ -2,7 +2,7 @@
 
 plateX = 50;
 plateY = 50;
-plateZ = 3;
+plateZ = 2.4;
 
 tol = 0.1;
 
