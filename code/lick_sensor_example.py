@@ -2,7 +2,7 @@ from machine import Pin
 from machine import ADC
 import time
 
-lick1 = ADC(Pin(25))
+lick1 = ADC(Pin(39))
 lick1.atten(ADC.ATTN_11DB) 
 valve1 = Pin(18,Pin.OUT)
 
