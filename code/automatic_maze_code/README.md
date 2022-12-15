@@ -13,8 +13,8 @@ ampy --port /dev/ttyUSB0 --baud 115200 run path_to/sensor.py &> sensor.csv
 * A calibration file needs to be created to interpolate the angles measured at 0°, 45°, 90° and 135°. A calibration example sheet is given at **angle_tuning.csv**.
 * Once the servos are calibrated, the angles can be defined as the function *move_servo_tuned()* at *tunable_walls.py*. Example:
 * * Move servo labelled "RR" to 90 using:
-* * ```
- move_servo_tuned(90,"RR")
+```
+move_servo_tuned(90,"RR")
 ```
 
 
@@ -23,11 +23,13 @@ ampy --port /dev/ttyUSB0 --baud 115200 run path_to/sensor.py &> sensor.csv
 #### Food delivery - *food_delivery.py*
 * Food delivery is similar to the tunable walls code. First, upload *standard firmata* to an Arduino Uno and wire it using a breadboard.
 * A calibration file also needs to be created to match the order in which the food pellet will be delivered and the necessary rotation. An example of the calibration is given at *food_tuning.csv*. The tunning can be found using the function *move_food_order()*. For example, a way to slowly deliver the reward:
+
 ```
 for i in range(0,23,2):
       time.sleep(0.1)
       move_food_order(i,'LR')
 ```
+
 
 #### Camera and position tracking for automated reward delivery - *automatic_maze_code_with_food.py*
 * All operations on the camera are done using cv2-python. The detection of a correct trial is triggered using a pixel intensity threshold against a background recording done before the cage is placed. Note that the maze should not be shaken during this operation to displace the region of interest where the pixel intensity is measured.
