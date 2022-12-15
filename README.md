@@ -18,7 +18,7 @@ This is a repository for building and running an experiment investigating how se
 #### construction_photos
 * A selection of photos of the maze during it's development for illustrative purposes.
 
-#### Drawings
+#### drawings
 * Schematics and drawings. Such as the format of the base plate holes.
 
 #### Contributors of the maze:
