@@ -2,8 +2,8 @@ from machine import Pin
 import time
 
 
-IR1 = Pin(22,Pin.IN)
-IR2 = Pin(23,Pin.IN)
+IR1 = Pin(5,Pin.IN)
+IR2 = Pin(18,Pin.IN)
 
 
 for i in range(2000):
