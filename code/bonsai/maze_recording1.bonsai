@@ -1,0 +1,297 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WorkflowBuilder Version="2.7.3"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 xmlns:cv="clr-namespace:Bonsai.Vision;assembly=Bonsai.Vision"
+                 xmlns:rx="clr-namespace:Bonsai.Reactive;assembly=Bonsai.Core"
+                 xmlns:dsp="clr-namespace:Bonsai.Dsp;assembly=Bonsai.Dsp"
+                 xmlns="https://bonsai-rx.org/2018/workflow">
+  <Workflow>
+    <Nodes>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="cv:FileCapture">
+          <cv:FileName>C:\Users\Andre Maia Chagas\Desktop\8487_14_29_12__3012023_train_all.mp4</cv:FileName>
+          <cv:PlaybackRate>1</cv:PlaybackRate>
+          <cv:StartPosition>0</cv:StartPosition>
+          <cv:PositionUnits>Frames</cv:PositionUnits>
+          <cv:Loop>false</cv:Loop>
+          <cv:Playing>true</cv:Playing>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="rx:PublishSubject">
+        <Name>camera</Name>
+      </Expression>
+      <Expression xsi:type="Disable">
+        <Builder xsi:type="SubscribeSubject">
+          <Name>camera</Name>
+        </Builder>
+      </Expression>
+      <Expression xsi:type="Disable">
+        <Builder xsi:type="GroupWorkflow">
+          <Name>region of interest</Name>
+          <Workflow>
+            <Nodes>
+              <Expression xsi:type="SubscribeSubject">
+                <Name>camera</Name>
+              </Expression>
+              <Expression xsi:type="Combinator">
+                <Combinator xsi:type="cv:Crop">
+                  <cv:RegionOfInterest>
+                    <cv:X>425</cv:X>
+                    <cv:Y>413</cv:Y>
+                    <cv:Width>80</cv:Width>
+                    <cv:Height>48</cv:Height>
+                  </cv:RegionOfInterest>
+                </Combinator>
+              </Expression>
+              <Expression xsi:type="Combinator">
+                <Combinator xsi:type="cv:Grayscale" />
+              </Expression>
+              <Expression xsi:type="Combinator">
+                <Combinator xsi:type="cv:Threshold">
+                  <cv:ThresholdValue>128</cv:ThresholdValue>
+                  <cv:MaxValue>255</cv:MaxValue>
+                  <cv:ThresholdType>Binary</cv:ThresholdType>
+                </Combinator>
+              </Expression>
+              <Expression xsi:type="Combinator">
+                <Combinator xsi:type="dsp:Sum" />
+              </Expression>
+              <Expression xsi:type="MemberSelector">
+                <Selector>Val0</Selector>
+              </Expression>
+              <Expression xsi:type="GreaterThan">
+                <Operand xsi:type="DoubleProperty">
+                  <Value>0</Value>
+                </Operand>
+              </Expression>
+              <Expression xsi:type="WorkflowOutput" />
+            </Nodes>
+            <Edges>
+              <Edge From="0" To="1" Label="Source1" />
+              <Edge From="1" To="2" Label="Source1" />
+              <Edge From="2" To="3" Label="Source1" />
+              <Edge From="3" To="4" Label="Source1" />
+              <Edge From="4" To="5" Label="Source1" />
+              <Edge From="5" To="6" Label="Source1" />
+              <Edge From="6" To="7" Label="Source1" />
+            </Edges>
+          </Workflow>
+        </Builder>
+      </Expression>
+      <Expression xsi:type="Disable">
+        <Builder xsi:type="Combinator">
+          <Combinator xsi:type="rx:SkipUntil" />
+        </Builder>
+      </Expression>
+      <Expression xsi:type="Disable">
+        <Builder xsi:type="GroupWorkflow">
+          <Name>region of interest</Name>
+          <Workflow>
+            <Nodes>
+              <Expression xsi:type="SubscribeSubject">
+                <Name>camera</Name>
+              </Expression>
+              <Expression xsi:type="Combinator">
+                <Combinator xsi:type="cv:Crop">
+                  <cv:RegionOfInterest>
+                    <cv:X>425</cv:X>
+                    <cv:Y>413</cv:Y>
+                    <cv:Width>80</cv:Width>
+                    <cv:Height>48</cv:Height>
+                  </cv:RegionOfInterest>
+                </Combinator>
+              </Expression>
+              <Expression xsi:type="Combinator">
+                <Combinator xsi:type="cv:Grayscale" />
+              </Expression>
+              <Expression xsi:type="Combinator">
+                <Combinator xsi:type="cv:Threshold">
+                  <cv:ThresholdValue>128</cv:ThresholdValue>
+                  <cv:MaxValue>255</cv:MaxValue>
+                  <cv:ThresholdType>Binary</cv:ThresholdType>
+                </Combinator>
+              </Expression>
+              <Expression xsi:type="Combinator">
+                <Combinator xsi:type="dsp:Sum" />
+              </Expression>
+              <Expression xsi:type="MemberSelector">
+                <Selector>Val0</Selector>
+              </Expression>
+              <Expression xsi:type="GreaterThan">
+                <Operand xsi:type="DoubleProperty">
+                  <Value>0</Value>
+                </Operand>
+              </Expression>
+              <Expression xsi:type="WorkflowOutput" />
+            </Nodes>
+            <Edges>
+              <Edge From="0" To="1" Label="Source1" />
+              <Edge From="1" To="2" Label="Source1" />
+              <Edge From="2" To="3" Label="Source1" />
+              <Edge From="3" To="4" Label="Source1" />
+              <Edge From="4" To="5" Label="Source1" />
+              <Edge From="5" To="6" Label="Source1" />
+              <Edge From="6" To="7" Label="Source1" />
+            </Edges>
+          </Workflow>
+        </Builder>
+      </Expression>
+      <Expression xsi:type="Disable">
+        <Builder xsi:type="Combinator">
+          <Combinator xsi:type="rx:TakeUntil" />
+        </Builder>
+      </Expression>
+      <Expression xsi:type="Disable">
+        <Builder xsi:type="Combinator">
+          <Combinator xsi:type="cv:VideoWriter">
+            <cv:Suffix>None</cv:Suffix>
+            <cv:Buffered>true</cv:Buffered>
+            <cv:Overwrite>false</cv:Overwrite>
+            <cv:FourCC>FMP4</cv:FourCC>
+            <cv:FrameRate>30</cv:FrameRate>
+            <cv:FrameSize>
+              <cv:Width>0</cv:Width>
+              <cv:Height>0</cv:Height>
+            </cv:FrameSize>
+            <cv:ResizeInterpolation>NearestNeighbor</cv:ResizeInterpolation>
+          </Combinator>
+        </Builder>
+      </Expression>
+      <Expression xsi:type="SubscribeSubject">
+        <Name>camera</Name>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="cv:Crop">
+          <cv:RegionOfInterest>
+            <cv:X>160</cv:X>
+            <cv:Y>229</cv:Y>
+            <cv:Width>20</cv:Width>
+            <cv:Height>29</cv:Height>
+          </cv:RegionOfInterest>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="cv:ConvertColor">
+          <cv:Conversion>Bgr2Hsv</cv:Conversion>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="cv:HsvThreshold">
+          <cv:Lower>
+            <cv:Val0>117</cv:Val0>
+            <cv:Val1>38</cv:Val1>
+            <cv:Val2>0</cv:Val2>
+            <cv:Val3>0</cv:Val3>
+          </cv:Lower>
+          <cv:Upper>
+            <cv:Val0>179</cv:Val0>
+            <cv:Val1>147</cv:Val1>
+            <cv:Val2>255</cv:Val2>
+            <cv:Val3>0</cv:Val3>
+          </cv:Upper>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="dsp:Sum" />
+      </Expression>
+      <Expression xsi:type="MemberSelector">
+        <Selector>Val0</Selector>
+      </Expression>
+      <Expression xsi:type="GreaterThan">
+        <Operand xsi:type="DoubleProperty">
+          <Value>40000</Value>
+        </Operand>
+      </Expression>
+      <Expression xsi:type="rx:PublishSubject">
+        <Name>mazeEntry1State</Name>
+      </Expression>
+      <Expression xsi:type="SubscribeSubject">
+        <Name>camera</Name>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="cv:Crop">
+          <cv:RegionOfInterest>
+            <cv:X>180</cv:X>
+            <cv:Y>230</cv:Y>
+            <cv:Width>20</cv:Width>
+            <cv:Height>24</cv:Height>
+          </cv:RegionOfInterest>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="cv:ConvertColor">
+          <cv:Conversion>Bgr2Hsv</cv:Conversion>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="cv:HsvThreshold">
+          <cv:Lower>
+            <cv:Val0>117</cv:Val0>
+            <cv:Val1>38</cv:Val1>
+            <cv:Val2>0</cv:Val2>
+            <cv:Val3>0</cv:Val3>
+          </cv:Lower>
+          <cv:Upper>
+            <cv:Val0>179</cv:Val0>
+            <cv:Val1>147</cv:Val1>
+            <cv:Val2>255</cv:Val2>
+            <cv:Val3>0</cv:Val3>
+          </cv:Upper>
+        </Combinator>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="dsp:Sum" />
+      </Expression>
+      <Expression xsi:type="MemberSelector">
+        <Selector>Val0</Selector>
+      </Expression>
+      <Expression xsi:type="GreaterThan">
+        <Operand xsi:type="DoubleProperty">
+          <Value>40000</Value>
+        </Operand>
+      </Expression>
+      <Expression xsi:type="rx:PublishSubject">
+        <Name>mazeEntry2State</Name>
+      </Expression>
+      <Expression xsi:type="SubscribeSubject">
+        <Name>mazeEntry2State</Name>
+      </Expression>
+      <Expression xsi:type="SubscribeSubject">
+        <Name>mazeEntry1State</Name>
+      </Expression>
+      <Expression xsi:type="Equal">
+        <Operand xsi:type="BooleanProperty">
+          <Value>true</Value>
+        </Operand>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="IntProperty">
+          <Value>0</Value>
+        </Combinator>
+      </Expression>
+    </Nodes>
+    <Edges>
+      <Edge From="0" To="1" Label="Source1" />
+      <Edge From="2" To="4" Label="Source1" />
+      <Edge From="3" To="4" Label="Source2" />
+      <Edge From="4" To="6" Label="Source1" />
+      <Edge From="5" To="6" Label="Source2" />
+      <Edge From="6" To="7" Label="Source1" />
+      <Edge From="8" To="9" Label="Source1" />
+      <Edge From="9" To="10" Label="Source1" />
+      <Edge From="10" To="11" Label="Source1" />
+      <Edge From="11" To="12" Label="Source1" />
+      <Edge From="12" To="13" Label="Source1" />
+      <Edge From="13" To="14" Label="Source1" />
+      <Edge From="14" To="15" Label="Source1" />
+      <Edge From="16" To="17" Label="Source1" />
+      <Edge From="17" To="18" Label="Source1" />
+      <Edge From="18" To="19" Label="Source1" />
+      <Edge From="19" To="20" Label="Source1" />
+      <Edge From="20" To="21" Label="Source1" />
+      <Edge From="21" To="22" Label="Source1" />
+      <Edge From="22" To="23" Label="Source1" />
+      <Edge From="25" To="26" Label="Source1" />
+    </Edges>
+  </Workflow>
+</WorkflowBuilder>
