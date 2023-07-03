@@ -396,16 +396,16 @@ def process(value):
       <Expression xsi:type="Combinator">
         <Combinator xsi:type="cv:Crop">
           <cv:RegionOfInterest>
-            <cv:X>6</cv:X>
-            <cv:Y>153</cv:Y>
-            <cv:Width>37</cv:Width>
-            <cv:Height>19</cv:Height>
+            <cv:X>104</cv:X>
+            <cv:Y>55</cv:Y>
+            <cv:Width>15</cv:Width>
+            <cv:Height>28</cv:Height>
           </cv:RegionOfInterest>
         </Combinator>
       </Expression>
       <Expression xsi:type="Combinator">
         <Combinator xsi:type="cv:Threshold">
-          <cv:ThresholdValue>187</cv:ThresholdValue>
+          <cv:ThresholdValue>134</cv:ThresholdValue>
           <cv:MaxValue>255</cv:MaxValue>
           <cv:ThresholdType>BinaryInv</cv:ThresholdType>
         </Combinator>
@@ -418,7 +418,7 @@ def process(value):
       </Expression>
       <Expression xsi:type="GreaterThan">
         <Operand xsi:type="DoubleProperty">
-          <Value>0</Value>
+          <Value>50000</Value>
         </Operand>
       </Expression>
       <Expression xsi:type="Combinator">
@@ -446,7 +446,7 @@ def process(value):
       </Expression>
       <Expression xsi:type="GreaterThan">
         <Operand xsi:type="DoubleProperty">
-          <Value>0</Value>
+          <Value>50000</Value>
         </Operand>
       </Expression>
       <Expression xsi:type="Combinator">
@@ -474,7 +474,7 @@ def process(value):
       </Expression>
       <Expression xsi:type="GreaterThan">
         <Operand xsi:type="DoubleProperty">
-          <Value>0</Value>
+          <Value>50000</Value>
         </Operand>
       </Expression>
       <Expression xsi:type="Combinator">
@@ -502,7 +502,7 @@ def process(value):
       </Expression>
       <Expression xsi:type="GreaterThan">
         <Operand xsi:type="DoubleProperty">
-          <Value>0</Value>
+          <Value>50000</Value>
         </Operand>
       </Expression>
     </Nodes>
