@@ -433,6 +433,11 @@ def process(value):
           </Edges>
         </Workflow>
       </Expression>
+      <Expression xsi:type="PropertyMapping">
+        <PropertyMappings>
+          <Property Name="Value" />
+        </PropertyMappings>
+      </Expression>
       <Expression xsi:type="GroupWorkflow">
         <Name>rewLogic1</Name>
         <Workflow>
@@ -586,7 +591,7 @@ def process(value):
             </Expression>
             <Expression xsi:type="BitwiseAnd">
               <Operand xsi:type="BooleanProperty">
-                <Value>false</Value>
+                <Value>true</Value>
               </Operand>
             </Expression>
             <Expression xsi:type="WorkflowOutput" />
@@ -769,22 +774,107 @@ def process(value):
           </Edges>
         </Workflow>
       </Expression>
+      <Expression xsi:type="GroupWorkflow">
+        <Name>entrance2</Name>
+        <Workflow>
+          <Nodes>
+            <Expression xsi:type="WorkflowInput">
+              <Name>Source1</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="cv:Crop">
+                <cv:RegionOfInterest>
+                  <cv:X>30</cv:X>
+                  <cv:Y>144</cv:Y>
+                  <cv:Width>22</cv:Width>
+                  <cv:Height>34</cv:Height>
+                </cv:RegionOfInterest>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="cv:Threshold">
+                <cv:ThresholdValue>148</cv:ThresholdValue>
+                <cv:MaxValue>255</cv:MaxValue>
+                <cv:ThresholdType>BinaryInv</cv:ThresholdType>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="dsp:Sum" />
+            </Expression>
+            <Expression xsi:type="MemberSelector">
+              <Selector>Val0</Selector>
+            </Expression>
+            <Expression xsi:type="GreaterThan">
+              <Operand xsi:type="DoubleProperty">
+                <Value>50000</Value>
+              </Operand>
+            </Expression>
+            <Expression xsi:type="WorkflowOutput" />
+          </Nodes>
+          <Edges>
+            <Edge From="0" To="1" Label="Source1" />
+            <Edge From="1" To="2" Label="Source1" />
+            <Edge From="2" To="3" Label="Source1" />
+            <Edge From="3" To="4" Label="Source1" />
+            <Edge From="4" To="5" Label="Source1" />
+            <Edge From="5" To="6" Label="Source1" />
+          </Edges>
+        </Workflow>
+      </Expression>
+      <Expression xsi:type="Combinator">
+        <Combinator xsi:type="rx:DistinctUntilChanged" />
+      </Expression>
+      <Expression xsi:type="BitwiseAnd">
+        <Operand xsi:type="BooleanProperty">
+          <Value>false</Value>
+        </Operand>
+      </Expression>
+      <Expression xsi:type="Disable">
+        <Builder xsi:type="Combinator">
+          <Combinator xsi:type="io:CreateSerialPort">
+            <io:Name>arduino1</io:Name>
+            <io:PortName>COM1</io:PortName>
+            <io:BaudRate>9600</io:BaudRate>
+            <io:Parity>None</io:Parity>
+            <io:ParityReplace>63</io:ParityReplace>
+            <io:DataBits>8</io:DataBits>
+            <io:StopBits>One</io:StopBits>
+            <io:Handshake>None</io:Handshake>
+            <io:DiscardNull>false</io:DiscardNull>
+            <io:DtrEnable>false</io:DtrEnable>
+            <io:RtsEnable>false</io:RtsEnable>
+            <io:ReadBufferSize>4096</io:ReadBufferSize>
+            <io:WriteBufferSize>2048</io:WriteBufferSize>
+            <io:ReceivedBytesThreshold>1</io:ReceivedBytesThreshold>
+          </Combinator>
+        </Builder>
+      </Expression>
+      <Expression xsi:type="Disable">
+        <Builder xsi:type="Combinator">
+          <Combinator xsi:type="io:SerialStringWrite">
+            <io:PortName>COM1</io:PortName>
+            <io:NewLine>\r\n</io:NewLine>
+          </Combinator>
+        </Builder>
+      </Expression>
     </Nodes>
     <Edges>
       <Edge From="0" To="1" Label="Source1" />
       <Edge From="1" To="2" Label="Source1" />
       <Edge From="2" To="3" Label="Source1" />
       <Edge From="2" To="6" Label="Source1" />
-      <Edge From="2" To="24" Label="Source1" />
       <Edge From="2" To="25" Label="Source1" />
       <Edge From="2" To="26" Label="Source1" />
       <Edge From="2" To="27" Label="Source1" />
+      <Edge From="2" To="28" Label="Source1" />
+      <Edge From="2" To="29" Label="Source1" />
       <Edge From="3" To="4" Label="Source1" />
       <Edge From="4" To="5" Label="Source1" />
       <Edge From="5" To="8" Label="Source1" />
       <Edge From="6" To="7" Label="Source1" />
       <Edge From="7" To="8" Label="Source2" />
       <Edge From="8" To="9" Label="Source1" />
+      <Edge From="8" To="24" Label="Source1" />
       <Edge From="9" To="10" Label="Source1" />
       <Edge From="10" To="11" Label="Source1" />
       <Edge From="11" To="14" Label="Source2" />
@@ -804,10 +894,13 @@ def process(value):
       <Edge From="17" To="18" Label="Source1" />
       <Edge From="19" To="20" Label="Source1" />
       <Edge From="21" To="22" Label="Source1" />
-      <Edge From="23" To="24" Label="Source2" />
       <Edge From="23" To="25" Label="Source2" />
       <Edge From="23" To="26" Label="Source2" />
       <Edge From="23" To="27" Label="Source2" />
+      <Edge From="23" To="28" Label="Source2" />
+      <Edge From="24" To="31" Label="Source2" />
+      <Edge From="29" To="30" Label="Source1" />
+      <Edge From="30" To="31" Label="Source1" />
     </Edges>
   </Workflow>
 </WorkflowBuilder>
