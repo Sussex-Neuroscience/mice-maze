@@ -1,4 +1,4 @@
-trial number,motor1 angle,motor2 angle,motor3 angle,motor 4 angle,motor5 angle,motor6 angle,reward area
+trial number,motor1 angle,motor2 angle,motor3 angle,motor 4 angle,motor5 angle,motor6 angle,ra1
 1,90,180,90,180,90,180,1
 2,180,90,180,90,180,90,2
 3,180,90,90,180,90,180,3
@@ -98,4 +98,4 @@ trial number,motor1 angle,motor2 angle,motor3 angle,motor 4 angle,motor5 angle,m
 97,90,180,90,180,90,180,1
 98,180,90,180,90,180,90,2
 99,180,90,90,180,90,180,3
-100,90,180,90,180,90,180,4
+300,90,180,90,180,90,180,4
