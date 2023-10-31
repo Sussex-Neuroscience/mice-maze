@@ -29,3 +29,4 @@ This is a repository for building and running an experiment investigating how se
 * Maja Nowak
 * Marcus Burnell-Spector
 * Shahd Al Balushi
+* Isabel Maranhao
