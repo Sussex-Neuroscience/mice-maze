@@ -17,15 +17,16 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
 import random
 from threading import Thread
+
 #Pannels #################################
-exec(open("/home/maze_/Desktop/codes_maze/maze_project/servo_control_auto.py").read())
+exec(open("./servo_control_auto.py").read())
 list_of_random = ["allzero", "allzero"]
 list_trials=np.array(["RR","RL","LL","LR","allzero"])
 index_trial=np.where(list_trials == list_of_random[-1])[0][0]
 pannel_sort('allzero')
 
 #Food #################################
-exec(open("/home/maze_/Desktop/codes_maze/maze_project/servo_control_food.py").read())
+exec(open("./servo_control_food.py").read())
 
 #Hide prints #################################
 class HiddenPrints:

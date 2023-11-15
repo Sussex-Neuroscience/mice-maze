@@ -2,14 +2,20 @@ import numpy as np
 import cv2 as cv
 import pandas as pd
 import supFun as sf
+#from 
+
 
 #load ROI information
 rois = sf.read_rois("rois.csv")
+
+#set number of trials
 nTrials = 100
 
-
+#start the camera object
 cap = sf.start_camera()
 
+
+#infinite loop (needs to be changed later)
 while True:
     gray,valid = sf.grab_n_convert_frame(cameraHandle=cap)
     if not valid:
