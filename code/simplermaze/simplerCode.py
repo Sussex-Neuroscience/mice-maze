@@ -2,75 +2,263 @@ import numpy as np
 import cv2 as cv
 import pandas as pd
 import supFun as sf
-#from 
+import time
+import serial
 
+
+#create a serial object and connect to it
+#ser = Serial.serial("/dev/ttyACM0")
 
 #load ROI information
-rois = sf.read_rois("rois.csv")
+rois = pd.read_csv("rois.csv",index_col=0)
+
+#load the trials file (description of each trial)
+trialsIDs = pd.read_csv("trials_2columns.csv")
 
 #set number of trials
-nTrials = 100
+nTrials = len(trialsIDs)
+
+#get the identification of each grating
+gratingID = [match for match in list(trialsIDs.keys()) if "motor" in match]
+
+
+#get the number of reward areas
+nRewAreas = trialsIDs.ra1.max()
+
+
+#the maze only uses servo motors. To simplify their control, we are relying on
+# an adafruit board (based on the PCA9685 IC), which allows us to flexibly
+#increase/decrease the number of motors, without using more ports on a microcontroller,
+#since the Adafruit board communicates with a microcontroller using two digital lines, but is
+#able to control more than 100 servo motors.
+
+#The board also has C++ and micropython libraries, which makes it easy for users to control them.
+
+
+# set the port/address for each motor
+motor1Grating = 1
+motor2Grating = 2
+motor3Grating = 3
+motor4Grating = 4
+motor5Grating = 5
+motor6Grating = 6
+
+motor1Reward = 7
+motor2Reward = 8
+motor3Reward = 9
+motor4Reward = 10
+
+
+
+thresholds = dict()
+timeSpentAreas = dict()
+for item in rois:
+    #create threshold values for each area
+    thresholds[item] = 900
+    #create all roi variables in the dictionary and attach an empty list to them
+    timeSpentAreas[item] = []
+
+
+#create variables that will store session data
+ 
+
+areasRewarded = list()
+
+hits = 0
+miss = 0
+incorrect = 0
+
+#preload variables
+areas = dict()
+#set variable for defining if animal should be rewarded in the case
+#a wrong location is visited before visiting a correct location:
+considereWrongLocations = False
+
+
 
 #start the camera object
 cap = sf.start_camera()
 
 
-#infinite loop (needs to be changed later)
-while True:
-    gray,valid = sf.grab_n_convert_frame(cameraHandle=cap)
-    if not valid:
-        print("Can't receive frame (stream end?). Exiting ...")
-        break
-    # Display the resulting frame
-    cv.imshow('frame', gray)
-    
-    
-    #crop roi from original image
-    entrance1Crop=gray[rois["entrance1"]["ystart"]:rois["entrance1"]["ystart"]+rois["entrance1"]["ylen"],
-                       rois["entrance1"]["xstart"]:rois["entrance1"]["xstart"]+rois["entrance1"]["xlen"],]
+sessionStartTime = time.time()
 
-    entrance2Crop=gray[rois["entrance2"]["ystart"]:rois["entrance2"]["ystart"]+rois["entrance2"]["ylen"],
-                       rois["entrance2"]["xstart"]:rois["entrance2"]["xstart"]+rois["entrance2"]["xlen"],]
-    
-    rewArea1Crop=gray[rois["rewArea1"]["ystart"]:rois["rewArea1"]["ystart"]+rois["rewArea1"]["ylen"],
-                      rois["rewArea1"]["xstart"]:rois["rewArea1"]["xstart"]+rois["rewArea1"]["xlen"],]
-    rewArea2Crop=gray[rois["rewArea2"]["ystart"]:rois["rewArea2"]["ystart"]+rois["rewArea2"]["ylen"],
-                      rois["rewArea2"]["xstart"]:rois["rewArea2"]["xstart"]+rois["rewArea2"]["xlen"],]
-    rewArea3Crop=gray[rois["rewArea3"]["ystart"]:rois["rewArea3"]["ystart"]+rois["rewArea3"]["ylen"],
-                      rois["rewArea3"]["xstart"]:rois["rewArea3"]["xstart"]+rois["rewArea3"]["xlen"],]
-    rewArea4Crop=gray[rois["rewArea4"]["ystart"]:rois["rewArea4"]["ystart"]+rois["rewArea4"]["ylen"],
-                      rois["rewArea4"]["xstart"]:rois["rewArea4"]["xstart"]+rois["rewArea4"]["xlen"],]
-    
-    
-    for trial in range(nTrials):
-        #print("start trial "+str(trial))
-        #show cropped image
-        cv.imshow("entrace1Crop",entrance1Crop)
-        cv.imshow("entrace2Crop",entrance2Crop)
-        cv.imshow("rewArea1Crop",rewArea1Crop)
-        cv.imshow("rewArea2Crop",rewArea2Crop)
-        cv.imshow("rewArea3Crop",rewArea3Crop)
-        cv.imshow("rewArea4Crop",rewArea4Crop)
-    
-    
-    
-        crossE1Value = 900
-        crossE2Value = 900
-        #detect maze entrance:
-        while crossE1Value<1000:
-            crossE1Value = np.sum(entrance1Crop)
-        crossE1 = True
-    
-        while crossE2Value<1000:
-            crossE2Value = np.sum(entrance2Crop)
-        crossE2 = True
-        
-        
-    
-    
-    
+for trial in range(nTrials):
     if cv.waitKey(1) == ord('q'):
         break
+    #which area should be rewarded:
+    rewardTarget = trialsIDs["ra1"][trial]
+    #define which servo motor should be used for this specific area
+    #(eventually find a better way to code this with a loop or something)
+    if rewardTarget == 1:
+        rewMotor = motor1Reward
+    elif rewardTarget == 2:
+        rewMotor = motor2Reward
+    elif rewardTarget == 3:
+        rewMotor = motor3Reward
+    elif rewardTarget == 4:
+        rewMotor = motor4Reward
+    else:
+        rewMotor = 1
+        print("correct reward motor not found!! defaulting to motor 1")
+        
+    
+    #run code to start the gratings
+    for grating in gratingID:
+        print(grating)
+        #add arduino code here so that all gratings turn to neutral position"
+        #ser.print(xxxxxxxx)
+    
+        #maybe add a pause? so that the servo motors have time to catch up
+        
+    for grating in gratingID:
+        position = trialsIDs[grating][trial]
+        print(position)
+        #than add code so that they turn to the trial specific position"
+        #maybe add a pause? so that the servo motors have time to catch up
+        
+    
+    #gate1 = 0
+    #gate2 = 0
+    trialOngoing = 1
+    rewarded = False
+    enteredMaze = False
+    left1 = 0
+    left2 = 0
+    g2Afterg1 = False
+    g1Afterg2 = False
+    hasVisited = dict()
+    mousePresent = dict()
+    gate1History = [False,False]
+    gate2History = [False,False]
+    while trialOngoing == 1:
+        
+        gray,valid = sf.grab_n_convert_frame(cameraHandle=cap)
+        if not valid:
+            print("Can't receive frame (stream end?). Exiting ...")
+            break
+        # Display the resulting frame
+        cv.imshow('frame', gray)
+        
+        #grab each area of interest and store them in a dictionary
+        #this will be used to detect if the animal was there or not
+        for item in rois:
+            areas[item] = sf.grab_cut(gray,
+                xstart = rois[item]["xstart"],
+                ystart =  rois[item]["ystart"],
+                xlen = rois[item]["xlen"],
+                ylen =  rois[item]["ylen"],
+                )
+            
+            mousePresent[item] = np.sum(areas[item])>thresholds[item]
+        
+        #here we define the logic for this training step
+        #this step only cares if the animal reaches the correct area
+        #no matter if it entered a wrong area before
+        #stillOnGate1 = 0
+        #stillOnGate2 = 0
+        #startGate1 = time.time()
+        
+    
+        #at each new frame, add the information on whether the mouse
+        #was in the gate1 area to a two element list
+        #every new added item goes in front of the list, and the last
+        #element is removed.
+        gate1History.insert(0,mousePresent["entrance1"])
+        gate1History.pop(-1)
+
+        #at each new frame, add the information on whether the mouse
+        #was in the gate2 area to a two element list
+        #every new added item goes in front of the list, and the last
+        #element is removed.
+        gate2History.insert(0,mousePresent["entrance2"])
+        gate2History.pop(-1)
+
+        
+            
+        #calculate the mouse movement based on the gate1 array history
+        # and determine if it has passes gate1 and/or 2 and in which direction
+        if gate1History[1] and not gate1History[0]:
+            print("mouse just left entrance1")
+            endGate1 = time.time()
+            timeSpentAreas["entrance1"].append(trial,endGate1-startGate1)
+            gate1Durations.append((trial,endGate1-startGate1))
+            left1 = True
+            if left2:
+                g1Afterg2 = True
+                g2Afterg1 = False
+                
+            
+#         if gate1History[0] and not gate1History[1]:
+#             print("mouse just entered entrance 1")
+#             
+#         if  gate1History[0] and gate1History[1]:
+#             print("mouse still on entrance 1 area")
+        
+        #calculate the mouse movement based on the gate2 array history
+        if gate2History[1] and not gate2History[0]:
+            print("mouse just left entrance2")
+            left2 = True
+            if left1:
+                g1After2 = False
+                g2After1 = True
+                
+
+        
+        if g2Afterg1:
+            print("mouse has entered the maze")
+            trialStartTime = time.time()
+            enteredMaze = True
+        if g1Afterg2:
+            print("mouse has left the maze")
+            trialOngoing=0
+            trialDurations.append((trial,time.time()-trialStartTime))
+            enteredMaze = False
+
+
+            
+
+            
+        if enteredMaze:         
+            for item in mousePresent:
+                if mousePresent[item]:
+                    hasVisited[item]==True
+                    
+                if str(rewardTarget) in item and "entrance" not in item:
+                    if mousePresent[item] and not rewarded:
+                        #this if statement is a placeholder for the training phase where
+                        #animals cannot visit a wrong location before visiting the
+                        #target location
+                        if considerWrongLocations:
+                            pass
+                        
+                        else:
+                            print("animal has reached reward zone")
+                            rewarded = True
+                            #store the reward area
+                            areasRewarded.append((trial,rewardTarget))
+                            #TODO
+                            #do calculations on time to reward
+                            #add code to start proper reward motor
+            
+            #if trialEnd==1:
+            #    trialOngoing = 0
+        
+        
+        
+        
+sessionDuration = time.time()-sessionStarTime    
+    
+
+    
+    #add some timing metric so we have info on how much time each trial took
+
+
+    
+    
+
+
+
+
 # When everything done, release the capture
 cap.release()
 cv.destroyAllWindows()
