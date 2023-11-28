@@ -7,14 +7,24 @@ from tkinter import *
 import reward_pts_selection as roi_selection
 import mouse_reward_detection
 import entrance_pts_selection
-import csv
+from ast import literal_eval
 
 
 
 
 def main():
     csv_file=choose_csv()
-    initialisation(csv_file)
+    add_custom_trial(csv_file)
+    check_rois(csv_file)
+    set_reward_rois(csv_file)
+    set_entrance_points(csv_file)
+    
+    for i in range(set_index(csv_file)):
+        set_gratings(csv_file, i)
+        #start_recording()
+            #entrance_pts()
+        #set_reward(csv_file)
+    #initialisation(csv_file)
     
     # start_trial()
         #start_recording()
@@ -25,12 +35,12 @@ def main():
 
 
 
-
+'''
 def initialisation(csv_file):
     initialising_board()
     check_rois(csv_file)
     set_gratings(csv_file)
-
+'''
 
 def initialising_board():
     global board
@@ -54,119 +64,83 @@ def choose_csv():
     root.destroy()
     return filename
 
+def add_custom_trial(csv_file):
+        
+        df= pd.read_csv(csv_file)
+    # Ask the user for the type of trial or make a custom one
+        custom = input("Do you want to add a custom trial? (y/n): ").upper()
+
+        if custom == "Y":
+            # Create a new row to append
+            new_row = {'Trials': input("Enter Custom Trial name: "),
+            'l': int(input("Enter angle for grating l: ")),
+            'r': int(input("Enter angle for grating r: ")),
+            'll': int(input("Enter angle for grating ll: ")),
+            'lr': int(input("Enter angle for grating lr: ")),
+            'rl': int(input("Enter angle for grating rl: ")),
+            'rr': int(input("Enter angle for grating rr: "))}
+
+            # Append the new row to the DataFrame
+            df = df.append(new_row, ignore_index=True)
+            # Update the CSV file
+            df.to_csv(csv_file, index=False)
+
+def set_index(csv_file):
+    df = pd.read_csv(csv_file)
+    num_rows = df.shape[0]
+    return num_rows
+
 def check_rois(csv_file):
     df = pd.read_csv(csv_file)
-    # Display the first 5 rows of the DataFrame
-    #print(df)
-    
-    #check if these columns are empty
-    if df[['ROI1', 'ROI2', 'ROI3','ROI4']].isnull().all().all():
-        #if they are empty, run code to select ROIs
-        rois_pts=roi_selection.select_rois()
-        
-        #convert matrices to tuples
-        rois_pts2= [
-            [(x, y) for x, y in matrix]  
+
+    # Define the ROI columns to check
+    roi_columns = [f'ROI{i}' for i in range(1, 5)]
+
+    # Check if any row lacks ROIs
+    rows_missing_rois = df[roi_columns].isnull().any(axis=1)
+
+    # Check if all specified ROI columns are empty for the entire DataFrame
+    if df[roi_columns].isnull().all().all():
+        # If all ROIs are missing in the DataFrame, get new ROI coordinates
+        rois_pts = roi_selection()
+
+        # Convert matrices to tuples
+        rois_pts2 = [
+            [(x, y) for x, y in matrix]
             for matrix in rois_pts
         ]
-        
-        print(rois_pts2)
-        # Update DataFrame with ROI coordinates
-        for i, col in enumerate(df.columns[-4:]):
-            df[col] = [rois_pts2[i]]*df.shape[0]
 
-        
-        #update the csv file
+        # Update DataFrame with ROI coordinates for all rows
+        for i, col in enumerate(roi_columns):
+            df[col] = [rois_pts2[i]] * df.shape[0]
+
+        # Update the CSV file
+        df.to_csv(csv_file, index=False)
+    elif any(rows_missing_rois):
+        # If some rows have data but lack ROIs, fill with ROIs from the row above
+        df.loc[rows_missing_rois, roi_columns] = df.shift(1).loc[rows_missing_rois, roi_columns].values
+
+        # Update the CSV file
         df.to_csv(csv_file, index=False)
 
+def set_gratings(csv_file, i):
+    global servo_2, servo_3, servo_4, servo_5, servo_6, servo_7
+
+    df = pd.read_csv(csv_file)
+    #print(df)
+    
+    MOTOR_NAMES= df.columns[1:7].tolist()
+    
+    #select the trial based on the index that iterates through the trials in the csv file (look at main())
+    trial = df.iloc[i, 0:7]
+    trial_name = df.iloc[i, 0]
+    angles_gratings = df.iloc[i, 1:7]
+    angles_list = []
+    for angle in angles_gratings:
+        angles_list.append(angle)
         
-        
-    else:
-        print("file already has rois")
-
-
-def set_gratings():
-    global servo_2
-    global servo_3
-    global servo_4
-    global servo_5
-    global servo_6
-    global servo_7
-
-    #### CHANGE FROM USER SELECTING TRIAL TO ITERATION THROUGH THE TRIALS ---> LINE 125 
-
-    # This function creates and uses custom gratings for different trial types
-    csv_file= choose_csv()
-    # opens csv file,
-    TRIALS={}
-    try:
-        
-        f= open(csv_file, "r")
-        reader = csv.reader(f)
-        first_row= next(reader)
-        MOTOR_NAMES= first_row[1:7]
-
-        next(reader)
-        # Loop through the rows
-        for row in reader:
-            # Get the first element as the key
-            key = row[0]
-            # Get the rest of the elements as the values
-            values = row[1:]
-            # Append the values to a list
-            values_list = []
-            for value in values:
-                values_list.append(value)
-            # Assign the list to the key in the dictionary
-            TRIALS[key] = values_list
-    except IOError as e:
-        print(f"Error reading file {csv_file}: {e}")
-        exit()
-
-    # Ask the user for the type of trial or make a custom one
-    trial_type = input("Insert type of trial or make a custom one: ").upper()
-
-    if trial_type in TRIALS:
-        # If the trial type exists, use the corresponding grating
-        grating_angles = TRIALS[trial_type]
-
-    else:
-        f.close()
-        # If the trial type does not exist, ask the user for the custom grating angles
-        custom_trial_name = trial_type
-        custom_grating_angles = []
-        for motor in MOTOR_NAMES:
-            angle = input(f"Insert angle for grating {motor}: ")
-            # Validate the input as an integer
-            if angle.isdigit():
-                custom_grating_angles.append(int(angle))
-            else:
-                print(f"Invalid angle: {angle}")
-                exit()
-
-        # Update the trials dictionary with the new trial type and grating
-        TRIALS[custom_trial_name] = custom_grating_angles
-
-        #update the csv file with the custom trial
-        try:
-            with open(csv_file, "a", newline="") as file:
-            # Create a csv writer object
-                writer = csv.writer(file)
-                # Write the custom trial name as the first element of the row
-                writer.writerow([custom_trial_name] + custom_grating_angles)
-        except IOError as e:
-            print(f"Error writing file {csv_file}: {e}")
-            exit()
-
-        # Use the new grating as grating_angles
-        grating_angles = TRIALS[custom_trial_name]
-
-
-    # Create a dictionary of trial angles from the motor names and grating angles
-    trial_angles = {MOTOR_NAMES[i]: grating_angles[i] for i in range(len(MOTOR_NAMES))}
-
-
-   
+    # Create a dictionary of the angles of teh specific trial 
+    trial_angles = {MOTOR_NAMES[a]: angles_list[a] for a in range(len(MOTOR_NAMES))}
     
     # Setup the digital pins as servo. Servo is the motor, these numbers are the pins on the board
     servo_2 = board.get_pin('d:2:s')
@@ -186,7 +160,53 @@ def set_gratings():
     servo_6.write(trial_angles['rl'])
     servo_7.write(trial_angles['rr'])
 
+
+def set_reward_rois(csv_file):
+    df = pd.read_csv(csv_file)
+    # Check if "reward" column is present
+    if 'Reward ROI' not in df.columns:
+        # If not present, add it after the other columns
+        df['Reward ROI'] = [0] * df.shape[0]
+        df['Reward ROI'] = df['Reward ROI'].astype(object) #if I don't do this, it doesn't allow me to copy the values from the ROIs
+
+        df[['ROI1', 'ROI2', 'ROI3', 'ROI4']] = df[['ROI1', 'ROI2', 'ROI3', 'ROI4']].applymap(eval)
+
+        df.at[0, 'Reward ROI'] = df.at[0, 'ROI1']
+        df.at[1, 'Reward ROI'] = df.at[1, 'ROI2']
+        df.at[2, 'Reward ROI'] = df.at[2, 'ROI3']
+        df.at[3, 'Reward ROI'] = df.at[3, 'ROI4']
+        
+        #this makes sure that the values are not strings, but lists
+        df['Reward ROI'] = df['Reward ROI'].apply(literal_eval)
+        df.to_csv(csv_file, index=False)
     
+    else:
+        #this makes sure that the values are not strings, but lists
+        df['Reward ROI'] = df['Reward ROI'].apply(literal_eval)
+
+        if df['Reward ROI'].eq(0).any():
+            # Set the 'Trials' column as the index
+            df.set_index('Trials', inplace=True)
+            # Create a dictionary to map the user's choice to the ROI column
+            roi_dict = {"LL": "ROI1", "LR": "ROI2", "RL": "ROI3", "RR": "ROI4"}
+            # Loop over the trials that have a 0 in the 'Reward ROI' column
+            for trial in df[df['Reward ROI'].eq(0)].index:
+                # Ask the user to select the location of the ROI
+                set_custom_reward = input(f"Select location of ROI (LL, LR, RL, RR) for trial {trial}: ").upper()
+                # Check if the user's choice is valid
+                if set_custom_reward in roi_dict:
+                    # Assign the value of the corresponding ROI column to the 'Reward ROI' column
+                    df.loc[trial, 'Reward ROI'] = df.loc[trial, roi_dict[set_custom_reward]]
+                else:
+                    # Print an error message and skip the trial
+                    print(f"No rewards for trial {trial}.") 
+            
+        
+    
+        df.to_csv(csv_file, index=False)
+    
+def set_entrance_points(csv_file):
+    df= pd.read_csv(csv_file)    
 
 ###
 
