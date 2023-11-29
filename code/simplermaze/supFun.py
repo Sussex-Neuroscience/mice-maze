@@ -31,8 +31,9 @@ def start_camera():
 def grab_n_convert_frame(cameraHandle):
     #capture a frame
     ret, frame = cameraHandle.read()
+    #print(ret)
     # Our operations on the frame come here
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
     return gray,ret 
 
 def csv_to_dict(fileName="rois.csv"):
@@ -48,7 +49,8 @@ def define_rois(roiNames = ["entrance1","entrance2",
                 outputName = "rois.csv"):
     
 
-    cap = cv.VideoCapture(0)
+    cap = cv.VideoCapture('/home/andre/Desktop/maze_test.mp4')
+    #cap = cv.VideoCapture(0)
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
@@ -60,9 +62,9 @@ def define_rois(roiNames = ["entrance1","entrance2",
         print("Can't receive frame (stream end?). Exiting ...")
         #break
     # Our operations on the frame come here
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
     # Display the resulting frame
-    cv.imshow('frame', gray)
+    #cv.imshow('frame', gray)
 
     #release the capture
     cap.release()
@@ -82,9 +84,13 @@ def define_rois(roiNames = ["entrance1","entrance2",
     cv.destroyAllWindows()
 
     return df
+
+#def draw_on_video(frame=gray,roi=(0,0,0,0)):
+    #cv2.rectangle(frame, (roi[0], roi[1]), (roi[2], roi[3]), (0, 0, 0), -1)
     
+
 def grab_cut(frame,xstart,ystart,xlen,ylen):
     
-    cut = frame[xstart:xstart+xlen,
-                ystart:ystart+ylen]
+    cut = frame[ystart:ystart+ylen,
+                xstart:xstart+xlen]
     return cut

@@ -9,8 +9,15 @@ import serial
 #create a serial object and connect to it
 #ser = Serial.serial("/dev/ttyACM0")
 
+drawRois = 0
+if drawRois==1:
+
+    sf.define_rois(roiNames = ["entrance1","entrance2",
+                            "rew1","rew2","rew3","rew4"],
+                    outputName = "rois1.csv")
+
 #load ROI information
-rois = pd.read_csv("rois.csv",index_col=0)
+rois = pd.read_csv("rois1.csv",index_col=0)
 
 #load the trials file (description of each trial)
 trialsIDs = pd.read_csv("trials_2columns.csv")
@@ -54,7 +61,7 @@ thresholds = dict()
 timeSpentAreas = dict()
 for item in rois:
     #create threshold values for each area
-    thresholds[item] = 900
+    thresholds[item] = 0
     #create all roi variables in the dictionary and attach an empty list to them
     timeSpentAreas[item] = []
 
@@ -70,21 +77,42 @@ incorrect = 0
 
 #preload variables
 areas = dict()
+enteredMaze=False
 #set variable for defining if animal should be rewarded in the case
 #a wrong location is visited before visiting a correct location:
 considereWrongLocations = False
 
 
-
 #start the camera object
-cap = sf.start_camera()
+cap = cv.VideoCapture('/home/andre/Desktop/maze_test.mp4')
+
+#grab one frame to adjust tresholds of empty spaces:
+gray,valid = sf.grab_n_convert_frame(cameraHandle=cap)
+ret,gray = cv.threshold(gray,180,255,cv.THRESH_BINARY)
+#gray = gray[:,:,0]
+#run a loop to catch each area and sum the pixel values on that area of the frame
+for item in rois:
+    areas[item] = sf.grab_cut(gray,
+                xstart = rois[item]["xstart"],
+                ystart =  rois[item]["ystart"],
+                xlen = rois[item]["xlen"],
+                ylen =  rois[item]["ylen"],
+                )
+    
+    thresholds[item] = np.sum(areas[item])
+
+print(thresholds)
+
+#cap = sf.start_camera()
+#cap = cv.VideoCapture("~/Desktop/maze_test.mp4")
+
 
 
 sessionStartTime = time.time()
 
 for trial in range(nTrials):
-    if cv.waitKey(1) == ord('q'):
-        break
+    #if cv.waitKey(1) == ord('q'):
+    #    break
     #which area should be rewarded:
     rewardTarget = trialsIDs["ra1"][trial]
     #define which servo motor should be used for this specific area
@@ -132,12 +160,27 @@ for trial in range(nTrials):
     gate2History = [False,False]
     while trialOngoing == 1:
         
+        time.sleep(0.05)
+        
         gray,valid = sf.grab_n_convert_frame(cameraHandle=cap)
+        ret,gray = cv.threshold(gray,180,255,cv.THRESH_BINARY)
+        binGray = gray[:,:,2]
+        
         if not valid:
             print("Can't receive frame (stream end?). Exiting ...")
             break
+        for item in rois:
+            cv.rectangle(gray, (rois[item]["xstart"],
+                                rois[item]["ystart"]),
+                               (rois[item]["xstart"]+rois[item]["xlen"],
+                                rois[item]["ystart"]+rois[item]["ylen"]),
+                           color=(0,0,0), thickness=2)
+
         # Display the resulting frame
         cv.imshow('frame', gray)
+        
+        if cv.waitKey(1) == ord('q'):
+            break
         
         #grab each area of interest and store them in a dictionary
         #this will be used to detect if the animal was there or not
@@ -148,8 +191,11 @@ for trial in range(nTrials):
                 xlen = rois[item]["xlen"],
                 ylen =  rois[item]["ylen"],
                 )
-            
-            mousePresent[item] = np.sum(areas[item])>thresholds[item]
+            cv.imshow(item,areas[item])
+            #print(item+" " + str(np.sum(areas[item])))
+    
+            mousePresent[item] = np.sum(areas[item])<thresholds[item]/2
+            #print(item+" "+str(np.sum(areas[item])))
         
         #here we define the logic for this training step
         #this step only cares if the animal reaches the correct area
@@ -165,7 +211,7 @@ for trial in range(nTrials):
         #element is removed.
         gate1History.insert(0,mousePresent["entrance1"])
         gate1History.pop(-1)
-
+        print(gate1History)
         #at each new frame, add the information on whether the mouse
         #was in the gate2 area to a two element list
         #every new added item goes in front of the list, and the last
@@ -180,8 +226,8 @@ for trial in range(nTrials):
         if gate1History[1] and not gate1History[0]:
             print("mouse just left entrance1")
             endGate1 = time.time()
-            timeSpentAreas["entrance1"].append(trial,endGate1-startGate1)
-            gate1Durations.append((trial,endGate1-startGate1))
+            #timeSpentAreas["entrance1"].append(trial,endGate1-startGate1)
+            #gate1Durations.append((trial,endGate1-startGate1))
             left1 = True
             if left2:
                 g1Afterg2 = True
@@ -199,19 +245,19 @@ for trial in range(nTrials):
             print("mouse just left entrance2")
             left2 = True
             if left1:
-                g1After2 = False
-                g2After1 = True
+                g1Afterg2 = False
+                g2Afterg1 = True
                 
 
         
-        if g2Afterg1:
+        if g2Afterg1 and enteredMaze==False:
             print("mouse has entered the maze")
             trialStartTime = time.time()
             enteredMaze = True
         if g1Afterg2:
             print("mouse has left the maze")
             trialOngoing=0
-            trialDurations.append((trial,time.time()-trialStartTime))
+            #trialDurations.append((trial,time.time()-trialStartTime))
             enteredMaze = False
 
 
@@ -221,7 +267,8 @@ for trial in range(nTrials):
         if enteredMaze:         
             for item in mousePresent:
                 if mousePresent[item]:
-                    hasVisited[item]==True
+                    pass
+                    #hasVisited[item]==True
                     
                 if str(rewardTarget) in item and "entrance" not in item:
                     if mousePresent[item] and not rewarded:
