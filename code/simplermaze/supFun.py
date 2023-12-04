@@ -2,6 +2,14 @@ import pandas as pd
 import cv2 as cv
 import numpy as np
 
+def get_metadata():
+    anID = input("enter animal identification:")
+    date = input("enter date:")
+    sessionID = input("enter session identification")
+    metatada = [anID, date, sessionID]
+    #figure out what else users want to store
+    return metadata
+
 def write_text(text="string",window="noWindow"):
     font                   = cv2.FONT_HERSHEY_SIMPLEX
     bottomLeftCornerOfText = (10,500)
