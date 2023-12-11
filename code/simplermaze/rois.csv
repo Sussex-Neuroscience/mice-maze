@@ -1,7 +1,5 @@
-region,ystart,xstart,ylen,xlen
-entrance1, 273,162,111,165
-entrance2, 100,200,111,165
-rewArea1,  100,200,111,165
-rewArea2,  100,200,111,165
-rewArea3,  100,200,111,165
-rewArea4,  100,200,111,165
+,entrance1,entrance2,rew1,rew2,rew3,rew4
+xstart,60,70,218,148,207,140
+ystart,106,106,9,12,224,223
+xlen,14,11,30,22,29,27
+ylen,32,32,25,23,21,29
