@@ -9,6 +9,10 @@ import serial
 #set variable for defining if this is an habituation run:
 habituation = True
 
+#set if the video should be recorded during the session
+recordVideo = True
+#set filename for video recording
+recVideoName = "test.mp4"
 
 #set variable for defining if animal should be rewarded in the case
 #a wrong location is visited before visiting a correct location:
@@ -120,6 +124,13 @@ for item in rois:
 
 sessionStartTime = time.time()
 
+if recordVideo:
+    #cc = cv.VideoWriter_fourcc(*'XVID')
+    #fps = 15.
+    #frameSize = (640,480)
+    #videoFile = cv.VideoWriter(recVideoName, cc, fps, frameSize)
+    pass
+
 for trial in range(nTrials):
     print ("starting trial "+str(trial+1))
     #if cv.waitKey(1) == ord('q'):
@@ -179,6 +190,14 @@ for trial in range(nTrials):
         
         gray,valid = sf.grab_n_convert_frame(cameraHandle=cap)
         ret,gray = cv.threshold(gray,180,255,cv.THRESH_BINARY)
+
+        if recordVideo:
+            #videoFile.write(img)
+            pass
+            
+        
+        
+        
         #binGray = gray[:,:,2]
         
         if not valid:
@@ -324,7 +343,8 @@ for trial in range(nTrials):
         
         
 sessionDuration = time.time()-sessionStarTime    
-    
+
+
 
     
     #add some timing metric so we have info on how much time each trial took
@@ -339,4 +359,7 @@ sessionDuration = time.time()-sessionStarTime
 # When everything done, release the capture
 cap.release()
 cv.destroyAllWindows()
+if recordVideo:
+    #videoFile.release()
+    pass
 
