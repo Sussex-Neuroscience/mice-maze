@@ -10,7 +10,7 @@ import serial
 habituation = True
 
 #set if the video should be recorded during the session
-recordVideo = True
+recordVideo = False
 #set filename for video recording
 recVideoName = "test.mp4"
 
@@ -188,12 +188,12 @@ for trial in range(nTrials):
         #the line below needs to be commented out when running the actual experiments
         time.sleep(0.05)
         
-        gray,valid = sf.grab_n_convert_frame(cameraHandle=cap)
-        ret,gray = cv.threshold(gray,180,255,cv.THRESH_BINARY)
+        grayOriginal,valid = sf.grab_n_convert_frame(cameraHandle=cap)
+        ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
 
         if recordVideo:
-            #videoFile.write(img)
-            pass
+            videoFile.write(grayOriginal)
+
             
         
         
