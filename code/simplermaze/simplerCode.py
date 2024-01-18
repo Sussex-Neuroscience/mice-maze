@@ -4,7 +4,11 @@ import pandas as pd
 import supFun as sf
 import time
 import serial
+import os
 
+
+
+#line 16, line 130, 133, 197, 241, 274, 339
 
 #set variable for defining if this is an habituation run:
 habituation = True
@@ -12,7 +16,16 @@ habituation = True
 #set if the video should be recorded during the session
 recordVideo = False
 #set filename for video recording
-recVideoName = "test.mp4"
+
+# get the current date and time
+local_time = time.localtime()
+
+# format the date and time as YYYY-MM-DD_hh-mm-ss
+date_time= str(time.strftime('%d %b %Y %H:%M:%S', local_time))
+
+# append the date and time to the file name
+recVideoName = "test_" + date_time + ".mp4"
+
 
 #set variable for defining if animal should be rewarded in the case
 #a wrong location is visited before visiting a correct location:
@@ -95,7 +108,7 @@ mousePresent = dict()
 
 
 #start the camera object
-cap = cv.VideoCapture('/home/andre/Desktop/maze_test.mp4')
+#cap = cv.VideoCapture(0)
 
 ### START FOR LOOP TO AVERAGE N FRAMES FOR THRESHOLDING
 
@@ -117,21 +130,39 @@ for item in rois:
 
 #print(thresholds)
 
-#cap = sf.start_camera()
-#cap = cv.VideoCapture("~/Desktop/maze_test.mp4")
+#make directory where videos will be saved 
+if not os.path.exists("~/Desktop/maze_recordings"):
+    os.makedirs("~/Desktop/maze_recordings")
+    
+    # expand the tilde to the full path of the home directory
+    homeDir = os.path.expanduser("~")
+
+    # construct the file path from the directory and the file name using forward slashes
+    filePath = homeDir + "/Desktop/maze_recordings/" + recVideoName
+
+
+cap = sf.start_camera()
+cap = cv.VideoCapture(filePath)
 
 
 
 sessionStartTime = time.time()
 
 if recordVideo:
-    #cc = cv.VideoWriter_fourcc(*'XVID')
-    #fps = 15.
-    #frameSize = (640,480)
-    #videoFile = cv.VideoWriter(recVideoName, cc, fps, frameSize)
-    pass
+    frame_width = int(cam.get(3)) # can also use cam.get (cv.CAP_PROP_FRAME_WIDTH)
+    frame_height = int(cam.get(4)) # can also use cam.get (cv.CAP_PROP_FRAME_HEIGHT)
+    fps = = int(cam.get(5)) #can also use cam.get (cv.CAP_PROP_FPS)
+
+    cc = cv.VideoWriter_fourcc(*'XVID') #Can also use mp4v or MJPG for .avi, must check with maze camera
+    frameSize = (frame_width,frame_height)
+
+    videoFile = cv.VideoWriter(recVideoName, cc, fps, frameSize)
+    
+trial_durations = [] #list that will contain the durations of every trial. Maybe this can be stored in another csv file?
 
 for trial in range(nTrials):
+    # time at the beginning of the trial 
+    start_trial_time = time.time()
     print ("starting trial "+str(trial+1))
     #if cv.waitKey(1) == ord('q'):
     #    break
@@ -192,10 +223,7 @@ for trial in range(nTrials):
         ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
 
         if recordVideo:
-            videoFile.write(grayOriginal)
-
-            
-        
+            videoFile.write(grayOriginal)  
         
         
         #binGray = gray[:,:,2]
@@ -338,21 +366,15 @@ for trial in range(nTrials):
             
             #if trialEnd==1:
             #    trialOngoing = False
+
+    #record end time of the trial
+    end_trial_time=  time.time()
+    trial_duration= end_time - start_time   #duration of the trial
+    trial_durations.append(trial_duration)
         
         
         
-        
-sessionDuration = time.time()-sessionStarTime    
-
-
-
-    
-    #add some timing metric so we have info on how much time each trial took
-
-
-    
-    
-
+sessionDuration = time.time()-sessionStartTime    
 
 
 
