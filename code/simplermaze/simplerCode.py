@@ -9,6 +9,7 @@ import os
 
 
 #line 16, line 130, 133, 197, 241, 274, 339
+#line 375
 
 #set variable for defining if this is an habituation run:
 habituation = True
@@ -108,7 +109,7 @@ mousePresent = dict()
 
 
 #start the camera object
-#cap = cv.VideoCapture(0)
+cap = cv.VideoCapture(0)
 
 ### START FOR LOOP TO AVERAGE N FRAMES FOR THRESHOLDING
 
@@ -149,9 +150,9 @@ cap = cv.VideoCapture(filePath)
 sessionStartTime = time.time()
 
 if recordVideo:
-    frame_width = int(cam.get(3)) # can also use cam.get (cv.CAP_PROP_FRAME_WIDTH)
-    frame_height = int(cam.get(4)) # can also use cam.get (cv.CAP_PROP_FRAME_HEIGHT)
-    fps = = int(cam.get(5)) #can also use cam.get (cv.CAP_PROP_FPS)
+    frame_width = int(cap.get(3)) # can also use cam.get (cv.CAP_PROP_FRAME_WIDTH)
+    frame_height = int(cap.get(4)) # can also use cam.get (cv.CAP_PROP_FRAME_HEIGHT)
+    fps = int(cap.get(5)) #can also use cam.get (cv.CAP_PROP_FPS)
 
     cc = cv.VideoWriter_fourcc(*'XVID') #Can also use mp4v or MJPG for .avi, must check with maze camera
     frameSize = (frame_width,frame_height)
@@ -195,8 +196,7 @@ for trial in range(nTrials):
         print(position)
         #than add code so that they turn to the trial specific position"
         #maybe add a pause? so that the servo motors have time to catch up
-    
-    
+   
     for item in rois:
         hasVisited[item] = False 
     
@@ -369,12 +369,15 @@ for trial in range(nTrials):
 
     #record end time of the trial
     end_trial_time=  time.time()
-    trial_duration= end_time - start_time   #duration of the trial
+    trial_duration= end_trial_time - start_trial_time   #duration of the trial
     trial_durations.append(trial_duration)
+
+    #create csv file that puts the durations per trial + the whole sesh duration
         
         
         
-sessionDuration = time.time()-sessionStartTime    
+sessionDuration = time.time()-sessionStartTime
+
 
 
 
