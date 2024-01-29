@@ -46,25 +46,30 @@ for trial in range(1,numTrials+1):
     giveReward=True
     
     while giveReward:
-        ser.position(motorReward1,degrees=45)
+        ser.position(motorReward1,degrees=30)
         time1 = time.ticks_ms()
         time2 = time.ticks_ms()
-        while time2-time1<200:
+        while time2-time1<300:
             #print("here")
             notDropped = detector_food1.value()
-            print(notDropped)
+            #print(notDropped)
             time2 = time.ticks_ms()
             #print(time2-time1)
-            if notDropped:
+            if not notDropped:
+                print("detected")
                 giveReward=False
+                break
                 
         ser.position(motorReward1,degrees=60)
         time1 = time.ticks_ms()
         time2 = time.ticks_ms()
         while time2-time1<200:
             notDropped = detector_food1.value()
+            #print(notDropped)
             time2 = time.ticks_ms()
-            if notDropped:
+            if not notDropped:
+                print("detected2")
                 giveReward=False
+                break
         
         time.sleep_ms(500) 
