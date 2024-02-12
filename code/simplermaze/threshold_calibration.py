@@ -1,7 +1,12 @@
+from __future__ import print_function
 import tkinter as tk
 from tkinter import Scale
 import cv2 as cv
 from PIL import Image, ImageTk
+import supFun as sf
+import cv2 as cv
+import numpy as np
+import argparse
 
 def video_calibration(cap):
     # Create a Tkinter window
@@ -56,3 +61,30 @@ def video_calibration(cap):
     window.mainloop()
 
     return thresh1.get(), thresh2.get()
+
+cap= cv.VideoCapture(0)
+
+
+# Call the video calibration function
+thresh1, thresh2 = video_calibration(cap)
+
+#check that camera is opened correctly
+if not cap.isOpened():
+    raise IOError("cannot open camera")
+
+while True:
+    ret, frame = cap.read() #ret = boolean returned by read function. it tells us if the frame was captured successfully. 
+    #If it is, it is stored in variable frame
+    frame = cv.resize(frame, None, fx= 0.5, fy= 0.5, interpolation= cv.INTER_AREA) 
+
+    #apply thresholds from other script
+    grayOriginal, valid = sf.grab_n_convert_frame(cameraHandle=cap)
+    ret, gray = cv.threshold(grayOriginal, thresh1, thresh2, cv.THRESH_BINARY)
+
+    cv.imshow("Input", gray)
+
+    #press esc to exit
+    c=cv.waitKey(1)
+    if c==27: #ASCII of esc is 27
+        break
+
