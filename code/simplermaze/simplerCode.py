@@ -91,10 +91,10 @@ gratingMotors = {"motor 1":1,
                  "motor 6":6,                 
                  }
 
-rewardMotors = {"motor 1":7,
-                "motor 2":8,
-                "motor 3":9,
-                "motor 4":10}
+rewardMotors = {"motor A":7,
+                "motor B":8,
+                "motor C":9,
+                "motor D":10}
 
 
 
