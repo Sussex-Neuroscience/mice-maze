@@ -5,7 +5,9 @@ import supFun as sf
 import time
 import serial
 import os
-
+import pandas as pd
+from tkinter import filedialog as fd
+from tkinter import *
 
 
 #line 16, line 130, 133, 197, 241, 274, 339
@@ -23,6 +25,7 @@ local_time = time.localtime()
 
 # format the date and time as YYYY-MM-DD_hh-mm-ss
 date_time= str(time.strftime('%d %b %Y %H:%M:%S', local_time))
+
 
 # append the date and time to the file name
 recVideoName = "test_" + date_time + ".mp4"
@@ -47,7 +50,17 @@ if drawRois:
 rois = pd.read_csv("rois1.csv",index_col=0)
 
 #load the trials file (description of each trial)
-trialsIDs = pd.read_csv("trials_2columns.csv")
+
+def choose_csv():
+    root=Tk()
+    # Show the file dialog and get the selected file name
+    filename = fd.askopenfilename()
+    # Print the file name to the console
+    #print (filename)
+    root.destroy()
+    return filename
+
+trialsIDs = pd.read_csv(choose_csv())
 
 #set number of trials
 nTrials = len(trialsIDs)
@@ -131,14 +144,20 @@ for item in rois:
 
 #print(thresholds)
 
-#make directory where videos will be saved 
+# Make directory where videos will be saved
 if not os.path.exists("~/Desktop/maze_recordings"):
     os.makedirs("~/Desktop/maze_recordings")
-    
-    # expand the tilde to the full path of the home directory
+
+    # Expand the tilde to the full path of the home directory
     homeDir = os.path.expanduser("~")
 
-    # construct the file path from the directory and the file name using forward slashes
+    # Construct the file path from the directory and the file name using forward slashes
+    filePath = homeDir + "/Desktop/maze_recordings/" + recVideoName
+
+else:
+    # Expand the tilde to the full path of the home directory
+    homeDir = os.path.expanduser("~")
+    # Construct the file path from the directory and the file name using forward slashes
     filePath = homeDir + "/Desktop/maze_recordings/" + recVideoName
 
 
