@@ -56,8 +56,8 @@ int time1 = 0;
 int time2 = 0;
 int pulseLen = 0;
 int pelletDropped = 0;
-int rewPulseLen1 = map(60, 0, 180, SERVOMIN, SERVOMAX);
-int rewPulseLen2 = map(15, 0, 180, SERVOMIN, SERVOMAX);
+int rewPulseLen1 = map(90, 0, 180, SERVOMIN, SERVOMAX);
+int rewPulseLen2 = map(45, 0, 180, SERVOMIN, SERVOMAX);
 
 SerialCommand sCmd;     // The demo SerialCommand object
 
@@ -74,17 +74,17 @@ void setup() {
 
 
   
-  sCmd.addCommand("gratingL",  gratingL); // 
-  sCmd.addCommand("gratingR",  gratingR); // 
-  sCmd.addCommand("gratingLR",  gratingLR); // 
-  sCmd.addCommand("gratingRL",  gratingRL); // 
-  sCmd.addCommand("gratingLL",  gratingLL); // 
-  sCmd.addCommand("gratingRR",  gratingRR); // 
+  sCmd.addCommand("grtL",  gratingL); // 
+  sCmd.addCommand("grtR",  gratingR); // 
+  sCmd.addCommand("grtLR",  gratingLR); // 
+  sCmd.addCommand("grtRL",  gratingRL); // 
+  sCmd.addCommand("grtLL",  gratingLL); // 
+  sCmd.addCommand("grtRR",  gratingRR); // 
   
-  sCmd.addCommand("rewardA", rewardA); // activate reward routine (reward 10) // start reward routine on servo 10
-  sCmd.addCommand("rewardB", rewardB);
-  sCmd.addCommand("rewardC", rewardC);
-  sCmd.addCommand("rewardD", rewardD);
+  sCmd.addCommand("rewA", rewardA); // activate reward routine (reward 10) // start reward routine on servo 10
+  sCmd.addCommand("rewB", rewardB);
+  sCmd.addCommand("rewC", rewardC);
+  sCmd.addCommand("rewD", rewardD);
   
   // generic functions for development/understanding the parsing library
   sCmd.addCommand("HELLO", sayHello);        // Echos the string argument back
@@ -168,10 +168,12 @@ void gratingL(){
   arg = sCmd.next();
   if (arg != NULL) {
      degree = atoi(arg);
-  }//if
-
+  
 gratingRoutine(degree=degree, servoNum=gratingLnum);
-     
+  }//if
+  else {
+    Serial.println("No arguments");
+  }   
 }//end gratingL
 
 void gratingR(){
@@ -181,9 +183,12 @@ void gratingR(){
   arg = sCmd.next();
   if (arg != NULL) {
      degree = atoi(arg);
+  
+gratingRoutine(degree=degree, servoNum=gratingRnum);
   }//if
-gratingRoutine(degree=degree, servoNum=gratingRnum);;
-     
+  else {
+    Serial.println("No arguments");
+  }   
 }//end gratingR
 
 void gratingLR(){
@@ -193,9 +198,12 @@ void gratingLR(){
   arg = sCmd.next();
   if (arg != NULL) {
      degree = atoi(arg);
-  }//if
+  
 gratingRoutine(degree=degree, servoNum=gratingLRnum);
-     
+  }//if
+  else {
+    Serial.println("No arguments");
+  }   
 }//end gratingLR
 
 void gratingRL(){
@@ -205,24 +213,26 @@ void gratingRL(){
   arg = sCmd.next();
   if (arg != NULL) {
      degree = atoi(arg);
-  }//if
+  
 gratingRoutine(degree=degree, servoNum=gratingRLnum);
+  }//if
+  else {
+    Serial.println("No arguments");
+  }   
 }//end gratingRL
 
 void gratingLL(){
-  Serial.println("here");
   char *arg;
   int degree;
   arg = sCmd.next();
   if (arg != NULL) {
-    
      degree = atoi(arg);
-     Serial.println(degree);
-  }//if
-  Serial.println(degree);
-  Serial.println(gratingLLnum);
+  
 gratingRoutine(degree=degree, servoNum=gratingLLnum);
-     
+  }//if
+  else {
+    Serial.println("No arguments");
+  }       
 }//end gratingLL
 
 void gratingRR(){
@@ -232,13 +242,16 @@ void gratingRR(){
   arg = sCmd.next();
   if (arg != NULL) {
      degree = atoi(arg);
-  }//if
+  
 gratingRoutine(degree=degree, servoNum=gratingRRnum);
-     
+  }//if
+  else {
+    Serial.println("No arguments");
+  }     
 }//end gratingRR
 
 void rewardA(){
-  Serial.println("rewardA");
+  //Serial.println("rewardA");
   pelletRoutine(IRsensor=IRsensorA,servoNum=rewardMotorA);
      
 }//end Reward
