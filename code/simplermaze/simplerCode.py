@@ -357,11 +357,19 @@ for trial in trials.index:
                     if not trials.givereward[trial]:#this is for habituation routine
                         pass
                     
+                    
                     #if trials.loc[trial].givereward:
                     elif trials.rewlocation[trial] in item:
                         if mousePresent[item] and not rewarded:
-                            #if the animal is allowed to visit a wrong location first
-                            if trials.wrongallowed[trial]:
+                            
+                            #if the animal is not allowed to visit a wrong location first
+                            if not trials.wrongallowed[trial]:
+                                for rewLoc in hasVisited:
+                                    if hasVisited[rewLoc] and trials.rewlocation[trial] not in rewLoc:
+                                        mistake=True
+                            
+                            #if the animal is in the right reward zone and there was no mistake
+                            if not mistake:
                                 message = "rew"+trials.rewlocation[trial]
                                 ser.write(message.encode('UTF-8'))
                                 print(hasVisited)
@@ -375,13 +383,7 @@ for trial in trials.index:
                                 #do calculations on time to reward
                                 #add code to start proper reward motor
                             
-                            #this if statement is a placeholder for the training phase where
-                            #animals cannot visit a wrong location before visiting the
-                            #target location
-                            else:
-                                for rewLoc in hasVisited:
-                                    if hasVisited[rewLoc] and trials.rewlocation[trial] not in rewLoc:
-                                        mistake=True
+                            
         
 
                             
