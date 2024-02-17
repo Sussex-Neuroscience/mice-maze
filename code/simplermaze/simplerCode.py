@@ -34,7 +34,8 @@ considerWrongLocations = False
 
 
 #create a serial object and connect to it
-#ser = Serial.serial("/dev/ttyACM0")
+ser = serial.Serial("/dev/ttyACM0")
+
 
 drawRois = False
 if drawRois:
@@ -202,16 +203,20 @@ for trial in trials.index:
         #move all gratings to their neutral positions
         print("set all grating motors to neutral position")
         for motor in gratingMotors:
-            pass
-            #ser.print("grt"+motor+" 45")
+            message = 'grt'+motor+' 45'
+            ser.write(message.encode('UTF-8')) 
             #maybe add a pause? so that the servo motors have time to catch up
             
         
         
-        if trials.loc[trial].givereward:
-            for grtPosition in gratingID.loc[trials.loc[trial].rewlocation]:       
-                print(grtPosition)
-                #ser.print("grt"+grtPosition)
+        #if trials.givereward[trial]: - don't know if this is necessary
+            #maybe it is ok for motors to be placed in position even though
+            #there will be no reward?
+        for grtPosition in gratingID.loc[trials.loc[trial].rewlocation]:       
+            print(grtPosition)
+            message = 'grt'+grtPosition
+            ser.write(message.encode('UTF-8'))
+            
                 
             #maybe add a pause? so that the servo motors have time to catch up
        
@@ -349,14 +354,16 @@ for trial in trials.index:
             if enteredMaze:
                 for item in mousePresent:
                     
-                    if not trials.loc[trial].givereward:#this is for habituation routine
+                    if not trials.givereward[trial]:#this is for habituation routine
                         pass
                     
                     #if trials.loc[trial].givereward:
-                    elif trials.loc[trial].rewlocation in item:
+                    elif trials.rewlocation[trial] in item:
                         if mousePresent[item] and not rewarded:
                             #if the animal is allowed to visit a wrong location first
-                            if trials.loc[trial].wrongallowed:
+                            if trials.wrongallowed[trial]:
+                                message = "rew"+trials.rewlocation[trial]
+                                ser.write(message.encode('UTF-8'))
                                 print(hasVisited)
                                 print("animal has reached reward zone")
                                 rewarded = True
@@ -372,9 +379,11 @@ for trial in trials.index:
                             #animals cannot visit a wrong location before visiting the
                             #target location
                             else:
-                                pass
-                                #for item in hasVisited
-                                #if rewardTarget
+                                for rewLoc in hasVisited:
+                                    if hasVisited[rewLoc] and trials.rewlocation[trial] not in rewLoc:
+                                        mistake=True
+        
+
                             
 
                 
