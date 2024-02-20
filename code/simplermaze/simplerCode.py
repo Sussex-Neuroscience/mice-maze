@@ -30,11 +30,6 @@ metadata = sf.collect_metadata(animal_ID, session_ID)
 sf.save_metadata_to_csv(metadata, new_dir_path, f"{animal_ID}_{date_time}.csv")
 
 
-#set variable for defining if animal should be rewarded in the case
-#a wrong location is visited before visiting a correct location:
-considerWrongLocations = False
-
-
 #create a serial object and connect to it
 ser = serial.Serial("/dev/ttyACM0")
 
@@ -161,14 +156,7 @@ for trial in range(nTrials):
     for item in rewardMotors.keys():
         if str(rewardTarget) in item:
             rewMotor = rewardMotors[item]
-    frame_width = int(cap.get(3)) # can also use cam.get (cv.CAP_PROP_FRAME_WIDTH)
-    frame_height = int(cap.get(4)) # can also use cam.get (cv.CAP_PROP_FRAME_HEIGHT)
-    fps = int(cap.get(5)) #can also use cam.get (cv.CAP_PROP_FPS)
 
-    cc = cv.VideoWriter_fourcc(*'XVID') #Can also use mp4v or MJPG for .avi, must check with maze camera
-    frameSize = (frame_width,frame_height)
-
-    videoFile = cv.VideoWriter(recVideoName, cc, fps, frameSize)
     
 #trial_durations = [] #list that will contain the durations of every trial. Maybe this can be stored in another csv file?
 
