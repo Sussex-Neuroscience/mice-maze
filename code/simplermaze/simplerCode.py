@@ -4,15 +4,31 @@ import pandas as pd
 import supFun as sf
 import time
 import serial
+import os
+import pandas as pd
+from tkinter import filedialog as fd
+from tkinter import *
 
 
 #set variable for defining if this is an habituation run:
 habituation = True
 
 #set if the video should be recorded during the session
-recordVideo = True
-#set filename for video recording
-recVideoName = "test.mp4"
+recordVideo = False
+
+date_time = sf.get_current_time_formatted()
+animal_ID, session_ID = sf.get_user_inputs()
+base_path = os.path.join(os.path.expanduser('~'), 'Desktop', 'maze_recordings')
+sf.ensure_directory_exists(base_path)
+
+new_dir_path = sf.setup_directories(base_path, date_time, animal_ID, session_ID)
+rec_name = f"{animal_ID}_{date_time}.avi"
+recordings = os.path.join(new_dir_path, rec_name)
+print(f"Video will be saved to: {recordings}")
+
+metadata = sf.collect_metadata(animal_ID, session_ID)
+sf.save_metadata_to_csv(metadata, new_dir_path, f"{animal_ID}_{date_time}.csv")
+
 
 #set variable for defining if animal should be rewarded in the case
 #a wrong location is visited before visiting a correct location:
@@ -33,7 +49,8 @@ if drawRois:
 rois = pd.read_csv("rois1.csv",index_col=0)
 
 #load the trials file (description of each trial)
-trialsIDs = pd.read_csv("trials_2columns.csv")
+
+trialsIDs = pd.read_csv(sf.choose_csv())
 
 #set number of trials
 nTrials = len(trialsIDs)
@@ -94,8 +111,10 @@ mousePresent = dict()
 
 
 
-#start the camera object
-cap = cv.VideoCapture('/home/andre/Desktop/maze_test.mp4')
+cap = sf.start_camera()
+frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
+frame_height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
+fps = int(cap.get(cv.CAP_PROP_FPS))
 
 ### START FOR LOOP TO AVERAGE N FRAMES FOR THRESHOLDING
 
@@ -117,21 +136,18 @@ for item in rois:
 
 #print(thresholds)
 
-#cap = sf.start_camera()
-#cap = cv.VideoCapture("~/Desktop/maze_test.mp4")
-
-
 
 sessionStartTime = time.time()
 
 if recordVideo:
-    #cc = cv.VideoWriter_fourcc(*'XVID')
-    #fps = 15.
-    #frameSize = (640,480)
-    #videoFile = cv.VideoWriter(recVideoName, cc, fps, frameSize)
-    pass
+    sf.record_video(cap, recordings, frame_width, frame_height, fps)
+
+    
+trial_durations = [] #list that will contain the durations of every trial. Maybe this can be stored in another csv file?
 
 for trial in range(nTrials):
+    # time at the beginning of the trial 
+    start_trial_time = time.time()
     print ("starting trial "+str(trial+1))
     #if cv.waitKey(1) == ord('q'):
     #    break
@@ -164,8 +180,7 @@ for trial in range(nTrials):
         print(position)
         #than add code so that they turn to the trial specific position"
         #maybe add a pause? so that the servo motors have time to catch up
-    
-    
+   
     for item in rois:
         hasVisited[item] = False 
     
@@ -188,14 +203,11 @@ for trial in range(nTrials):
         #the line below needs to be commented out when running the actual experiments
         time.sleep(0.05)
         
-        gray,valid = sf.grab_n_convert_frame(cameraHandle=cap)
-        ret,gray = cv.threshold(gray,180,255,cv.THRESH_BINARY)
+        grayOriginal,valid = sf.grab_n_convert_frame(cameraHandle=cap)
+        ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
 
         if recordVideo:
-            #videoFile.write(img)
-            pass
-            
-        
+            recordings.write(grayOriginal)  
         
         
         #binGray = gray[:,:,2]
@@ -215,7 +227,7 @@ for trial in range(nTrials):
         # Display the resulting frame
         cv.imshow('frame', gray)
         
-        if cv.waitKey(1) == ord('q'):
+        if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
             break
         
         #grab each area of interest and store them in a dictionary
@@ -338,20 +350,17 @@ for trial in range(nTrials):
             
             #if trialEnd==1:
             #    trialOngoing = False
+
+    #record end time of the trial
+    end_trial_time=  time.time()
+    trial_duration= end_trial_time - start_trial_time   #duration of the trial
+    trial_durations.append(trial_duration)
+
+    #create csv file that puts the durations per trial + the whole sesh duration
         
         
         
-        
-sessionDuration = time.time()-sessionStarTime    
-
-
-
-    
-    #add some timing metric so we have info on how much time each trial took
-
-
-    
-    
+sessionDuration = time.time()-sessionStartTime
 
 
 
