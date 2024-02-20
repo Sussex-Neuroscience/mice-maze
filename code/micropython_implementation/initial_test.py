@@ -5,6 +5,9 @@ import pca9685
 import time
 
 
+
+detector_food1=Pin(15,Pin.IN)
+
 scl=Pin(25)
 sda=Pin(26)
  
@@ -37,39 +40,41 @@ ser=servo.Servos(i2c=i2c)
 
 #ser.position(3,duty=4096)
 
-numTrials = 10
+numTrials = 1000
 #Gratings move to rest at start of trial
 for trial in range(numTrials):
     print(trial+1)
+    pellet = detector_food1.value()
+    print("pellet "+str(pellet))
     for grating in allGratingsIndex:
         ser.position(grating,degrees=restAngle)
-        print("motor: "+str(grating))
+        #print("motor: "+str(grating))
 #     ser.position(grating2LIndex,degrees=restAngle)
     time.sleep_ms(500) 
 
-#LL trial position
-for ind in range(1):
-    print(ind)
-    ser.position(grating1LIndex,degrees=verticalAngle)
-    ser.position(grating2LIndex,degrees=verticalAngle)
-         #ser.release(3)
-    time.sleep_ms(500)
-    
-#LR trial position
-for ind in range(1):
-    print(ind)
-    ser.position(grating1LIndex,degrees=verticalAngle)
-    ser.position(grating2LIndex,degrees=horizontalAngle)
-         #ser.release(3)
-    time.sleep_ms(500)    
-         
-#      for i in range(90,0,-10):
-#          ser.position(0,degrees=i)
-#          ser.position(3,degrees=i)
-#          #ser.release(3)
-#          time.sleep_ms(100)
-     #time.sleep_ms(200)
-#ser.release(3) 
+    #LL trial position
+    for ind in range(1):
+        #print(ind)
+        ser.position(grating1LIndex,degrees=verticalAngle)
+        ser.position(grating2LIndex,degrees=verticalAngle)
+             #ser.release(3)
+        time.sleep_ms(500)
+        
+    #LR trial position
+    for ind in range(1):
+        #print(ind)
+        ser.position(grating1LIndex,degrees=verticalAngle)
+        ser.position(grating2LIndex,degrees=horizontalAngle)
+             #ser.release(3)
+        time.sleep_ms(500)    
+             
+    #      for i in range(90,0,-10):
+    #          ser.position(0,degrees=i)
+    #          ser.position(3,degrees=i)
+    #          #ser.release(3)
+    #          time.sleep_ms(100)
+         #time.sleep_ms(200)
+    #ser.release(3) 
 
 
 

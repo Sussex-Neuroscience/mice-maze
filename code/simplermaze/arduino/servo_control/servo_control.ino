@@ -3,11 +3,14 @@
 #include <Adafruit_PWMServoDriver.h>
 
 // called this way, it uses the default address 0x40
-Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+//Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 // you can also call it with a different address you want
 //Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x41);
 // you can also call it with a different address and I2C interface
-//Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40, Wire);
+
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver(0x40, Wire);
+
+int servoNum = 100;
 
 // Depending on your servo make, the pulse width min and max may vary, you 
 // want these to be as small/large as possible without hitting the hard stop
@@ -20,14 +23,32 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define SERVO_FREQ 50 // Analog servos run at ~50 Hz updates
 
 // our servo # counter
-uint8_t servoNum = 0;
+//uint8_t servoNum = 0;
 
-#define IRsensor1 8
-#define IRsensor2 9
-#define IRsensor3 10
-#define IRsensor4 11
+#define gratingLnum 0
+#define gratingRnum 1
+#define gratingLRnum 2
+#define gratingRLnum 3
+#define gratingLLnum 4
+#define gratingRRnum 5
+
+//reward location A
+#define IRsensorA 15
+#define rewardMotorA 8
+//reward location B
+#define IRsensorB 2
+#define rewardMotorB 9
+//reward location C
+#define IRsensorC 16
+#define rewardMotorC 10
+//reward location D
+#define IRsensorD 17
+#define rewardMotorD 11
+
+
 
 //int servoNum = 0;
+int rewardServoMovTime = 100;
 int IRsensor = 0;
 int degree = 0;
 int IRvalue = 0;
@@ -35,28 +56,40 @@ int time1 = 0;
 int time2 = 0;
 int pulseLen = 0;
 int pelletDropped = 0;
-int rewPulseLen1 = map(60, 0, 180, SERVOMIN, SERVOMAX);
-int rewPulseLen2 = map(15, 0, 180, SERVOMIN, SERVOMAX);
+int rewPulseLen1 = map(90, 0, 180, SERVOMIN, SERVOMAX);
+int rewPulseLen2 = map(45, 0, 180, SERVOMIN, SERVOMAX);
 
 SerialCommand sCmd;     // The demo SerialCommand object
 
 
 void setup() {
-  pinMode(IRsensor1,INPUT);
-  pinMode(IRsensor2,INPUT);
-  pinMode(IRsensor3,INPUT);
-  pinMode(IRsensor4,INPUT);
+  Serial.begin(921600);
 
-  Serial.begin(115200);
+  Wire.begin(14, 27); 
+  pinMode(IRsensorA,INPUT);
+  pinMode(IRsensorB,INPUT);
+  pinMode(IRsensorC,INPUT);
+  pinMode(IRsensorD,INPUT);
+
+
 
   
-  sCmd.addCommand("grating",  grating); // turn servos holding gratings (grating 0 45) // turn servo 0 to position 45 degrees
-  sCmd.addCommand("reward", reward); // activate reward routine (reward 10) // start reward routine on servo 10
-
+  sCmd.addCommand("grtL",  gratingL); // 
+  sCmd.addCommand("grtR",  gratingR); // 
+  sCmd.addCommand("grtLR",  gratingLR); // 
+  sCmd.addCommand("grtRL",  gratingRL); // 
+  sCmd.addCommand("grtLL",  gratingLL); // 
+  sCmd.addCommand("grtRR",  gratingRR); // 
+  
+  sCmd.addCommand("rewA", rewardA); // activate reward routine (reward 10) // start reward routine on servo 10
+  sCmd.addCommand("rewB", rewardB);
+  sCmd.addCommand("rewC", rewardC);
+  sCmd.addCommand("rewD", rewardD);
+  
   // generic functions for development/understanding the parsing library
   sCmd.addCommand("HELLO", sayHello);        // Echos the string argument back
   sCmd.addCommand("P",     processCommand);  // Converts two arguments to integers and echos them back
-  sCmd.addDefaultHandler(unrecognized);      // Handler for command that isn't matched  (says "What?")
+  sCmd.setDefaultHandler(unrecognized);      // Handler for command that isn't matched  (says "What?")
 
 
   //servo library initialization
@@ -85,83 +118,156 @@ void setup() {
 }// setup
 
 void loop() {
+  //Serial.println("aqui");
   sCmd.readSerial();     // We don't do much, just process serial commands
-}
+} //end loop
 
-///servo callback functions
+///servo callback functions -------------------------------------------------/////////////////////////////////////////////
+void gratingRoutine(int degree=180, int servoNum=0){
+  pulseLen = map(degree, 0, 180, SERVOMIN, SERVOMAX);
+  pwm.setPWM(servoNum, 0, pulseLen);
 
-void grating(){
-  //int aNumber;
-  char *arg;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     servoNum = atoi(arg);
-  }//if
+}// grating routines
 
-  arg = sCmd.next();
-  if (arg != NULL) {
-     degree = atoi(arg);
-  }//if
-
-     pulseLen = map(degree, 0, 180, SERVOMIN, SERVOMAX);
-     pwm.setPWM(servoNum, 0, pulseLen);
-     
-}//end grating
-
-
-void reward(){
-  int aNumber;
-  char *arg;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     aNumber = atoi(arg);
-      if (aNumber==8){
-        IRsensor=IRsensor1;
-      }
-      if (aNumber==9){
-        IRsensor=IRsensor2;
-      }
-      if (aNumber==10){
-        IRsensor=IRsensor3;
-      }
-      if (aNumber==11){
-        IRsensor=IRsensor4;
-      }
-     pelletDropped = 0;
-     while (pelletDropped==0){
-      pwm.setPWM(servoNum, 0, rewPulseLen1);
+void pelletRoutine(int IRsensor=0,int servoNum=0){
+  int pelletDropped = 0;
+  while (pelletDropped==0){
+    pwm.setPWM(servoNum, 0, rewPulseLen1);
+    time1=millis();
+    time2=millis();
+    while (time2-time1<rewardServoMovTime){
+      IRvalue = digitalRead(IRsensor);
+      if(IRvalue==0){
+        pelletDropped=1;
+        break;
+      }//if
+      time2=millis();
+    }// while
+    
+    if (pelletDropped==0){
+      pwm.setPWM(servoNum, 0, rewPulseLen2);
       time1=millis();
       time2=millis();
-      while (time2-time1<100){
+      while (time2-time1<rewardServoMovTime){
         IRvalue = digitalRead(IRsensor);
-        if(IRvalue==1){
-          pelletDropped=1;
-          break;
-        }//if
-        time2=millis();
-      }// while
-      if (pelletDropped==0){
-        pwm.setPWM(servoNum, 0, rewPulseLen2);
-
-      time1=millis();
-      time2=millis();
-      while (time2-time1<100){
-        IRvalue = digitalRead(IRsensor);
-        if(IRvalue==1){
+        if(IRvalue==0){
           pelletDropped=1;
           break;
         }//if
         time2=millis();
       }//while
-
-
-     }// if
-     
-     
+    }// if   
   }//if
-  }
+}// end pellet routine
+
+
+void gratingL(){
+
+  char *arg;
+  int degree;
+  arg = sCmd.next();
+  if (arg != NULL) {
+     degree = atoi(arg);
+  
+gratingRoutine(degree=degree, servoNum=gratingLnum);
+  }//if
+  else {
+    Serial.println("No arguments");
+  }   
+}//end gratingL
+
+void gratingR(){
+
+  char *arg;
+  int degree;
+  arg = sCmd.next();
+  if (arg != NULL) {
+     degree = atoi(arg);
+  
+gratingRoutine(degree=degree, servoNum=gratingRnum);
+  }//if
+  else {
+    Serial.println("No arguments");
+  }   
+}//end gratingR
+
+void gratingLR(){
+
+  char *arg;
+  int degree;
+  arg = sCmd.next();
+  if (arg != NULL) {
+     degree = atoi(arg);
+  
+gratingRoutine(degree=degree, servoNum=gratingLRnum);
+  }//if
+  else {
+    Serial.println("No arguments");
+  }   
+}//end gratingLR
+
+void gratingRL(){
+
+  char *arg;
+  int degree;
+  arg = sCmd.next();
+  if (arg != NULL) {
+     degree = atoi(arg);
+  
+gratingRoutine(degree=degree, servoNum=gratingRLnum);
+  }//if
+  else {
+    Serial.println("No arguments");
+  }   
+}//end gratingRL
+
+void gratingLL(){
+  char *arg;
+  int degree;
+  arg = sCmd.next();
+  if (arg != NULL) {
+     degree = atoi(arg);
+  
+gratingRoutine(degree=degree, servoNum=gratingLLnum);
+  }//if
+  else {
+    Serial.println("No arguments");
+  }       
+}//end gratingLL
+
+void gratingRR(){
+
+  char *arg;
+  int degree;
+  arg = sCmd.next();
+  if (arg != NULL) {
+     degree = atoi(arg);
+  
+gratingRoutine(degree=degree, servoNum=gratingRRnum);
+  }//if
+  else {
+    Serial.println("No arguments");
+  }     
+}//end gratingRR
+
+void rewardA(){
+  //Serial.println("rewardA");
+  pelletRoutine(IRsensor=IRsensorA,servoNum=rewardMotorA);
+     
 }//end Reward
 
+void rewardB(){
+  pelletRoutine(IRsensor=IRsensorB,servoNum=rewardMotorB);
+     
+}//end Reward
+void rewardC(){
+  pelletRoutine(IRsensor=IRsensorC,servoNum=rewardMotorC);
+     
+}//end Reward
+void rewardD(){
+  pelletRoutine(IRsensor=IRsensorD,servoNum=rewardMotorD);
+     
+}//end Reward
 /////////////////////////////////////////
 
 
@@ -210,22 +316,3 @@ void processCommand() {
 void unrecognized(const char *command) {
   Serial.println("What?");
 }
-
-
-/*
-void S90(){
-  int aNumber;
-  char *arg;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     aNumber = atoi(arg);
-
-     //pulseLen = map(90, 0, 180, SERVOMIN, SERVOMAX);
-     //pwm.setPWM(servoNum, 0, pulseLen);
-     
-     
-  }//if
-     Serial.print("servo90");
-     Serial.println(aNumber);
-}//end S90
-*/

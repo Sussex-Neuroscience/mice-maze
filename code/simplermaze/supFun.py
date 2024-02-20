@@ -69,7 +69,8 @@ def grab_n_convert_frame(cameraHandle):
     ret, frame = cameraHandle.read()
     #print(ret)
     # Our operations on the frame come here
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    #gray=frame
     return gray,ret 
 
 def csv_to_dict(fileName="rois.csv"):
@@ -130,6 +131,72 @@ def grab_cut(frame,xstart,ystart,xlen,ylen):
     cut = frame[ystart:ystart+ylen,
                 xstart:xstart+xlen]
     return cut
+
+def create_trials(numTrials = 100, sessionStage = 2):
+    
+    if sessionStage<1 or sessionStage>4:
+        print("invalid session stage, defaulting to stage 1 - habituation")
+        sessionStage=1
+    
+    #add a large value to the number of trials so that trial types can be excluded on the fly
+    # during a session based on experimenter's parameters
+    numTrials=numTrials+200
+
+
+    gratingMap = pd.read_csv("grating_maps.csv")
+    rewardSequences = pd.read_csv("reward_sequences.csv")
+
+    stage = rewardSequences[rewardSequences.sessionID=="Stage "+str(sessionStage)]
+    #lenRewLoc = len(stage.rewloc)
+
+    trialsDistribution = dict()
+    for index,location in enumerate(stage.rewloc):
+        subTrials = int(np.floor(numTrials*list(stage.portprob)[index]))
+        probRewardLocation = np.random.choice([True,False],numTrials,p=[list(stage.rewprob)[index],
+                                                                1-list(stage.rewprob)[index]])
+        
+        #print(probRewardLocation)
+        trialTuples = list()
+        
+            
+        for i in range(subTrials):
+            trialTuples.append((location,probRewardLocation[i],list(stage.wrongallowed)[index]))
+        
+        trialsDistribution[location] = trialTuples
+
+    allTogether=list()
+
+    for item in trialsDistribution.keys():
+        allTogether+=(trialsDistribution[item])#this keeps the list flat
+                                               #(as opposed to a list of lists)
+
+    #now shuffle the list
+    np.random.shuffle(allTogether)
+
+    # create DataFrame using data
+    trials = pd.DataFrame(allTogether, columns =['rewlocation', 'givereward', 'wrongallowed'])
+
+    return trials
+
+def choose_csv():
+    root=Tk()
+    # Show the file dialog and get the selected file name
+    filename = fd.askopenfilename()
+    # Print the file name to the console
+    #print (filename)
+    root.destroy()
+    return filename
+
+def empty_frame(rows=300):
+    #create a dataframe that will contain only nans for all things to be measured.
+    #during the session we will fill up this df with data
+    columns = ["hit","miss","incorrect",
+           "start trial time","end trial time","duration in rewA","duration in rewB",
+           "duration in rewC", "duration in rewD", "duration in ent1",
+               "duration in ent2",]
+    data = pd.DataFrame(np.nan, index=range(rows), columns=columns)
+    return data
+    
 
 def get_current_time_formatted():
     return time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())

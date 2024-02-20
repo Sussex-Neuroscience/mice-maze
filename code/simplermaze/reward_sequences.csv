@@ -1,0 +1,18 @@
+sessionID,rewloc,portprob,rewprob,wrongallowed
+Stage 1,A,.25,0,True
+Stage 1,B,.25,0,True
+Stage 1,C,.25,0,True
+Stage 1,D,.25,0,True
+Stage 2,A,.25,1,True
+Stage 2,B,.25,1,True
+Stage 2,C,.25,1,True
+Stage 2,D,.25,1,True
+Stage 3,A,.25,1,False
+Stage 3,B,.25,1,False
+Stage 3,C,.25,1,False
+Stage 3,D,.25,1,False
+Stage 4,A,.25,.8,False
+Stage 4,B,.25,.8,False
+Stage 4,C,.25,.8,False
+Stage 4,D,.25,.8,False
+
