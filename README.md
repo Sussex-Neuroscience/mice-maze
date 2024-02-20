@@ -30,3 +30,4 @@ This is a repository for building and running an experiment investigating how se
 * Marcus Burnell-Spector
 * Shahd Al Balushi
 * Isabel Maranhao
+* Alejandra Carriero 
