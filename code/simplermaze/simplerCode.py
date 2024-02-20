@@ -10,8 +10,10 @@ from tkinter import filedialog as fd
 from tkinter import *
 
 
-#line 16, line 130, 133, 197, 241, 274, 339
-#line 375
+
+#define where the video is coming from. Use 0 for the first camera on the computer,
+#or a complete file path to use a pre-recorded video
+videoInput = '/home/andre/Desktop/maze_test.mp4'
 
 #set if the video should be recorded during the session
 recordVideo = False
@@ -37,7 +39,8 @@ ser = serial.Serial("/dev/ttyACM0")
 drawRois = False
 if drawRois:
 
-    sf.define_rois(roiNames = ["entrance1","entrance2",
+    sf.define_rois(videoInput = videoInput,
+                    roiNames = ["entrance1","entrance2",
                             "rewA","rewB","rewC","rewD"],
                     outputName = "rois1.csv")
 
@@ -52,10 +55,11 @@ sessionStage = 1
 
 #create  trials and save them to csv (later this csv needs to go to the appropriate session folder)
 trials = sf.create_trials(numTrials = 100, sessionStage=sessionStage)
-trials.to_csv("trials.csv")
+
+trials.to_csv(os.path.join(new_dir_path,"trials_before_session.csv"))
 
 #load the trials file (description of each trial)
-
+print("choose the file containing trials (default: 'trials_before_session.csv'")
 trialsIDs = pd.read_csv(sf.choose_csv())
 
 #set number of trials
@@ -108,8 +112,8 @@ mousePresent = dict()
 
 
 
+cap = sf.start_camera(videoInput=videoInput)
 
-cap = sf.start_camera()
 frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 fps = int(cap.get(cv.CAP_PROP_FPS))
@@ -141,24 +145,6 @@ sessionStartTime = time.time()
 if recordVideo:
     sf.record_video(cap, recordings, frame_width, frame_height, fps)
 
-    
-trial_durations = [] #list that will contain the durations of every trial. Maybe this can be stored in another csv file?
-
-for trial in range(nTrials):
-    # time at the beginning of the trial 
-    start_trial_time = time.time()
-    print ("starting trial "+str(trial+1))
-    #if cv.waitKey(1) == ord('q'):
-    #    break
-    #which area should be rewarded:
-    rewardTarget = trialsIDs["ra1"][trial]
-    #define which servo motor should be used for this specific area
-    for item in rewardMotors.keys():
-        if str(rewardTarget) in item:
-            rewMotor = rewardMotors[item]
-
-    
-#trial_durations = [] #list that will contain the durations of every trial. Maybe this can be stored in another csv file?
 
 rewLocation=0
 usedTrial = list()
@@ -168,42 +154,43 @@ data = sf.empty_frame(rows = len(trials.index))
 
 for trial in trials.index:
     #remove trials that are the exact same as the previous one
-    
     if trials.loc[trial].rewlocation==rewLocation and sessionStage==3:
         print (rewLocation + " " + trials.loc[trial].rewlocation) 
         usedTrial.append(False)
     else:
         usedTrial.append(True)
         rewLocation = trials.loc[trial].rewlocation
-            
+
+    # time at the beginning of the trial 
+    start_trial_time = time.time()
+    print ("starting trial "+str(trial+1))
+
+    #move all gratings to their neutral positions
+    print("set all grating motors to neutral position")
+    for motor in gratingMotors:
+        message = 'grt'+motor+' 45'
+        ser.write(message.encode('UTF-8')) 
+        #maybe add a pause? so that the servo motors have time to catch up
+
+
+    #if trials.givereward[trial]: - don't know if this is necessary
+        #maybe it is ok for motors to be placed in position even though
+        #there will be no reward?
+    for grtPosition in gratingID.loc[trials.loc[trial].rewlocation]:       
+        print(grtPosition)
+        message = 'grt'+grtPosition
+        ser.write(message.encode('UTF-8'))    
+
+
 
         # time at the beginning of the trial 
         start_trial_time = time.time()
         print ("starting trial "+str(trial+1))
-        if cv.waitKey(1) == ord('q'):
+        if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
             break
 
             
-        
-        #move all gratings to their neutral positions
-        print("set all grating motors to neutral position")
-        for motor in gratingMotors:
-            message = 'grt'+motor+' 45'
-            ser.write(message.encode('UTF-8')) 
-            #maybe add a pause? so that the servo motors have time to catch up
-            
-        
-        
-        #if trials.givereward[trial]: - don't know if this is necessary
-            #maybe it is ok for motors to be placed in position even though
-            #there will be no reward?
-        for grtPosition in gratingID.loc[trials.loc[trial].rewlocation]:       
-            print(grtPosition)
-            message = 'grt'+grtPosition
-            ser.write(message.encode('UTF-8'))
-            
-                
-            #maybe add a pause? so that the servo motors have time to catch up
+
        
         for item in rois:
             hasVisited[item] = False 
@@ -299,17 +286,17 @@ for trial in trials.index:
 
             
                 
-            #calculate the mouse movement based on the Ent1 array history
-            # and determine if it has passed Ent1 and/or 2 and in which direction
-            if not ent1History[0] and ent1History[1]:
-                #print("mouse just left entrance1")
-                endEnt1 = time.time()
-                #timeSpentAreas["entrance1"].append(trial,endEnt1-startEnt1)
-                #Ent1Durations.append((trial,endEnt1-startEnt1))
-                hasLeft1 = True
-                if hasLeft2:
-                    e1Aftere2 = True
-                    e2Aftere1 = False
+        #calculate the mouse movement based on the Ent1 array history
+        # and determine if it has passed Ent1 and/or 2 and in which direction
+        if not ent1History[0] and ent1History[1]:
+            #print("mouse just left entrance1")
+            endEnt1 = time.time()
+            #timeSpentAreas["entrance1"].append(trial,endEnt1-startEnt1)
+            #Ent1Durations.append((trial,endEnt1-startEnt1))
+            hasLeft1 = True
+            if hasLeft2:
+                e1Aftere2 = True
+                e2Aftere1 = False
                     
                 
             #calculate the mouse movement based on the Ent2 array history
