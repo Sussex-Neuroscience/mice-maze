@@ -117,10 +117,12 @@ void setup() {
 
 }// setup
 
+
 void loop() {
-  //Serial.println("aqui");
-  sCmd.readSerial();     // We don't do much, just process serial commands
-} //end loop
+  // put your main code here, to run repeatedly:
+Serial.println(digitalRead(IRsensorA));
+
+}
 
 ///servo callback functions -------------------------------------------------/////////////////////////////////////////////
 void gratingRoutine(int degree=180, int servoNum=0){
@@ -321,4 +323,5 @@ void processCommand() {
 void unrecognized(const char *command) {
   Serial.println("What?");
 }
+
 

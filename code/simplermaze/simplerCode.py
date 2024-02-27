@@ -61,7 +61,7 @@ else:
     trialsIDs = trialspd.read_csv(sf.choose_csv())
 
 #create a serial object and connect to it
-ser = serial.Serial("/dev/ttyACM0")
+ser = serial.Serial("/dev/ttyUSB0",912600)
 
 
 drawRois = False
@@ -161,7 +161,7 @@ for trial in trials.index:
     #move all gratings to their neutral positions
     print("set all grating motors to neutral position")
     for motor in gratingID:
-        message = 'grt'+motor+' 45'
+        message = 'grt{0} 45'.format(motor)
         ser.write(message.encode('UTF-8')) 
         #maybe add a pause? so that the servo motors have time to catch up
 
@@ -172,7 +172,7 @@ for trial in trials.index:
     print("now move motors to cueing positions for this trial")
     for grtPosition in gratingID.loc[trials.loc[trial].rewlocation]:       
         print(grtPosition)
-        message = 'grt'+grtPosition
+        message = 'grt{0}'.format(grtPosition)
         ser.write(message.encode('UTF-8'))    
     #maybe add after all commands have been sent to motors?
 
@@ -343,7 +343,8 @@ for trial in trials.index:
                         
                         #if the animal is in the right reward zone and there was no mistake
                         if not mistake:
-                            message = "rew"+trials.rewlocation[trial]
+                            message = 'rew{0}'.format(trials.rewlocation[trial])
+                            #print(message)
                             ser.write(message.encode('UTF-8'))
                             print(hasVisited)
                             print("animal has reached reward zone")
