@@ -135,6 +135,8 @@ void pelletRoutine(int IRsensor=0,int servoNum=0, int rewardServoMovTimeLoc = re
     pwm.setPWM(servoNum, 0, rewPulseLen1);
     time1=millis();
     time2=millis();
+    Serial.println(IRsensor);
+    Serial.println(rewardServoMovTimeLoc);
     while (time2-time1<rewardServoMovTimeLoc){
       IRvalue = digitalRead(IRsensor);
       Serial.println(IRvalue);
