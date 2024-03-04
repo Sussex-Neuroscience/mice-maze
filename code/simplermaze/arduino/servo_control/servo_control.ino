@@ -139,7 +139,7 @@ void pelletRoutine(int IRsensor=0,int servoNum=0, int rewardServoMovTimeLoc = re
     //Serial.println(rewardServoMovTimeLoc);
     while (time2-time1<rewardServoMovTimeLoc){
       IRvalue = digitalRead(IRsensor);
-      Serial.println(IRvalue);
+      //Serial.println(IRvalue);
       if(IRvalue==0){
         pelletDropped=1;
         break;
@@ -153,7 +153,7 @@ void pelletRoutine(int IRsensor=0,int servoNum=0, int rewardServoMovTimeLoc = re
       time2=millis();
       while (time2-time1<rewardServoMovTimeLoc){
         IRvalue = digitalRead(IRsensor);
-        Serial.println(IRvalue);
+        //Serial.println(IRvalue);
         if(IRvalue==0){
           pelletDropped=1;
           break;

@@ -61,8 +61,11 @@ else:
     trialsIDs = trialspd.read_csv(sf.choose_csv())
 
 #create a serial object and connect to it
-ser = serial.Serial("/dev/ttyUSB0",912600)
-
+ser = serial.Serial("/dev/ttyUSB0",115200)
+print(ser.in_waiting)
+while ser.in_waiting>0:
+    ser.readline()
+ser.flush()
 
 drawRois = False
 if drawRois:
@@ -161,8 +164,11 @@ for trial in trials.index:
     #move all gratings to their neutral positions
     print("set all grating motors to neutral position")
     for motor in gratingID:
-        message = 'grt{0} 45'.format(motor)
-        ser.write(message.encode('UTF-8')) 
+        motor1 = motor[motor.find(" ")+1:]
+        message = 'grt{0} 45\n'.format(motor1)
+        #print(message)
+        ser.write(message.encode('utf-8'))
+        time.sleep(0.1)
         #maybe add a pause? so that the servo motors have time to catch up
 
 
@@ -170,10 +176,11 @@ for trial in trials.index:
         #maybe it is ok for motors to be placed in position even though
         #there will be no reward?
     print("now move motors to cueing positions for this trial")
-    for grtPosition in gratingID.loc[trials.loc[trial].rewlocation]:       
-        print(grtPosition)
-        message = 'grt{0}'.format(grtPosition)
-        ser.write(message.encode('UTF-8'))    
+    for grtPosition in gratingID.loc[trials.rewlocation[trial]]:       
+        #print(grtPosition)
+        message = 'grt{0}\n'.format(grtPosition)
+        #print (message)
+        ser.write(message.encode('utf-8'))    
     #maybe add after all commands have been sent to motors?
 
 
@@ -343,10 +350,9 @@ for trial in trials.index:
                         
                         #if the animal is in the right reward zone and there was no mistake
                         if not mistake:
-                            message = 'rew{0}'.format(trials.rewlocation[trial])
-                            #print(message)
-                            ser.write(message.encode('UTF-8'))
-                            print(hasVisited)
+                            message = 'rew{0}\n'.format(trials.rewlocation[trial])
+                            ser.write(message.encode('utf-8'))
+                            #print(hasVisited)
                             print("animal has reached reward zone")
                             rewarded = True
                             hits.append(trial)
