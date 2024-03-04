@@ -48,7 +48,7 @@ int servoNum = 100;
 
 
 //int servoNum = 0;
-int rewardServoMovTime = 200;
+int rewardServoMovTime = 400;
 int IRsensor = 0;
 int degree = 0;
 int IRvalue = 0;
@@ -135,8 +135,8 @@ void pelletRoutine(int IRsensor=0,int servoNum=0, int rewardServoMovTimeLoc = re
     pwm.setPWM(servoNum, 0, rewPulseLen1);
     time1=millis();
     time2=millis();
-    Serial.println(IRsensor);
-    Serial.println(rewardServoMovTimeLoc);
+    //Serial.println(IRsensor);
+    //Serial.println(rewardServoMovTimeLoc);
     while (time2-time1<rewardServoMovTimeLoc){
       IRvalue = digitalRead(IRsensor);
       Serial.println(IRvalue);
@@ -145,7 +145,7 @@ void pelletRoutine(int IRsensor=0,int servoNum=0, int rewardServoMovTimeLoc = re
         break;
       }//if
       time2=millis();
-    }// while
+    }// while time2-time1
     
     if (pelletDropped==0){
       pwm.setPWM(servoNum, 0, rewPulseLen2);
@@ -153,12 +153,13 @@ void pelletRoutine(int IRsensor=0,int servoNum=0, int rewardServoMovTimeLoc = re
       time2=millis();
       while (time2-time1<rewardServoMovTimeLoc){
         IRvalue = digitalRead(IRsensor);
+        Serial.println(IRvalue);
         if(IRvalue==0){
           pelletDropped=1;
           break;
         }//if
         time2=millis();
-      }//while
+      }//while time2-time1
     }// if   
   }//if
 }// end pellet routine

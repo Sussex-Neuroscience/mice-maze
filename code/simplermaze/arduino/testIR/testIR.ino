@@ -120,8 +120,17 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+Serial.print("sensorA: ");
 Serial.println(digitalRead(IRsensorA));
-
+Serial.print("sensorB: ");
+Serial.println(digitalRead(IRsensorB));
+Serial.print("sensorC: ");
+Serial.println(digitalRead(IRsensorC));
+Serial.print("sensorD: ");
+Serial.println(digitalRead(IRsensorD));
+//Serial.print("sensorE: ");
+//Serial.println(digitalRead(IRsensorE));
+delay(50);
 }
 
 ///servo callback functions -------------------------------------------------/////////////////////////////////////////////
