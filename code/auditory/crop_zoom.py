@@ -3,6 +3,8 @@ import numpy as np
 import tkinter as tk
 from PIL import Image, ImageTk
 
+'''script to crop and zoom on a specific quadrant'''
+
 selected_quadrant= None
 
 def select_area(event, x, y, flags, param):
