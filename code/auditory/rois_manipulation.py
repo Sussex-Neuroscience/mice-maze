@@ -6,6 +6,11 @@ import csv
 import os
 import threading
 
+#because the camera input is too large, it is going to zoom on this quadrant
+#if different quadrant is needed, run crop_zoom.py and change the coordinates here
+selected_quadrant= [(199, 209), (482, 455)]
+scaling_factor=2
+
 # currently creates rois, numbers them, can select background subtraction method
 class WebcamApp:
     def __init__(self, window, window_title):
@@ -14,9 +19,9 @@ class WebcamApp:
         self.window.title(window_title)
         self.vid = cv2.VideoCapture(0)
 
-        # Set canvas to the size of the video
-        self.width = self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)
-        self.height = self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
+       # Set canvas to the size of the video
+        self.width = (selected_quadrant[1][0] - selected_quadrant[0][0]) * scaling_factor
+        self.height = (selected_quadrant[1][1] - selected_quadrant[0][1]) * scaling_factor
         self.canvas = tk.Canvas(window, width=self.width, height=self.height)
         self.canvas.pack()
 
@@ -138,15 +143,15 @@ class WebcamApp:
     def update_video_frame(self):
         ret, frame = self.vid.read()
         if ret:
-            # # If background subtraction is enabled, apply it
-            # if self.backSub:
-            #     fgMask = self.backSub.apply(frame)
-            #     frame_display = cv2.bitwise_and(frame, frame, mask=fgMask)
-            # else:
-            frame_display = frame
+            # Crop the frame to the selected quadrant
+            cropped_frame = frame[selected_quadrant[0][1]:selected_quadrant[1][1],
+                                  selected_quadrant[0][0]:selected_quadrant[1][0]]
+
+            #resize the cropped frame
+            resized_frame = cv2.resize(cropped_frame, (self.width, self.height))
 
             # Convert the frame to a format suitable for Tkinter to display
-            self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(frame_display, cv2.COLOR_BGR2GRAY)))
+            self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)))
             self.canvas.create_image(0, 0, image=self.photo, anchor=tk.NW)
 
             # Redraw the ROIs on the updated frame
