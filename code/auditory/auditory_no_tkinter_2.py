@@ -8,16 +8,25 @@ import csv
 import os
 import threading
 
+
+selected_quadrant = [(105, 128), (543, 395)]
+scaling_factor = 2
+
 class ROIActivityMonitor:
     def __init__(self, csvfile, sound_folder):
+        #read rois from csv file
         self.rois = self.read_rois(csvfile)
+        #initialising variable that shows the indexes
+        self.selected_roi_index = None
+
         self.sound_paths = self.load_sounds(sound_folder)
-        self.bg_subtractor = cv2.createBackgroundSubtractorMOG2()  # Background subtractor
-        self.sound_data = self.preload_sounds()  # Preload sound data
+        self.bg_subtractor = cv2.createBackgroundSubtractorMOG2()
+        self.sound_data = self.preload_sounds()
         self.setup_camera()
 
+
     def read_rois(self, csvfile):
-        """Read ROI definitions from a CSV file."""
+        """ Adjust ROI coordinates based on cropping and scaling """
         rois = {}
         with open(csvfile, newline='') as file:
             reader = csv.reader(file)
@@ -29,7 +38,6 @@ class ROIActivityMonitor:
         return rois
 
     def load_sounds(self, folder_path):
-        """Load sound files based on ROI indices."""
         sounds = {}
         for roi_index in self.rois.keys():
             sound_path = os.path.join(folder_path, f"{roi_index}.wav")
@@ -38,7 +46,6 @@ class ROIActivityMonitor:
         return sounds
 
     def preload_sounds(self):
-        """Preload sound data."""
         sound_data = {}
         for roi_index, sound_path in self.sound_paths.items():
             data, _ = sf.read(sound_path)
@@ -46,47 +53,60 @@ class ROIActivityMonitor:
         return sound_data
 
     def setup_camera(self):
-        """Set up camera and display video with ROIs."""
         vid = cv2.VideoCapture(0)
         prev_frame = None
-
         while True:
             ret, frame = vid.read()
             if not ret:
                 break
-
+            cropped_frame = frame[selected_quadrant[0][1]:selected_quadrant[1][1], selected_quadrant[0][0]:selected_quadrant[1][0]]
+            frame = cv2.resize(cropped_frame, (0, 0), fx=scaling_factor, fy=scaling_factor)
             self.process_frame(frame, prev_frame)
             prev_frame = frame
-
             cv2.imshow('Original ROI Activity Monitor', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-
         vid.release()
         cv2.destroyAllWindows()
 
     def process_frame(self, frame, prev_frame):
-        """Process each frame to detect activity, draw ROIs, and show processed video."""
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        fg_mask = self.bg_subtractor.apply(gray_frame)  # Background subtraction
+        fg_mask = self.bg_subtractor.apply(gray_frame)
+        _, thresh = cv2.threshold(fg_mask, 20, 255, cv2.THRESH_BINARY)
+        thresh_colored = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
 
-        _, thresh = cv2.threshold(fg_mask, 20, 255, cv2.THRESH_BINARY)  # Lowered threshold
-        thresh_colored = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)  # Convert to colored image for display
+        # Initialize variables to track the most active ROI
+        max_activity = 0
+        most_active_roi = None
 
+        # Loop through each ROI to calculate its activity level
         for roi_index, ((x1, y1), (x2, y2)) in self.rois.items():
+
+            #show rois
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.rectangle(thresh_colored, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
+            # Extract the part of the threshold image that corresponds to the current ROI
             roi_diff = thresh[y1:y2, x1:x2]
-            activity_level = np.sum(roi_diff)
+            roi_diff = thresh[y1:y2, x1:x2]
 
-            if activity_level > 1000:  # Adjusted threshold
-                threading.Thread(target=self.play_sound, args=(roi_index,)).start()
+            # Calculate the activity level as the sum of values in the ROI's diff area
+            activity_level = np.sum(roi_diff)
+            if activity_level > max_activity:
+                max_activity = activity_level
+                most_active_roi = roi_index
+
+        # Check if there is a significantly active ROI
+        if most_active_roi and max_activity > 5000:  ##adhust the threshold if too low
+            #print to check
+            print(f"Highest Activity in ROI {most_active_roi}: {max_activity} - Triggering sound!")
+
+            #play sound of only the most active roi
+            threading.Thread(target=self.play_sound, args=(most_active_roi,)).start()
 
         cv2.imshow('Processed ROI Activity (BG Subtraction & Thresholding)', thresh_colored)
 
     def play_sound(self, roi_index):
-        """Play sound for active ROI asynchronously."""
         sound_path = self.sound_paths.get(roi_index)
         if sound_path:
             data = self.sound_data.get(roi_index)
@@ -95,11 +115,11 @@ class ROIActivityMonitor:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.withdraw()  # Hide the main window
+    root.withdraw()
     csv_file = 'auditory_rois.csv'
     sound_folder = filedialog.askdirectory(title="Select Folder Containing Sound Files")
     if sound_folder:
         app = ROIActivityMonitor(csv_file, sound_folder)
-        root.mainloop()  # This will not do anything visible since the window is withdrawn
+        root.mainloop()
     else:
-        root.destroy()  # Close the hidden window if no folder is selected
+        root.destroy()

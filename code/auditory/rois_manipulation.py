@@ -8,7 +8,7 @@ import threading
 
 #because the camera input is too large, it is going to zoom on this quadrant
 #if different quadrant is needed, run crop_zoom.py and change the coordinates here
-selected_quadrant= [(199, 209), (482, 455)]
+selected_quadrant=[(105, 128), (543, 395)]
 scaling_factor=2
 
 # currently creates rois, numbers them, can select background subtraction method
