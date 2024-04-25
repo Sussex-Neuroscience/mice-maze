@@ -40,7 +40,7 @@ if testing:
     trials = sf.create_trials(numTrials = 100, sessionStage=sessionStage)
 
     trials.to_csv(os.path.join(new_dir_path,"trials_before_session.csv"))
-    recordings = os.path.join(new_dir_path, "test.mp4")
+    recordFile = os.path.join(new_dir_path, "test.mp4")
     #load the trials file (description of each trial)
     print("choose the file containing trials (default: 'trials_before_session.csv'")
     trialsIDs = trials
@@ -54,8 +54,8 @@ else:
 
     new_dir_path = sf.setup_directories(base_path, date_time, animal_ID, session_ID)
     rec_name = f"{animal_ID}_{date_time}.mp4"
-    recordings = os.path.join(new_dir_path, rec_name)
-    print(f"Video will be saved to: {recordings}")
+    recordFile = os.path.join(new_dir_path, rec_name)
+    print(f"Video will be saved to: {recordFile}")
 
     metadata = sf.collect_metadata(animal_ID, session_ID)
     sf.save_metadata_to_csv(metadata, new_dir_path, f"{animal_ID}_{date_time}.csv")
@@ -116,10 +116,12 @@ mousePresent = dict()
 
 cap = sf.start_camera(videoInput=videoInput)
 
+
 frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 fps = int(cap.get(cv.CAP_PROP_FPS))
-
+if recordVideo:
+    videoFileObject = sf.record_video(cap, recordFile, frame_width, frame_height, fps)
 ### START FOR LOOP TO AVERAGE N FRAMES FOR THRESHOLDING
 
 #grab one frame to adjust tresholds of empty spaces:
@@ -145,8 +147,7 @@ for item in rois:
 
 sessionStartTime = time.time()
 
-if recordVideo:
-    sf.record_video(cap, recordings, frame_width, frame_height, fps)
+
 
 
 rewLocation=0
@@ -241,7 +242,7 @@ for trial in trials.index:
                 break
 
             if recordVideo:
-                recordings.write(grayOriginal)
+                videoFileObject.write(grayOriginal)
                 
 
             
@@ -409,6 +410,6 @@ sessionDuration = time.time()-sessionStartTime
 cap.release()
 cv.destroyAllWindows()
 if recordVideo:
-    #videoFile.release()
-    pass
+    videoFileObject.release()#videoFile.release()
+    #pass
 

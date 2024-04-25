@@ -87,27 +87,27 @@ def start_camera(videoInput=0):
         exit()
     return cap
 
-def record_video(cap, recordings, frame_width, frame_height, fps):
+def record_video(cap, recordFile, frame_width, frame_height, fps):
     cc = cv.VideoWriter_fourcc(*'XVID')
-    videoFile = cv.VideoWriter(recordings, cc, fps, (frame_width, frame_height))
+    videoFileObject = cv.VideoWriter(recordFile, cc, fps, (frame_width, frame_height))
+    return videoFileObject
+    #if not videoFile.isOpened():
+    #    print("Error: Failed to create VideoWriter object.")
+    #    cap.release()
+    #    exit()
 
-    if not videoFile.isOpened():
-        print("Error: Failed to create VideoWriter object.")
-        cap.release()
-        exit()
+    #while True:
+    #    ret, frame = cap.read()
+    #    if ret:
+    #        videoFile.write(frame)
+    #        cv.imshow("Frame", frame)
+    #        if cv.waitKey(1) & 0xFF in [ord('q'), 27]:
+    #            break
+    #    else:
+    #        print("Error: Failed to read frame from camera.")
+    #        break
 
-    while True:
-        ret, frame = cap.read()
-        if ret:
-            videoFile.write(frame)
-            cv.imshow("Frame", frame)
-            if cv.waitKey(1) & 0xFF in [ord('q'), 27]:
-                break
-        else:
-            print("Error: Failed to read frame from camera.")
-            break
-
-    videoFile.release()
+    #videoFile.release()
 
 
 def grab_n_convert_frame(cameraHandle):
