@@ -124,9 +124,11 @@ if recordVideo:
     videoFileObject = sf.record_video(cap, recordFile, frame_width, frame_height, fps)
 ### START FOR LOOP TO AVERAGE N FRAMES FOR THRESHOLDING
 
-#grab one frame to adjust tresholds of empty spaces:
-gray,valid = sf.grab_n_convert_frame(cameraHandle=cap)
-ret,gray = cv.threshold(gray,180,255,cv.THRESH_BINARY)
+#grab one frame:
+valid,gray = cap.read()
+#ret,gray=cv.adaptiveThreshold(gray,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,\
+# cv.THRESH_BINARY,11,2)
+ret,gray = cv.threshold(gray,100,255,cv.THRESH_BINARY)
 #gray = gray[:,:,0]
 
 #run a loop to catch each area and sum the pixel values on that area of the frame
@@ -233,7 +235,7 @@ for trial in trials.index:
             #the line below needs to be commented out when running the actual experiments
             time.sleep(0.05)
             
-            grayOriginal,valid = sf.grab_n_convert_frame(cameraHandle=cap)
+            valid,grayOriginal = cap.read()
             ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
             #binGray = gray[:,:,2]
             
@@ -256,6 +258,7 @@ for trial in trials.index:
 
             # Display the resulting frame
             cv.imshow('frame', gray)
+            cv.imshow('frame1', grayOriginal)
             
             if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
                 break
