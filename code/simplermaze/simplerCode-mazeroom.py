@@ -29,18 +29,19 @@ gratingID = pd.read_csv("grating_maps.csv",index_col=0)
 serialOn = True
 
 #if running experiments "testing" should be False (related to testing the code)
-testing = False 
-sessionStage = 2
+testing = True  
+
 
 if testing:
+    date_time = sf.get_current_time_formatted()
     recordVideo = True    
     new_dir_path = "C:/Users/labadmin/Desktop/maze_recordings/"
     sessionStage = 2
     #create  trials and save them to csv (later this csv needs to go to the appropriate session folder)
     trials = sf.create_trials(numTrials = 100, sessionStage=sessionStage)
 
-    trials.to_csv(os.path.join(new_dir_path,"trials_before_session.csv"))
-    recordFile = os.path.join(new_dir_path, "test.mp4")
+    trials.to_csv(os.path.join(new_dir_path,f"trials_before_session_{date_time}.csv"))
+    recordFile = os.path.join(new_dir_path, f"test_{date_time}.mp4")
     #load the trials file (description of each trial)
     print("choose the file containing trials (default: 'trials_before_session.csv'")
     trialsIDs = trials
@@ -48,10 +49,10 @@ else:
     recordVideo = True
 
     date_time = sf.get_current_time_formatted()
-    animal_ID, session_ID = sf.get_user_inputs()
+    animal_ID, session_ID, session_stage = sf.get_user_inputs()
     base_path = os.path.join(os.path.expanduser('~'), 'Desktop', 'maze_recordings')
     sf.ensure_directory_exists(base_path)
-
+    
     new_dir_path = sf.setup_directories(base_path, date_time, animal_ID, session_ID)
     rec_name = f"{animal_ID}_{date_time}.mp4"
     recordFile = os.path.join(new_dir_path, rec_name)
@@ -85,7 +86,7 @@ if drawRois:
     
     rois = pd.read_csv(new_dir_path+"rois1.csv",index_col=0)
 else:
-    rois = pd.read_csv("rois1.csv",index_col=0)
+    rois = pd.read_csv(new_dir_path+"rois1.csv",index_col=0)
 #load ROI information
 
 
@@ -368,6 +369,7 @@ for trial in trials.index:
                                 for rewLoc in hasVisited:
                                     if hasVisited[rewLoc] and trials.rewlocation[trial] not in rewLoc:
                                         mistake=True
+                                        print("animal made a mistake")
                             
                             #if the animal is in the right reward zone and there was no mistake
                             if not mistake:
@@ -385,6 +387,10 @@ for trial in trials.index:
                                 time2Reward = time.time()
                                 #do calculations on time to reward
                                 #add code to start proper reward motor
+                        elif mousePresent[item] and rewarded:
+                            print ("animal is in the right zone but has been rewarded")
+                        else:
+                            print("animal reached an unhandled condition")
                             
                             
         
