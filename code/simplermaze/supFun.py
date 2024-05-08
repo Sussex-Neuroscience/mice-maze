@@ -179,16 +179,11 @@ def grab_cut(frame,xstart,ystart,xlen,ylen):
                 xstart:xstart+xlen]
     return cut
 
-def create_trials(numTrials = 100, sessionStage = 2):
+def create_trials(numTrials = 100, sessionStage = 2,nonRepeat=False):
     
     if sessionStage<1 or sessionStage>4:
         print("invalid session stage, defaulting to stage 1 - habituation")
         sessionStage=1
-    
-    #add a large value to the number of trials so that trial types can be excluded on the fly
-    # during a session based on experimenter's parameters
-    numTrials=numTrials+200
-
 
     gratingMap = pd.read_csv("grating_maps.csv")
     rewardSequences = pd.read_csv("reward_sequences.csv")
@@ -219,6 +214,17 @@ def create_trials(numTrials = 100, sessionStage = 2):
 
     #now shuffle the list
     np.random.shuffle(allTogether)
+    
+    if nonRepeat==True:
+        #rearrange the list so that two/three consecutive trials rewarding the same location never happens
+        for i in range(4):
+            for index in range(len(allTogether)-1):
+                if allTogether[index][0]==allTogether[index+1][0]:
+                    print("repeat coming up... fixing")
+                    temp = allTogether[index+1]
+                    allTogether.append(temp)
+                    allTogether.pop(index+1)
+
 
     # create DataFrame using data
     trials = pd.DataFrame(allTogether, columns =['rewlocation', 'givereward', 'wrongallowed'])
@@ -234,13 +240,16 @@ def choose_csv():
     root.destroy()
     return filename
 
-def empty_frame(rows=300):
+def empty_frame(rows=300,roi_names=["entrance1","entrance2","rewA","rewB","rewC","rewD"]):
     #create a dataframe that will contain only nans for all things to be measured.
     #during the session we will fill up this df with data
-    columns = ["hit","miss","incorrect",
-           "start trial time","end trial time","duration in rewA","duration in rewB",
-           "duration in rewC", "duration in rewD", "duration in ent1",
-               "duration in ent2",]
-    data = pd.DataFrame(np.nan, index=range(rows), columns=columns)
+    
+
+    columns = ["hit","miss","incorrect","area_rewarded","time_to_reward",
+           "start_trial_time","end_trial_time"]+roi_names
+    data = pd.DataFrame(None, index=range(rows), columns=columns)
     return data
     
+def time_in_millis():
+    millis=round(time.time() * 1000)
+    return millis
