@@ -11,7 +11,7 @@ import os
 import pandas as pd
 from tkinter import filedialog as fd
 from tkinter import *
-
+import csv
 
 
 
@@ -73,6 +73,8 @@ else:
     print("choose the file containing trials (default: 'trials_before_session.csv'")
     trialsIDs = pd.read_csv(sf.choose_csv())
 
+
+
 if serialOn:
     #create a serial object and connect to it
 
@@ -95,11 +97,6 @@ else:
 #load ROI information
 
 
-
-##### begin block #######
-
-### this needs to be optimised so we don't have to create, write and read every time
-
 thresholds = dict()
 #timeSpentAreas = dict()
 for item in rois:
@@ -118,10 +115,7 @@ incorrect = list()
 hasVisited = dict()
 mousePresent = dict()
 
-
-
 cap = sf.start_camera(videoInput=videoInput)
-
 
 frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
@@ -157,15 +151,22 @@ rewLocation=0
 
 #create a dataframe filled with nans that will later be updated with data from session
 data = sf.empty_frame(rows = len(trials.index))
-#create two windows to show the animal movement while in maze:
 
+#create csv object to write data trial by trial
+data_fh = open(os.path.join(new_dir_path,f"session_data_{date_time}.csv"),"w")
+data_writer = csv.writer(data_fh, delimiter=',')
+data_writer.writerow(data.head(n=0))
+
+#create two windows to show the animal movement while in maze:
 cv.namedWindow('binary maze plus ROIs', cv.WINDOW_NORMAL)
 cv.namedWindow('original image', cv.WINDOW_NORMAL)
 
 absolute_time_start = sf.time_in_millis()
+
 for trial in trials.index:
     if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
         #data.to_csv("test.csv")
+        data_fh.close()
         break
     # time at the beginning of the trial 
     start_trial_time = sf.time_in_millis()-absolute_time_start
@@ -189,13 +190,10 @@ for trial in trials.index:
         #print(message)
         if serialOn:
             ser.write(message.encode('utf-8'))
+            #added a pause so that the servo motors have time to catch up
             time.sleep(0.1)
-        #maybe add a pause? so that the servo motors have time to catch up
+        
 
-
-    #if trials.givereward[trial]: - don't know if this is necessary
-        #maybe it is ok for motors to be placed in position even though
-        #there will be no reward?
     print("now move motors to cueing positions for this trial")
     for grtPosition in gratingID.loc[trials.rewlocation[trial]]:       
         #print(grtPosition)
@@ -203,6 +201,7 @@ for trial in trials.index:
         #print (message)
         if serialOn:
             ser.write(message.encode('utf-8'))
+            #added a pause so that the servo motors have time to catch up
             time.sleep(0.1)
 
 
@@ -261,6 +260,7 @@ for trial in trials.index:
         
         if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
             break
+            data_fh.close()
         
         #grab each area of interest and store them in a dictionary
         #this will be used to detect if the animal was there or not
@@ -396,7 +396,7 @@ for trial in trials.index:
                         
                         
     end_trial_time = sf.time_in_millis()-absolute_time_start
-
+    data_writer.writerow(data.loc[trial].values)
                         
 
             
@@ -410,7 +410,7 @@ for trial in trials.index:
 
     
             
-            
+data_fh.close()           
 data.to_csv(os.path.join(new_dir_path,f"data_from_session_{date_time}.csv"))           
 sessionDuration = time.time()-sessionStartTime
 
