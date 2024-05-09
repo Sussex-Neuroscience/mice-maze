@@ -5,7 +5,7 @@ import time
 import os
 from tkinter import filedialog as fd
 from tkinter import *
-
+import csv
 
 
 def collect_metadata(animal_ID, session_ID):
@@ -246,10 +246,16 @@ def empty_frame(rows=300,roi_names=["entrance1","entrance2","rewA","rewB","rewC"
     
 
     columns = ["hit","miss","incorrect","area_rewarded","time_to_reward",
-           "start_trial_time","end_trial_time"]+roi_names
+           "trial_start_time","end_trial_time","mouse_enter_time"]+roi_names
     data = pd.DataFrame(None, index=range(rows), columns=columns)
     return data
     
 def time_in_millis():
     millis=round(time.time() * 1000)
     return millis
+
+def write_data(file_name="tests.csv",mode="a",data=["test","test","test"]):
+    data_fh = open(file_name,mode)
+    data_writer = csv.writer(data_fh, delimiter=',')
+    data_writer.writerow(data)
+    data_fh.close()

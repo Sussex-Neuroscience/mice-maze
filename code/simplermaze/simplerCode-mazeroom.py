@@ -18,6 +18,7 @@ import csv
 #for code inspection and testing of the code purposes we add a small pause in between frames in
 #the main code loop... this variable just below this needs to be set to False if one is running the actual experiments
 pause_between_frames=True
+
 #whenever working without the actual servos and ESP32 set the next variable to False
 serialOn = False
 
@@ -28,7 +29,7 @@ testing = True
 drawRois = False
 
 #If just testing and no video needs to be recorded, set the next variable to FALSE
-recordVideo = True 
+recordVideo = False
 #define where the video is coming from. Use 0 for the first camera on the computer,
 #or a complete file path to use a pre-recorded video
 videoInput = '/home/andre/Desktop/maze_test.mp4'
@@ -122,14 +123,11 @@ frame_height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 fps = int(cap.get(cv.CAP_PROP_FPS))
 if recordVideo:
     videoFileObject = sf.record_video(cap, recordFile, frame_width, frame_height, fps)
-### START FOR LOOP TO AVERAGE N FRAMES FOR THRESHOLDING
+
 
 #grab one frame:
 valid,gray = cap.read()
-#ret,gray=cv.adaptiveThreshold(gray,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,\
-# cv.THRESH_BINARY,11,2)
 ret,gray = cv.threshold(gray,100,255,cv.THRESH_BINARY)
-#gray = gray[:,:,0]
 
 #run a loop to catch each area and sum the pixel values on that area of the frame
 areas = dict()
@@ -146,16 +144,14 @@ for item in rois:
 
 sessionStartTime = time.time()
 
-rewLocation=0
-
-
 #create a dataframe filled with nans that will later be updated with data from session
 data = sf.empty_frame(rows = len(trials.index))
 
-#create csv object to write data trial by trial
-data_fh = open(os.path.join(new_dir_path,f"session_data_{date_time}.csv"),"w")
-data_writer = csv.writer(data_fh, delimiter=',')
-data_writer.writerow(data.head(n=0))
+#write header of panda dataframe
+sf.write_data(file_name=os.path.join(new_dir_path,f"session_data_{date_time}.csv"),
+              mode="w",
+              data=data.head(n=0))
+
 
 #create two windows to show the animal movement while in maze:
 cv.namedWindow('binary maze plus ROIs', cv.WINDOW_NORMAL)
@@ -165,17 +161,15 @@ absolute_time_start = sf.time_in_millis()
 
 for trial in trials.index:
     if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
-        #data.to_csv("test.csv")
-        data_fh.close()
         break
     # time at the beginning of the trial 
-    start_trial_time = sf.time_in_millis()-absolute_time_start
+    trial_start_time = sf.time_in_millis()-absolute_time_start
     if trial == 0:
-        time_old_frame = sf.time_in_millis()-start_trial_time
+        time_old_frame = sf.time_in_millis()-trial_start_time
 
-    data.loc[trial,"start_trial_time"] = start_trial_time
+    data.loc[trial,"trial_start_time"] = trial_start_time
     #print information for users
-    print("starting trial "+str(trial+1))
+    print("preparing maze"+str(trial+1))
     print("trial profile:")
     print("rew Location "+trials.rewlocation[trial])
     print("give reward "+str(trials.givereward[trial]))
@@ -207,7 +201,7 @@ for trial in trials.index:
 
 
     
-    print ("starting trial "+str(trial+1))
+    
 
 
     for item in rois:
@@ -235,7 +229,7 @@ for trial in trials.index:
         valid,grayOriginal = cap.read()
         ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
         #binGray = gray[:,:,2]
-        time_frame=sf.time_in_millis()-start_trial_time
+        time_frame=sf.time_in_millis()-trial_start_time
         
         if not valid:
             print("Can't receive frame (stream end?). Exiting ...")
@@ -243,7 +237,6 @@ for trial in trials.index:
 
         if recordVideo:
             videoFileObject.write(grayOriginal)
-            
 
         
         #display rois on top of the frame for user feedback
@@ -260,7 +253,6 @@ for trial in trials.index:
         
         if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
             break
-            data_fh.close()
         
         #grab each area of interest and store them in a dictionary
         #this will be used to detect if the animal was there or not
@@ -288,7 +280,7 @@ for trial in trials.index:
                 else:
                     data.loc[trial,item] = data[item][trial]+duration
                 
-        time_old_frame=time_frame
+        #time_old_frame=time_frame
         
     
         #at each new frame, add the information on whether the mouse
@@ -333,7 +325,8 @@ for trial in trials.index:
             
         if e2Aftere1 and enteredMaze==False:
             print("mouse has entered the maze")
-            trialStartTime = time.time()
+            print("trial starting")
+            data.loc[trial,"mouse_enter_time"]=time_frame
             enteredMaze = True
         if e1Aftere2:
             print("mouse has left the maze")
@@ -346,10 +339,6 @@ for trial in trials.index:
                 if mistake:
                     data["incorrect"][trial] = 1
             
-
-
-                
-
                 
         if enteredMaze:
             for item in mousePresent:
@@ -371,7 +360,7 @@ for trial in trials.index:
                         
                         #if the animal is in the right reward zone and there was no mistake
                         if not mistake:
-                            data["hit"][trial] = 1
+                            data.loc[trial,"hit"] = 1
                             message = 'rew{0}\n'.format(trials.rewlocation[trial])
                             if serialOn:
                                 ser.write(message.encode('utf-8'))
@@ -382,7 +371,7 @@ for trial in trials.index:
                             #hits.append(trial)
                             #store the reward area
                             data.loc[trial,"area_rewarded"] = trials.loc[trial].rewlocation
-                            data.loc[trial,"time_to_reward"] = time_frame-start_trial_time
+                            data.loc[trial,"time_to_reward"] = time_frame-trial_start_time
                             
                             #do calculations on time to reward
                     #elif mousePresent[item] and rewarded:
@@ -394,9 +383,12 @@ for trial in trials.index:
                     #else:
                     #    print("animal reached an unhandled condition")
                         
-                        
+        time_old_frame=time_frame
+        
     end_trial_time = sf.time_in_millis()-absolute_time_start
-    data_writer.writerow(data.loc[trial].values)
+    sf.write_data(file_name=os.path.join(new_dir_path,f"session_data_{date_time}.csv"),
+              mode="a",
+              data=data.loc[trial].values)
                         
 
             
@@ -405,12 +397,12 @@ for trial in trials.index:
 
     #record end time of the trial
     #end_trial_time=  time.time()
-    #trial_durations= end_trial_time - start_trial_time   #duration of the trial
+    #trial_durations= end_trial_time - trial_start_time   #duration of the trial
     #trial_durations.append(trial_durations)
 
     
             
-data_fh.close()           
+         
 data.to_csv(os.path.join(new_dir_path,f"data_from_session_{date_time}.csv"))           
 sessionDuration = time.time()-sessionStartTime
 
