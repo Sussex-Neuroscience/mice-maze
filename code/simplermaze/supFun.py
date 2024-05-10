@@ -48,7 +48,8 @@ def ensure_directory_exists(path):
 def get_user_inputs():
     animal_ID = input("Insert animal ID: \n").upper()
     session_ID = input("Insert Session ID: \n").lower()
-    return animal_ID, session_ID
+    experiment_phase = int(input("Insert experiment phase (1-4): \n"))
+    return animal_ID, session_ID, experiment_phase
 
 def get_current_time_formatted():
     return time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())

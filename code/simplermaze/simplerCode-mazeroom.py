@@ -17,16 +17,16 @@ import csv
 
 #for code inspection and testing of the code purposes we add a small pause in between frames in
 #the main code loop... this variable just below this needs to be set to False if one is running the actual experiments
-pause_between_frames=True
+pause_between_frames=False
 
 #whenever working without the actual servos and ESP32 set the next variable to False
 serialOn = False
 
 #if running experiments "testing" should be False (related to testing the code)
-testing = True  
+testing = False 
 
 #If ROIs need to be drawn by experiementer, set the next variable to TRUE
-drawRois = False
+drawRois = True
 
 #If just testing and no video needs to be recorded, set the next variable to FALSE
 recordVideo = False
@@ -46,16 +46,16 @@ date_time = sf.get_current_time_formatted()
 if testing:
     new_dir_path = '/home/andre/Desktop/'
     #new_dir_path = "C:/Users/labadmin/Desktop/maze_recordings/"
-    sessionStage = 2
+    experiment_phase = 2
     #create  trials and save them to csv (later this csv needs to go to the appropriate session folder)
-    trials = sf.create_trials(numTrials = 100, sessionStage=sessionStage, nonRepeat=True)
+    trials = sf.create_trials(numTrials = 100, sessionStage=experiment_phase, nonRepeat=True)
     trials.to_csv(os.path.join(new_dir_path,f"trials_before_session_{date_time}.csv"))
     recordFile = os.path.join(new_dir_path, f"test_{date_time}.mp4")
     #load the trials file (description of each trial)
     print("choose the file containing trials (default: 'trials_before_session.csv'")
     trialsIDs = trials
 else:
-    animal_ID, session_ID, session_stage = sf.get_user_inputs()
+    animal_ID, session_ID, experiment_phase = sf.get_user_inputs()
     base_path = os.path.join(os.path.expanduser('~'), 'Desktop', 'maze_recordings')
     sf.ensure_directory_exists(base_path)
     
@@ -66,7 +66,7 @@ else:
 
     metadata = sf.collect_metadata(animal_ID, session_ID)
     sf.save_metadata_to_csv(metadata, new_dir_path, f"{animal_ID}_{date_time}.csv")
-    trials = sf.create_trials(numTrials = 100, sessionStage=sessionStage)
+    trials = sf.create_trials(numTrials = 100, sessionStage=experiment_phase)
 
     trials.to_csv(os.path.join(new_dir_path,"trials_before_session.csv"))
 
@@ -90,11 +90,11 @@ if drawRois:
     sf.define_rois(videoInput = videoInput,
                     roiNames = ["entrance1","entrance2",
                             "rewA","rewB","rewC","rewD"],
-                    outputName = new_dir_path+"rois1.csv")
+                    outputName = new_dir_path+"/"+"rois1.csv")
     
-    rois = pd.read_csv(new_dir_path+"rois1.csv",index_col=0)
+    rois = pd.read_csv(new_dir_path+"/"+"rois1.csv",index_col=0)
 else:
-    rois = pd.read_csv(new_dir_path+"rois1.csv",index_col=0)
+    rois = pd.read_csv(new_dir_path+"/"+"rois1.csv",index_col=0)
 #load ROI information
 
 
