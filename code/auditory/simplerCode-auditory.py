@@ -160,6 +160,12 @@ cv.namedWindow('original image', cv.WINDOW_NORMAL)
 
 absolute_time_start = sf.time_in_millis()
 
+all_data=list()
+for i in range(1,5):
+    data1, _ = sf1.read("./10-05-2024_15/"+str(i)+".wav")
+    all_data.append(data1)
+
+
 for trial in trials.index:
     if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
         break
@@ -339,52 +345,43 @@ for trial in trials.index:
             
                 
         if enteredMaze:
+
             for item in mousePresent:
-                
+                if not mousePresent["rewA"] and \
+                   not mousePresent["rewB"] and \
+                   not mousePresent["rewC"] and \
+                   not mousePresent["rewD"]:
+                   rewarded=False
+                   sd.stop()
                 if not trials.givereward[trial]:#this is for habituation routine
                     pass
                 
                     
                 #if trials.loc[trial].givereward:
-                elif trials.rewlocation[trial] in item:
+                elif "A" in item or "B" in item or "C" in item or "D" in item:
                     if mousePresent[item] and not rewarded:
+                        if trials.rewlocation[trial]=="A":
+                            sound_index=0
+                        if trials.rewlocation[trial]=="B":
+                            sound_index=1
+                        if trials.rewlocation[trial]=="C":
+                            sound_index=2
+                        if trials.rewlocation[trial]=="D":
+                            sound_index=3
                         
-                        #if the animal is not allowed to visit a wrong location first
-                        if not trials.wrongallowed[trial]:
-                            for rewLoc in hasVisited:
-                                if hasVisited[rewLoc] and trials.rewlocation[trial] not in rewLoc:
-                                    mistake=True
-                                    print("animal made a mistake")
-                        
-                        #if the animal is in the right reward zone and there was no mistake
-                        if not mistake:
-                            if trials.rewlocation[trial]=="A":
-                                sound=1
-                            if trials.rewlocation[trial]=="B":
-                                sound=2
-                            if trials.rewlocation[trial]=="C":
-                                sound=3
-                            if trials.rewlocation[trial]=="D":
-                                sound=4
+                        sd.play(all_data[sound_index],blocking=False)
+                            
                                 
                             
-                            
-                            data.loc[trial,"hit"] = 1
-                            message = 'rew{0}\n'.format(trials.rewlocation[trial])
-                            #if serialOn:
-                            #    ser.write(message.encode('utf-8'))
-                            
-                            #print(hasVisited)
-                            print("animal has reached reward zone")
-                            rewarded = True
-                            #hits.append(trial)
-                            #store the reward area
-                            data.loc[trial,"area_rewarded"] = trials.loc[trial].rewlocation
-                            data.loc[trial,"time_to_reward"] = time_frame-trial_start_time
-                            
-                            #do calculations on time to reward
+        
+                        print("animal has reached reward zone")
+                        rewarded = True
+                        #do calculations on time to reward
                     elif mousePresent[item] and rewarded:
                         print ("animal is in the right zone but has been rewarded")
+                    
+                #if "A" not in item and "B" not in item and "C" not in item and "D" not in item:
+
                     #elif trials.rewlocation[trial] not item:
                     #    print("mouse out of the maze")
                     #elif rewarded:

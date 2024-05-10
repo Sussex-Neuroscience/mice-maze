@@ -70,7 +70,7 @@ class SoundSynthesizerApp:
         self.ask_to_save_sound(sound_data, frequency, waveform)
 
     def generate_sound_data(self, frequency, volume, waveform):
-        duration = 1  # seconds
+        duration = 10  # seconds
         fs = 44100  # Sample rate
         t = np.linspace(0, duration, int(fs * duration), False)
 
