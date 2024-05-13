@@ -183,8 +183,7 @@ for trial in trials.index:
         #print(message)
         if serialOn:
             ser.write(message.encode('utf-8'))
-            #added a pause so that the servo motors have time to catch up
-            time.sleep(0.1)
+            ser.flush()           
         
 
     print("now move motors to cueing positions for this trial")
@@ -194,14 +193,8 @@ for trial in trials.index:
         #print (message)
         if serialOn:
             ser.write(message.encode('utf-8'))
-            #added a pause so that the servo motors have time to catch up
-            time.sleep(0.1)
-
-
-
+            ser.flush()   
     
-    
-
 
     for item in rois:
         hasVisited[item] = False 
