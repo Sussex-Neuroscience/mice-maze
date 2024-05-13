@@ -363,6 +363,7 @@ for trial in trials.index:
                             data.loc[trial,"hit"] = 1
                             message = 'rew{0}\n'.format(trials.rewlocation[trial])
                             if serialOn:
+                                print("information sent to reward motor: \n",message)
                                 ser.write(message.encode('utf-8'))
                             
                             #print(hasVisited)
