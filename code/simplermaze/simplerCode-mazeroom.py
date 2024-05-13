@@ -5,7 +5,6 @@ import cv2 as cv
 import pandas as pd
 import supFun as sf
 import time
-from serial import Serial
 import serial
 import os
 import pandas as pd
@@ -17,13 +16,13 @@ import csv
 
 #for code inspection and testing of the code purposes we add a small pause in between frames in
 #the main code loop... this variable just below this needs to be set to False if one is running the actual experiments
-pause_between_frames=False
+pause_between_frames = True
 
 #whenever working without the actual servos and ESP32 set the next variable to False
 serialOn = False
 
 #if running experiments "testing" should be False (related to testing the code)
-testing = False 
+testing = True
 
 #If ROIs need to be drawn by experiementer, set the next variable to TRUE
 drawRois = True
@@ -224,7 +223,7 @@ for trial in trials.index:
     while trialOngoing:
             
         if pause_between_frames:
-            time.sleep(0.05)
+            time.sleep(0.01)
         
         valid,grayOriginal = cap.read()
         ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
@@ -335,9 +334,11 @@ for trial in trials.index:
             enteredMaze = False
             if not rewarded:
                 if not mistake:
-                    data["miss"][trial] = 1
+                    data.loc[trial,"miss"] = 1
+                    #data["miss"][trial] = 1
                 if mistake:
-                    data["incorrect"][trial] = 1
+                    data.loc[trial,"incorrect"] = 1
+                    #data["incorrect"][trial] = 1
             
                 
         if enteredMaze:
@@ -363,10 +364,11 @@ for trial in trials.index:
                             data.loc[trial,"hit"] = 1
                             message = 'rew{0}\n'.format(trials.rewlocation[trial])
                             if serialOn:
-                                print("information sent to reward motor: \n",message)
                                 ser.write(message.encode('utf-8'))
+                                ser.flush()
                             
                             #print(hasVisited)
+                            print("information sent to reward motor: \n",message)
                             print("animal has reached reward zone")
                             rewarded = True
                             #hits.append(trial)
