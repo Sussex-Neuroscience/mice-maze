@@ -187,10 +187,14 @@ for trial in trials.index:
         
 
     print("now move motors to cueing positions for this trial")
-    for grtPosition in gratingID.loc[trials.rewlocation[trial]]:       
-        #print(grtPosition)
-        message = 'grt{0}\n'.format(grtPosition)
-        #print (message)
+    
+    for grtPosition in gratingID.loc[trials.rewlocation[trial]]:
+        if experiment_phase!=1:
+            message = 'grt{0}\n'.format(grtPosition)
+            #print (message)
+        else:
+            message = 'grt{0} 0\n'.format(grtPosition[0:2])
+
         if serialOn:
             ser.write(message.encode('utf-8'))
             ser.flush()   
