@@ -217,6 +217,9 @@ for trial in trials.index:
     
     ent1History = [False,False]
     ent2History = [False,False]
+    
+    visited_any_rew_area_flag = False
+    first_rew_area = "X"
     while trialOngoing:
             
         if pause_between_frames:
@@ -267,6 +270,12 @@ for trial in trials.index:
             
             if mousePresent[item]:
                 print(item)
+                #store what was the first reward area visited by the animal
+                if "rew" in item and not visited_any_rew_area_flag:
+                    visited_any_rew_area_flag=True
+                    first_rew_area = item
+                    data.loc[trial,"first_reward_area_visited"] = first_rew_area
+                    #print("first visit to:",item)
                 
                 hasVisited[item] = True
                 duration=time_frame-time_old_frame
@@ -347,7 +356,7 @@ for trial in trials.index:
                     
                 #if trials.loc[trial].givereward:
                 elif trials.rewlocation[trial] in item:
-                    if mousePresent[item] and not rewarded:
+                    if mousePresent[item] and not rewarded:                         
                         
                         #if the animal is not allowed to visit a wrong location first
                         if not trials.wrongallowed[trial]:
@@ -386,6 +395,7 @@ for trial in trials.index:
         time_old_frame=time_frame
         
     end_trial_time = sf.time_in_millis()-absolute_time_start
+    data.loc[trial,"end_trial_time"] = end_trial_time
     sf.write_data(file_name=os.path.join(new_dir_path,f"session_data_{date_time}.csv"),
               mode="a",
               data=data.loc[trial].values)

@@ -247,7 +247,7 @@ def empty_frame(rows=300,roi_names=["entrance1","entrance2","rewA","rewB","rewC"
     
 
     columns = ["hit","miss","incorrect","area_rewarded","time_to_reward",
-           "trial_start_time","end_trial_time","mouse_enter_time"]+roi_names
+           "trial_start_time","end_trial_time","mouse_enter_time","first_reward_area_visited"]+roi_names
     data = pd.DataFrame(None, index=range(rows), columns=columns)
     return data
     
