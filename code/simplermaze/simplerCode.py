@@ -25,7 +25,7 @@ serialOn = False
 testing = True
 
 #If ROIs need to be drawn by experiementer, set the next variable to TRUE
-drawRois = True
+drawRois = False
 
 #If just testing and no video needs to be recorded, set the next variable to FALSE
 recordVideo = False
@@ -43,9 +43,9 @@ gratingID = pd.read_csv("grating_maps.csv",index_col=0)
 date_time = sf.get_current_time_formatted()
 
 if testing:
-    new_dir_path = '/home/andre/Desktop/'
+    new_dir_path = '/home/andre/Desktop/maze_recordings/'
     #new_dir_path = "C:/Users/labadmin/Desktop/maze_recordings/"
-    experiment_phase = 2
+    experiment_phase = 3
     #create  trials and save them to csv (later this csv needs to go to the appropriate session folder)
     trials = sf.create_trials(numTrials = 100, sessionStage=experiment_phase, nonRepeat=True)
     trials.to_csv(os.path.join(new_dir_path,f"trials_before_session_{date_time}.csv"))
@@ -90,10 +90,11 @@ if drawRois:
                     roiNames = ["entrance1","entrance2",
                             "rewA","rewB","rewC","rewD"],
                     outputName = new_dir_path+"/"+"rois1.csv")
-    
     rois = pd.read_csv(new_dir_path+"/"+"rois1.csv",index_col=0)
 else:
     rois = pd.read_csv(new_dir_path+"/"+"rois1.csv",index_col=0)
+    #rois_save = rois[:]
+    #rois_save.to_csv(new_dir_path+"/"+"rois1.csv")
 #load ROI information
 
 
@@ -223,7 +224,7 @@ for trial in trials.index:
     while trialOngoing:
             
         if pause_between_frames:
-            time.sleep(0.01)
+            time.sleep(0.05)
         
         valid,grayOriginal = cap.read()
         ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
@@ -274,8 +275,11 @@ for trial in trials.index:
                 if "rew" in item and not visited_any_rew_area_flag:
                     visited_any_rew_area_flag=True
                     first_rew_area = item
-                    data.loc[trial,"first_reward_area_visited"] = first_rew_area
-                    #print("first visit to:",item)
+                    data.loc[trial,"first_reward_area_visited"] = first_rew_area        
+                    if trials.rewlocation[trial] not in first_rew_area:
+                        print("early mistake detection")
+                        mistake=True
+                        #print("first visit to:",item)
                 
                 hasVisited[item] = True
                 duration=time_frame-time_old_frame
@@ -360,12 +364,11 @@ for trial in trials.index:
                     if mousePresent[item] and not rewarded:                         
                         
                         #if the animal is not allowed to visit a wrong location first
-                        if not trials.wrongallowed[trial]:
-                            for rewLoc in hasVisited:
-                                if hasVisited[rewLoc] and trials.rewlocation[trial] not in rewLoc:
-                                    mistake=True
-                                    data.loc[trial,"hit"] = 1
-                                    print("animal made a mistake")
+                        #if not trials.wrongallowed[trial]:
+                        #    if trials.rewlocation[trial] not in first_rew_area:
+                        #        mistake=True
+                        #       #data.loc[trial,"incorrect"] = 1
+                        #        print("animal made a mistake")
                         
                         #if the animal is in the right reward zone and there was no mistake
                         if not mistake:
