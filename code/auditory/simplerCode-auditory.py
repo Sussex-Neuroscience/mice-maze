@@ -1,11 +1,10 @@
-
 #import all needed libraries
 import numpy as np
 import cv2 as cv
 import pandas as pd
 import supFun as sf
 import time
-from serial import Serial
+#from serial import Serial
 import serial
 import os
 import pandas as pd
@@ -17,23 +16,24 @@ import soundfile as sf1
 
 
 #for code inspection and testing of the code purposes we add a small pause in between frames in
-#the main code loop... this variable just below this needs to be set to False if one is running the actual experiments
+#the main code loop... this variable just below this needs to be set to False if one is running
+#the actual experiments
 pause_between_frames=True
 
 #whenever working without the actual servos and ESP32 set the next variable to False
 serialOn = False
 
 #if running experiments "testing" should be False (related to testing the code)
-testing = True 
+testing = False
 
 #If ROIs need to be drawn by experiementer, set the next variable to TRUE
-drawRois = False
+drawRois = True
 
 #If just testing and no video needs to be recorded, set the next variable to FALSE
 recordVideo = False
 #define where the video is coming from. Use 0 for the first camera on the computer,
 #or a complete file path to use a pre-recorded video
-videoInput = '/home/andre/Desktop/maze_test.mp4'
+videoInput =  '/home/andre/Desktop/maze_test.mp4'
 
 
 #get the identification of each grating
@@ -45,7 +45,8 @@ gratingID = pd.read_csv("grating_maps.csv",index_col=0)
 date_time = sf.get_current_time_formatted()
 
 if testing:
-    new_dir_path = '/home/andre/Desktop/'
+    new_dir_path = '/home/andre/Desktop/maze_recordings/'
+    sf.ensure_directory_exists(new_dir_path)
     #new_dir_path = "C:/Users/labadmin/Desktop/maze_recordings/"
     experiment_phase = 2
     #create  trials and save them to csv (later this csv needs to go to the appropriate session folder)
@@ -58,6 +59,7 @@ if testing:
 else:
     animal_ID, session_ID, experiment_phase = sf.get_user_inputs()
     base_path = os.path.join(os.path.expanduser('~'), 'Desktop', 'maze_recordings')
+    print(base_path)
     sf.ensure_directory_exists(base_path)
     
     new_dir_path = sf.setup_directories(base_path, date_time, animal_ID, session_ID)
@@ -92,10 +94,13 @@ if drawRois:
                     roiNames = ["entrance1","entrance2",
                             "rewA","rewB","rewC","rewD"],
                     outputName = new_dir_path+"/"+"rois1.csv")
-    
     rois = pd.read_csv(new_dir_path+"/"+"rois1.csv",index_col=0)
 else:
-    rois = pd.read_csv(new_dir_path+"/"+"rois1.csv",index_col=0)
+    rois = pd.read_csv(base_path+"/"+"rois1.csv",index_col=0)
+    #rois_save = rois[:]
+    #rois_save.to_csv(new_dir_path+"/"+"rois1.csv")
+
+
 #load ROI information
 
 
@@ -160,9 +165,11 @@ cv.namedWindow('original image', cv.WINDOW_NORMAL)
 
 absolute_time_start = sf.time_in_millis()
 
+##Here there is the music path
 all_data=list()
+#sound_index=0
 for i in range(1,5):
-    data1, _ = sf1.read("./10-05-2024_15/"+str(i)+".wav")
+    data1, _ = sf1.read("./10-06-2024_15/"+str(i)+".wav")
     all_data.append(data1)
 
 
@@ -228,12 +235,12 @@ for trial in trials.index:
     while trialOngoing:
             
         if pause_between_frames:
-            time.sleep(0.05)
+            time.sleep(0.01)
         
         valid,grayOriginal = cap.read()
         ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
         #binGray = gray[:,:,2]
-        time_frame=sf.time_in_millis()-trial_start_time
+        time_frame=time_frame=sf.time_in_millis()-absolute_time_start
         
         if not valid:
             print("Can't receive frame (stream end?). Exiting ...")
@@ -274,7 +281,7 @@ for trial in trials.index:
             mousePresent[item] = np.sum(areas[item])<thresholds[item]/2
             
             if mousePresent[item]:
-                print(item)
+                #print(item)
                 
                 hasVisited[item] = True
                 duration=time_frame-time_old_frame
@@ -330,7 +337,7 @@ for trial in trials.index:
         if e2Aftere1 and enteredMaze==False:
             print("mouse has entered the maze")
             print("trial starting")
-            data.loc[trial,"mouse_enter_time"]=time_frame
+            data.loc[trial,"mouse_enter_time"]=time_frame#-trial_start_time
             enteredMaze = True
         if e1Aftere2:
             print("mouse has left the maze")
@@ -339,7 +346,8 @@ for trial in trials.index:
             enteredMaze = False
             if not rewarded:
                 if not mistake:
-                    data["miss"][trial] = 1
+                    pass
+                #    data["miss"][trial] = 1
                 if mistake:
                     data["incorrect"][trial] = 1
             
@@ -357,16 +365,22 @@ for trial in trials.index:
                     pass
                 
                     
+
                 #if trials.loc[trial].givereward:
-                elif "A" in item or "B" in item or "C" in item or "D" in item:
+                
+
+                if "A" in item or "B" in item or "C" in item or "D" in item:
+                    print("item",item)
+                    print("mouse present",mousePresent)
                     if mousePresent[item] and not rewarded:
-                        if trials.rewlocation[trial]=="A":
+                        
+                        if item=="rewA":    
                             sound_index=0
-                        if trials.rewlocation[trial]=="B":
+                        if item=="rewB":
                             sound_index=1
-                        if trials.rewlocation[trial]=="C":
+                        if item=="rewC":
                             sound_index=2
-                        if trials.rewlocation[trial]=="D":
+                        if item=="rewD":
                             sound_index=3
                         
                         sd.play(all_data[sound_index],blocking=False)
@@ -375,6 +389,7 @@ for trial in trials.index:
                             
         
                         print("animal has reached reward zone")
+                        print(sound_index)
                         rewarded = True
                         #do calculations on time to reward
                     elif mousePresent[item] and rewarded:
@@ -392,6 +407,7 @@ for trial in trials.index:
         time_old_frame=time_frame
         
     end_trial_time = sf.time_in_millis()-absolute_time_start
+    data.loc[trial,"end_trial_time"] = end_trial_time
     sf.write_data(file_name=os.path.join(new_dir_path,f"session_data_{date_time}.csv"),
               mode="a",
               data=data.loc[trial].values)
@@ -421,4 +437,3 @@ cv.destroyAllWindows()
 if recordVideo:
     videoFileObject.release()#videoFile.release()
     #pass
-

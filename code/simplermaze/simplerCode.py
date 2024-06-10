@@ -228,7 +228,7 @@ for trial in trials.index:
         valid,grayOriginal = cap.read()
         ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
         #binGray = gray[:,:,2]
-        time_frame=sf.time_in_millis()-trial_start_time
+        time_frame=sf.time_in_millis()-absolute_time_start
         
         if not valid:
             print("Can't receive frame (stream end?). Exiting ...")
@@ -336,6 +336,7 @@ for trial in trials.index:
         if e1Aftere2:
             print("mouse has left the maze")
             trialOngoing=False
+            data.loc[trial,"end_trial_time"]=time_frame
             #trialDurations.append((trial,time.time()-trialStartTime))
             enteredMaze = False
             if not rewarded:
@@ -363,6 +364,7 @@ for trial in trials.index:
                             for rewLoc in hasVisited:
                                 if hasVisited[rewLoc] and trials.rewlocation[trial] not in rewLoc:
                                     mistake=True
+                                    data.loc[trial,"hit"] = 1
                                     print("animal made a mistake")
                         
                         #if the animal is in the right reward zone and there was no mistake

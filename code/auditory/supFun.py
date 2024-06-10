@@ -232,10 +232,10 @@ def create_trials(numTrials = 100, sessionStage = 2,nonRepeat=False):
 
     return trials
 
-def choose_csv():
+def choose_csv(path='/home/andre/Desktop/maze_recordings/'):
     root=Tk()
     # Show the file dialog and get the selected file name
-    filename = fd.askopenfilename()
+    filename = fd.askopenfilename(initialdir=path)
     # Print the file name to the console
     #print (filename)
     root.destroy()
