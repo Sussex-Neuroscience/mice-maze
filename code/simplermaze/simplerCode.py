@@ -13,7 +13,6 @@ from tkinter import *
 import csv
 
 
-
 #for code inspection and testing of the code purposes we add a small pause in between frames in
 #the main code loop... this variable just below this needs to be set to False if one is running the actual experiments
 pause_between_frames = True
@@ -168,6 +167,7 @@ for trial in trials.index:
         time_old_frame = sf.time_in_millis()-trial_start_time
 
     data.loc[trial,"trial_start_time"] = trial_start_time
+    data.loc[trial,"rew_location"] = trials.rewlocation[trial]
     #print information for users
     print("preparing maze"+str(trial+1))
     print("trial profile:")
@@ -277,6 +277,7 @@ for trial in trials.index:
                     first_rew_area = item
                     data.loc[trial,"first_reward_area_visited"] = first_rew_area        
                     if trials.rewlocation[trial] not in first_rew_area:
+                        data.loc[trial,"incorrect"] = 1
                         print("early mistake detection")
                         mistake=True
                         #print("first visit to:",item)
