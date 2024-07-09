@@ -3,22 +3,23 @@ import cv2 as cv
 import numpy as np
 import time
 import os
+import tkinter as tk
 from tkinter import filedialog as fd
-from tkinter import *
+from tkinter import simpledialog, Scale, HORIZONTAL, Label, ttk, filedialog, messagebox, Entry, font
 import csv
+import random
+import wave
 
 
-def collect_metadata(animal_ID, session_ID):
+def collect_metadata(animal_ID):
     ear_mark = input("Ear mark identifiers? (y/n): \n").lower()
-    weight = input("Insert animal weight (g): \n").lower()
     birth_date = input("Insert animal birth date (dd/mm/yyyy): \n")
     gender = input("Insert animal assumed gender (m/f): \n").lower()
 
+
     data = {
     "animal ID": animal_ID,
-    "session ID": session_ID,
     "ear mark identifier": ear_mark,
-    "animal weight": weight,
     "animal birth date": birth_date,
     "animal gender": gender,
     }
@@ -32,8 +33,8 @@ def save_metadata_to_csv(data, new_dir_path, file_name):
     print(f"Metadata saved to: {csv_path}")
 
 
-def setup_directories(base_path, date_time, animal_ID, session_ID):
-    new_directory = f"{date_time}{animal_ID}{session_ID}"
+def setup_directories(base_path, date_time, animal_ID):
+    new_directory = f"{date_time}{animal_ID}"
     new_dir_path = os.path.join(base_path, new_directory)
     ensure_directory_exists(new_dir_path)
     return new_dir_path
@@ -47,9 +48,8 @@ def ensure_directory_exists(path):
 
 def get_user_inputs():
     animal_ID = input("Insert animal ID: \n").upper()
-    session_ID = input("Insert Session ID: \n").lower()
-    experiment_phase = int(input("Insert experiment phase (1-4): \n"))
-    return animal_ID, session_ID, experiment_phase
+
+    return animal_ID, 
 
 def get_current_time_formatted():
     return time.strftime('%Y-%m-%d_%H_%M_%S', time.localtime())
@@ -57,20 +57,19 @@ def get_current_time_formatted():
 def get_metadata():
     anID = input("enter animal identification:")
     date = input("enter date:")
-    sessionID = input("enter session identification")
-    metatada = [anID, date, sessionID]
+    metadata = [anID, date]
     #figure out what else users want to store
     return metadata
 
 def write_text(text="string",window="noWindow"):
-    font                   = cv2.FONT_HERSHEY_SIMPLEX
+    font                   = cv.FONT_HERSHEY_SIMPLEX
     bottomLeftCornerOfText = (10,500)
     fontScale              = 1
     fontColor              = (255,255,255)
     thickness              = 1
     lineType               = 2
     
-    cv2.putText(window,text, 
+    cv.putText(window,text, 
     bottomLeftCornerOfText, 
     font, 
     fontScale,
@@ -130,7 +129,7 @@ def csv_to_dict(fileName="rois.csv"):
 
 def define_rois(videoInput = 0,
                 roiNames = ["entrance1","entrance2",
-                             "rew1","rew2","rew3","rew4"],
+                             "ROI1","ROI2","ROI3","ROI4"],
                 outputName = "rois.csv"):
     
 
@@ -170,8 +169,20 @@ def define_rois(videoInput = 0,
 
     return df
 
+
 #def draw_on_video(frame=gray,roi=(0,0,0,0)):
     #cv2.rectangle(frame, (roi[0], roi[1]), (roi[2], roi[3]), (0, 0, 0), -1)
+def read_rois_from_csv(csvfile):
+    with open(csvfile, newline='') as file:
+        reader = csv.reader(file)
+        headers = next(reader)
+        roi_data = {header: [] for header in headers}
+        
+        for row in reader:
+            for header, value in zip(headers, row):
+                roi_data[header].append(int(value))
+                
+    return roi_data
     
 
 def grab_cut(frame,xstart,ystart,xlen,ylen):
@@ -180,60 +191,9 @@ def grab_cut(frame,xstart,ystart,xlen,ylen):
                 xstart:xstart+xlen]
     return cut
 
-def create_trials(numTrials = 100, sessionStage = 2,nonRepeat=False):
-    
-    if sessionStage<1 or sessionStage>4:
-        print("invalid session stage, defaulting to stage 1 - habituation")
-        sessionStage=1
-
-    gratingMap = pd.read_csv("grating_maps.csv")
-    rewardSequences = pd.read_csv("reward_sequences.csv")
-
-    stage = rewardSequences[rewardSequences.sessionID=="Stage "+str(sessionStage)]
-    #lenRewLoc = len(stage.rewloc)
-
-    trialsDistribution = dict()
-    for index,location in enumerate(stage.rewloc):
-        subTrials = int(np.floor(numTrials*list(stage.portprob)[index]))
-        probRewardLocation = np.random.choice([True,False],numTrials,p=[list(stage.rewprob)[index],
-                                                                1-list(stage.rewprob)[index]])
-        
-        #print(probRewardLocation)
-        trialTuples = list()
-        
-            
-        for i in range(subTrials):
-            trialTuples.append((location,probRewardLocation[i],list(stage.wrongallowed)[index]))
-        
-        trialsDistribution[location] = trialTuples
-
-    allTogether=list()
-
-    for item in trialsDistribution.keys():
-        allTogether+=(trialsDistribution[item])#this keeps the list flat
-                                               #(as opposed to a list of lists)
-
-    #now shuffle the list
-    np.random.shuffle(allTogether)
-    
-    if nonRepeat==True:
-        #rearrange the list so that two/three consecutive trials rewarding the same location never happens
-        for i in range(4):
-            for index in range(len(allTogether)-1):
-                if allTogether[index][0]==allTogether[index+1][0]:
-                    print("repeat coming up... fixing")
-                    temp = allTogether[index+1]
-                    allTogether.append(temp)
-                    allTogether.pop(index+1)
-
-
-    # create DataFrame using data
-    trials = pd.DataFrame(allTogether, columns =['rewlocation', 'givereward', 'wrongallowed'])
-
-    return trials
 
 def choose_csv(path='/home/andre/Desktop/maze_recordings/'):
-    root=Tk()
+    root=tk()
     # Show the file dialog and get the selected file name
     filename = fd.askopenfilename(initialdir=path)
     # Print the file name to the console
@@ -241,16 +201,175 @@ def choose_csv(path='/home/andre/Desktop/maze_recordings/'):
     root.destroy()
     return filename
 
-def empty_frame(rows=300,roi_names=["entrance1","entrance2","rewA","rewB","rewC","rewD"]):
+def empty_frame(rows=25,roi_names=["entrance1","entrance2","ROI1","ROI2","ROI3","ROI3"]):
     #create a dataframe that will contain only nans for all things to be measured.
     #during the session we will fill up this df with data
     
-
-    columns = ["hit","miss","incorrect","area_rewarded","time_to_reward",
+    columns = ["ROIs", "frequency", "waveform", "volume", "time spent", "visitation count",
            "trial_start_time","end_trial_time","mouse_enter_time"]+roi_names
     data = pd.DataFrame(None, index=range(rows), columns=columns)
     return data
+
+
+def ask_music_info():
+    frequency = []
+    volume = []
+    waveform = []
+
+    for i in range(1, 5): 
+        freqs = int(input(f"Insert frequency for sound #{i}\n"))
+        frequency.append(freqs)
+
+        vols = int(input(f"Insert volume for sound #{i} [1-100]\n"))
+        volume.append(vols)
+
+        waves = input(f"Insert waveform for sound #{i} [sine, square, sawtooth, triangle, pulse wave, white noise]\n").lower()
+        waveform.append(waves)
+
+    return frequency, volume, waveform
+
+def generate_sound_data(frequency, volume, waveform):
+    duration = 10  # seconds
+    fs = 44100  # Sample rate
+    t = np.linspace(0, duration, int(fs * duration), False)
+
+    sound = np.zeros_like(t)
+
+    if waveform == 'sine':
+        sound = np.sin(frequency * t * 2 * np.pi)
+    elif waveform == 'square':
+        sound = np.sign(np.sin(frequency * t * 2 * np.pi))
+    elif waveform == 'sawtooth':
+        sound = 2 * (t * frequency % 1) - 1
+    elif waveform == 'triangle':
+        sound = 2 * np.abs(2 * (t * frequency - np.floor(0.5 + t * frequency))) - 1
+    elif waveform == 'pulse wave':
+        sound = np.where((t % (1 / frequency)) < (1 / frequency) * 0.5, 1.0, -1.0)  # 0.5 in this case is the duty cycle
+    elif waveform == 'white noise':
+        samples = int(fs * duration)
+        sound = np.random.uniform(low=-1.0, high=1.0, size=samples)
+
+    return sound * volume
+
+def create_trials(frequency, volume, waveform):
+    # Number of repetitions for each ROI
+    total_repetitions = 5
+    zero_repetitions = 1
+    # ROIs to be used
+    rois = ["ROI1", "ROI2", "ROI3", "ROI4"]
+    # Create a list of ROIs repeated total_repetitions times
+    rois_repeated = rois * total_repetitions
+
+    # Initialize lists to store the shuffled frequency, volume, and waveform
+    frequency_final = []
+    volume_final = []
+    waveform_final = []
+    wave_arrays = []
+    repetition_numbers = []
+
+    # Total number of sound data sets
+    num_sounds = len(frequency)
+    previous_trials = set()
+
+    def get_trial_tuple(frequency, volume, waveform):
+        return tuple(zip(frequency, volume, waveform))
+
+    def shuffle_data(frequency, volume, waveform):
+        combined = list(zip(frequency, volume, waveform))
+        random.shuffle(combined)
+        return zip(*combined)
+
+    # Create trials
+    for i in range(total_repetitions):
+        for j in range(len(rois)):
+            repetition_numbers.append(i + 1)  # Add repetition number
+            if i < zero_repetitions:
+                # Add zero data for the specified repetitions
+                frequency_final.append(0)
+                volume_final.append(0)
+                waveform_final.append('none')
+                wave_arrays.append(np.zeros(441000))  # Assuming 10 seconds of silence
+            elif i == 1:  # Trial 2 should use the initial list
+                frequency_final.append(frequency[j])
+                volume_final.append(volume[j])
+                waveform_final.append(waveform[j])
+                wave_arrays.append(generate_sound_data(frequency[j], volume[j], waveform[j]))
+            else:  # Trials 3 to 5 should be shuffled
+                if j == 0:
+                    # Shuffle the sound data at the beginning of each trial
+                    while True:
+                        shuffled_frequency, shuffled_volume, shuffled_waveform = shuffle_data(frequency, volume, waveform)
+                        trial_tuple = get_trial_tuple(shuffled_frequency, shuffled_volume, shuffled_waveform)
+                        if trial_tuple not in previous_trials:
+                            previous_trials.add(trial_tuple)
+                            break
+                frequency_final.append(shuffled_frequency[j])
+                volume_final.append(shuffled_volume[j])
+                waveform_final.append(shuffled_waveform[j])
+                wave_arrays.append(generate_sound_data(shuffled_frequency[j], shuffled_volume[j], shuffled_waveform[j]))
+
+    # Create the DataFrame with the repetition numbers, repeated ROIs, and final data
+    df = pd.DataFrame({
+        "trial": repetition_numbers,
+        "ROIs": rois_repeated,
+        "frequency": frequency_final,
+        "volume": volume_final,
+        "waveform": waveform_final,
+        "wave_arrays": wave_arrays
+    })
+
+    # Add other necessary columns filled with NaNs or default values
+    df["time spent"] = [None] * len(df)
+    df["visitation count"] = [None] * len(df)
+    df["trial_start_time"] = [None] * len(df)
+    df["end_trial_time"] = [None] * len(df)
+    df["mouse_enter_time"] = [None] * len(df)
+
+    return df
+
+def save_sound(sound_data, frequency, waveform):
+    parent_folder_selected = filedialog.askdirectory()
+
+    if parent_folder_selected:
+        local_time = time.localtime()
+        date_time = time.strftime('%d-%m-%Y_%H', local_time)  # adding hour in case of trial/error
+
+        # Create a new subdirectory within the selected folder that takes the day
+        subfolder_path = os.path.join(parent_folder_selected, date_time)
+
+        if not os.path.exists(subfolder_path):
+            os.makedirs(subfolder_path)
+
+        # Use the frequency as the name for the sound
+        file_name = f"{frequency}.wav"
+
+        # Save in the folder
+        full_file_path = os.path.join(subfolder_path, file_name)
+        save_sound_to_file(sound_data, full_file_path)
+
+def save_sound_to_file(sound_data, file_path):
+    '''Modify this if need different audio formats'''
+    # Normalize sound_data to 16-bit PCM format for WAV file
+    sound_data_normalized = np.int16((sound_data / np.max(np.abs(sound_data))) * 32767)
+    with wave.open(file_path, 'w') as wf:
+        wf.setnchannels(1)  # Mono
+        wf.setsampwidth(2)  # 16 bits
+        wf.setframerate(44100)  # Sampling rate
+        wf.writeframes(sound_data_normalized.tobytes())
+
+        
+def select_sound_folder(): 
+    root = tk.Tk()
+    sound_folder = filedialog.askdirectory(title="Select Folder Containing Sound Files")
+    if sound_folder:
+        root.mainloop()  # This will not do anything visible since the window is withdrawn
+    else:
+        root.destroy()
     
+    return sound_folder
+
+
+
 def time_in_millis():
     millis=round(time.time() * 1000)
     return millis
