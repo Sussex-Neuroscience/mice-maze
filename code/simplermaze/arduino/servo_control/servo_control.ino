@@ -20,7 +20,11 @@ int servoNum = 100;
 #define SERVOMAX  600 // This is the 'maximum' pulse length count (out of 4096)
 #define USMIN  600 // This is the rounded 'minimum' microsecond length based on the minimum pulse of 150
 #define USMAX  2400 // This is the rounded 'maximum' microsecond length based on the maximum pulse of 600
-#define SERVO_FREQ 50 // Analog servos run at ~50 Hz updates
+#define SERVO_FREQ 60 // Analog servos run at ~50 Hz updates
+#define GRATSERVOMIN  225 // This is the 'minimum' pulse length count (out of 4096) for the https://www.pololu.com/file/0J1435/FS90-specs.pdf
+#define GRATSERVOMAX  525 // This is the 'maximum' pulse length count (out of 4096) for the https://www.pololu.com/file/0J1435/FS90-specs.pdf
+#define GRATSERVOUSMIN 900 // for the https://www.pololu.com/file/0J1435/FS90-specs.pdf
+#define GRATSERVOUSMAX 2100 // for the https://www.pololu.com/file/0J1435/FS90-specs.pdf
 
 // our servo # counter
 //uint8_t servoNum = 0;
@@ -123,8 +127,11 @@ void loop() {
 } //end loop
 
 ///servo callback functions -------------------------------------------------/////////////////////////////////////////////
-void gratingRoutine(int degree=180, int servoNum=0){
-  pulseLen = map(degree, 0, 180, SERVOMIN, SERVOMAX);
+void gratingRoutine(int degree=90, int servoNum=0){
+
+
+  pulseLen = map(degree, 0, 120, GRATSERVOMIN, GRATSERVOMAX);
+  Serial.println(pulseLen);
   pwm.setPWM(servoNum, 0, pulseLen);
 
 }// grating routines
