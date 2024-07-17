@@ -8,6 +8,7 @@ import cv2 as cv
 import numpy as np
 import argparse
 
+
 def video_calibration(cap):
     # Create a Tkinter window
     window = tk.Tk()
@@ -26,7 +27,9 @@ def video_calibration(cap):
             return
 
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        ret, thresh_frame = cv.threshold(gray, thresh1.get(), thresh2.get(), cv.THRESH_BINARY)
+        ret, thresh_frame = cv.threshold(
+            gray, thresh1.get(), thresh2.get(), cv.THRESH_BINARY
+        )
 
         # Convert to a format Tkinter can use
         cvimage = cv.cvtColor(thresh_frame, cv.COLOR_GRAY2RGB)
@@ -62,29 +65,31 @@ def video_calibration(cap):
 
     return thresh1.get(), thresh2.get()
 
-cap= cv.VideoCapture(0)
+
+cap = cv.VideoCapture(0)
 
 
 # Call the video calibration function
 thresh1, thresh2 = video_calibration(cap)
 
-#check that camera is opened correctly
+# check that camera is opened correctly
 if not cap.isOpened():
     raise IOError("cannot open camera")
 
 while True:
-    ret, frame = cap.read() #ret = boolean returned by read function. it tells us if the frame was captured successfully. 
-    #If it is, it is stored in variable frame
-    frame = cv.resize(frame, None, fx= 0.5, fy= 0.5, interpolation= cv.INTER_AREA) 
+    ret, frame = (
+        cap.read()
+    )  # ret = boolean returned by read function. it tells us if the frame was captured successfully.
+    # If it is, it is stored in variable frame
+    frame = cv.resize(frame, None, fx=0.5, fy=0.5, interpolation=cv.INTER_AREA)
 
-    #apply thresholds from other script
+    # apply thresholds from other script
     grayOriginal, valid = sf.grab_n_convert_frame(cameraHandle=cap)
     ret, gray = cv.threshold(grayOriginal, thresh1, thresh2, cv.THRESH_BINARY)
 
     cv.imshow("Input", gray)
 
-    #press esc to exit
-    c=cv.waitKey(1)
-    if c==27: #ASCII of esc is 27
+    # press esc to exit
+    c = cv.waitKey(1)
+    if c == 27:  # ASCII of esc is 27
         break
-
