@@ -7,6 +7,7 @@ from tkinter import filedialog as fd
 from tkinter import *
 import csv
 
+#def subtract_background()
 
 def collect_metadata(animal_ID, session_ID):
     ear_mark = input("Ear mark identifiers? (y/n): \n").lower()

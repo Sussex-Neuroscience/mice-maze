@@ -11,7 +11,7 @@ import pandas as pd
 from tkinter import filedialog as fd
 from tkinter import *
 import csv
-
+import copy
 
 #for code inspection and testing of the code purposes we add a small pause in between frames in
 #the main code loop... this variable just below this needs to be set to False if one is running the actual experiments
@@ -91,7 +91,7 @@ if drawRois:
                     outputName = new_dir_path+"/"+"rois1.csv")
     rois = pd.read_csv(new_dir_path+"/"+"rois1.csv",index_col=0)
 else:
-    rois = pd.read_csv(new_dir_path+"/"+"rois1.csv",index_col=0)
+    rois = pd.read_csv(new_dir_path+"rois1.csv",index_col=0)
     #rois_save = rois[:]
     #rois_save.to_csv(new_dir_path+"/"+"rois1.csv")
 #load ROI information
@@ -151,12 +151,15 @@ sf.write_data(file_name=os.path.join(new_dir_path,f"session_data_{date_time}.csv
               mode="w",
               data=data.head(n=0))
 
-
+back_sub = cv.createBackgroundSubtractorMOG2()
 #create two windows to show the animal movement while in maze:
 cv.namedWindow('binary maze plus ROIs', cv.WINDOW_NORMAL)
 cv.namedWindow('original image', cv.WINDOW_NORMAL)
-
+cv.namedWindow('frame_diff', cv.WINDOW_NORMAL)
 absolute_time_start = sf.time_in_millis()
+ 
+ 
+
 
 for trial in trials.index:
     if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
@@ -165,6 +168,7 @@ for trial in trials.index:
     trial_start_time = sf.time_in_millis()-absolute_time_start
     if trial == 0:
         time_old_frame = sf.time_in_millis()-trial_start_time
+        
 
     data.loc[trial,"trial_start_time"] = trial_start_time
     data.loc[trial,"rew_location"] = trials.rewlocation[trial]
@@ -222,14 +226,27 @@ for trial in trials.index:
     visited_any_rew_area_flag = False
     first_rew_area = "X"
     while trialOngoing:
-            
+        
         if pause_between_frames:
             time.sleep(0.05)
         
         valid,grayOriginal = cap.read()
         ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
+        fg_mask = back_sub.apply(gray)
+        #ret,gray_inv = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY_INV)
+        
+        try:
+            contours,hierarchy = cv.findContours(fg_mask, cv.RETR_TREE,
+                                          cv.CHAIN_APPROX_NONE)
+            cv.drawContours(fg_mask,contours[0],-1,255,4)
+        except:
+            print("no")
+        cv.drawContours(gray,contours[0],0,(0,255,255),2)
         #binGray = gray[:,:,2]
         time_frame=sf.time_in_millis()-absolute_time_start
+        #if 'old_frame' in locals():
+        #    frame_diff = gray-old_frame
+        #    cv.imshow('frame_diff', frame_diff)
         
         if not valid:
             print("Can't receive frame (stream end?). Exiting ...")
@@ -250,7 +267,10 @@ for trial in trials.index:
         # Display the resulting frame
         cv.imshow('binary maze plus ROIs', gray)
         cv.imshow('original image', grayOriginal)
+        #
+        #contours, hierarchy = cv.findContours(fg_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         
+        cv.imshow('frame_diff', fg_mask) 
         if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
             break
         
@@ -399,6 +419,7 @@ for trial in trials.index:
                     #    print("animal reached an unhandled condition")
                         
         time_old_frame=time_frame
+        #old_frame=copy.deepcopy(gray)
         
     end_trial_time = sf.time_in_millis()-absolute_time_start
     data.loc[trial,"end_trial_time"] = end_trial_time
