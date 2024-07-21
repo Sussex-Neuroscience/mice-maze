@@ -1,6 +1,8 @@
 # import all needed libraries
 from tkinter import filedialog as fd
 from tkinter import *
+import csv
+import copy
 import time
 import os
 
@@ -73,7 +75,10 @@ if sf.config.draw_rois:
     )
     rois = pd.read_csv(sf.config.roi_paths[0], index_col=0)
 else:
-    rois = pd.read_csv(sf.config.roi_paths[0], index_col=0)
+    rois = pd.read_csv(new_dir_path+"/"+"rois1.csv",index_col=0)
+    #rois_save = rois[:]
+    #rois_save.to_csv(new_dir_path+"/"+"rois1.csv")
+#load ROI information
 
 
 # create threshold values for each area
@@ -134,8 +139,11 @@ sf.write_data(
 # create two windows to show the animal movement while in maze:
 cv.namedWindow("binary maze plus ROIs", cv.WINDOW_NORMAL)
 cv.namedWindow("original image", cv.WINDOW_NORMAL)
-
+cv.namedWindow('frame_diff', cv.WINDOW_NORMAL)
 absolute_time_start = sf.time_in_millis()
+ 
+ 
+
 
 for trial in trials.index:
     if cv.waitKey(1) & 0xFF in [ord("q"), 27]:  # Quit on 'q' or ESC
@@ -200,12 +208,25 @@ for trial in trials.index:
 
         if sf.config.pause_between_frames:
             time.sleep(0.05)
-
-        valid, grayOriginal = cap.read()
-        ret, gray = cv.threshold(grayOriginal, 180, 255, cv.THRESH_BINARY)
-        # binGray = gray[:,:,2]
-        time_frame = sf.time_in_millis() - absolute_time_start
-
+        
+        valid,grayOriginal = cap.read()
+        ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
+        fg_mask = back_sub.apply(gray)
+        #ret,gray_inv = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY_INV)
+        
+        try:
+            contours,hierarchy = cv.findContours(fg_mask, cv.RETR_TREE,
+                                          cv.CHAIN_APPROX_NONE)
+            cv.drawContours(fg_mask,contours[0],-1,255,4)
+        except:
+            print("no")
+        cv.drawContours(gray,contours[0],0,(0,255,255),2)
+        #binGray = gray[:,:,2]
+        time_frame=sf.time_in_millis()-absolute_time_start
+        #if 'old_frame' in locals():
+        #    frame_diff = gray-old_frame
+        #    cv.imshow('frame_diff', frame_diff)
+        
         if not valid:
             print("Can't receive frame (stream end?). Exiting ...")
             break
@@ -227,10 +248,13 @@ for trial in trials.index:
             )
 
         # Display the resulting frame
-        cv.imshow("binary maze plus ROIs", gray)
-        cv.imshow("original image", grayOriginal)
-
-        if cv.waitKey(1) & 0xFF in [ord("q"), 27]:  # Quit on 'q' or ESC
+        cv.imshow('binary maze plus ROIs', gray)
+        cv.imshow('original image', grayOriginal)
+        #
+        #contours, hierarchy = cv.findContours(fg_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        
+        cv.imshow('frame_diff', fg_mask) 
+        if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
             break
 
         # grab each area of interest and store them in a dictionary
@@ -373,6 +397,16 @@ for trial in trials.index:
                     #    print("animal has been rewarded")
                     # else:
                     #    print("animal reached an unhandled condition")
+                        
+        time_old_frame=time_frame
+        #old_frame=copy.deepcopy(gray)
+        
+    end_trial_time = sf.time_in_millis()-absolute_time_start
+    data.loc[trial,"end_trial_time"] = end_trial_time
+    sf.write_data(file_name=os.path.join(new_dir_path,f"session_data_{date_time}.csv"),
+              mode="a",
+              data=data.loc[trial].values)
+                        
 
         time_old_frame = time_frame
 

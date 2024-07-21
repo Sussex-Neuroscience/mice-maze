@@ -9,6 +9,7 @@ from tkinter import simpledialog, Scale, HORIZONTAL, Label, ttk, filedialog, mes
 import csv
 import random
 import wave
+import sounddevice as sd
 
 
 def collect_metadata(animal_ID):
@@ -192,10 +193,10 @@ def grab_cut(frame,xstart,ystart,xlen,ylen):
     return cut
 
 
-def choose_csv(path='/home/andre/Desktop/maze_recordings/'):
-    root=tk()
+def choose_csv():
+    root=tk.Tk()
     # Show the file dialog and get the selected file name
-    filename = fd.askopenfilename(initialdir=path)
+    filename = fd.askopenfilename()
     # Print the file name to the console
     #print (filename)
     root.destroy()
@@ -253,8 +254,8 @@ def generate_sound_data(frequency, volume, waveform):
 
 def create_trials(frequency, volume, waveform):
     # Number of repetitions for each ROI
-    total_repetitions = 5
-    zero_repetitions = 1
+    total_repetitions = 9
+    zero_repetitions = 5
     # ROIs to be used
     rois = ["ROI1", "ROI2", "ROI3", "ROI4"]
     # Create a list of ROIs repeated total_repetitions times
@@ -281,36 +282,42 @@ def create_trials(frequency, volume, waveform):
 
     # Create trials
     for i in range(total_repetitions):
-        for j in range(len(rois)):
-            repetition_numbers.append(i + 1)  # Add repetition number
-            if i < zero_repetitions:
-                # Add zero data for the specified repetitions
+        if i % 2 == 0:  # Alternate zero data repetitions
+            for j in range(len(rois)):
+                repetition_numbers.append(i + 1)  # Add repetition number
                 frequency_final.append(0)
                 volume_final.append(0)
                 waveform_final.append('none')
                 wave_arrays.append(np.zeros(441000))  # Assuming 10 seconds of silence
-            elif i == 1:  # Trial 2 should use the initial list
-                frequency_final.append(frequency[j])
-                volume_final.append(volume[j])
-                waveform_final.append(waveform[j])
-                wave_arrays.append(generate_sound_data(frequency[j], volume[j], waveform[j]))
-            else:  # Trials 3 to 5 should be shuffled
-                if j == 0:
-                    # Shuffle the sound data at the beginning of each trial
-                    while True:
-                        shuffled_frequency, shuffled_volume, shuffled_waveform = shuffle_data(frequency, volume, waveform)
-                        trial_tuple = get_trial_tuple(shuffled_frequency, shuffled_volume, shuffled_waveform)
-                        if trial_tuple not in previous_trials:
-                            previous_trials.add(trial_tuple)
-                            break
-                frequency_final.append(shuffled_frequency[j])
-                volume_final.append(shuffled_volume[j])
-                waveform_final.append(shuffled_waveform[j])
-                wave_arrays.append(generate_sound_data(shuffled_frequency[j], shuffled_volume[j], shuffled_waveform[j]))
+        else:
+            while True:
+                if i == 1:  # Trial 2 should use the initial list
+                    trial_tuple = get_trial_tuple(frequency, volume, waveform)
+                else:  # Other trials should be unique and shuffled
+                    shuffled_frequency, shuffled_volume, shuffled_waveform = shuffle_data(frequency, volume, waveform)
+                    trial_tuple = get_trial_tuple(shuffled_frequency, shuffled_volume, shuffled_waveform)
+
+                if trial_tuple not in previous_trials:
+                    previous_trials.add(trial_tuple)
+                    if i == 1:
+                        for j in range(len(rois)):
+                            repetition_numbers.append(i + 1)  # Add repetition number
+                            frequency_final.append(frequency[j])
+                            volume_final.append(volume[j])
+                            waveform_final.append(waveform[j])
+                            wave_arrays.append(generate_sound_data(frequency[j], volume[j], waveform[j]))
+                    else:
+                        for j in range(len(rois)):
+                            repetition_numbers.append(i + 1)  # Add repetition number
+                            frequency_final.append(shuffled_frequency[j])
+                            volume_final.append(shuffled_volume[j])
+                            waveform_final.append(shuffled_waveform[j])
+                            wave_arrays.append(generate_sound_data(shuffled_frequency[j], shuffled_volume[j], shuffled_waveform[j]))
+                    break
 
     # Create the DataFrame with the repetition numbers, repeated ROIs, and final data
     df = pd.DataFrame({
-        "trial": repetition_numbers,
+        "trial_ID": repetition_numbers,
         "ROIs": rois_repeated,
         "frequency": frequency_final,
         "volume": volume_final,
@@ -326,6 +333,10 @@ def create_trials(frequency, volume, waveform):
     df["mouse_enter_time"] = [None] * len(df)
 
     return df
+
+def play_sound(sound_data, fs=44100):
+    """Play sound using sounddevice library."""
+    sd.play(sound_data, fs)
 
 def save_sound(sound_data, frequency, waveform):
     parent_folder_selected = filedialog.askdirectory()
@@ -357,7 +368,7 @@ def save_sound_to_file(sound_data, file_path):
         wf.setframerate(44100)  # Sampling rate
         wf.writeframes(sound_data_normalized.tobytes())
 
-        
+
 def select_sound_folder(): 
     root = tk.Tk()
     sound_folder = filedialog.askdirectory(title="Select Folder Containing Sound Files")

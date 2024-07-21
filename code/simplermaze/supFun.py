@@ -76,6 +76,7 @@ def safe_input(
 
     return user_input
 
+#def subtract_background()
 
 def is_valid_date(date_str: str) -> bool:
     """

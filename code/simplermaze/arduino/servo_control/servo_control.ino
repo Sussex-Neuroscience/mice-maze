@@ -20,7 +20,15 @@ int servoNum = 100;
 #define SERVOMAX  600 // This is the 'maximum' pulse length count (out of 4096)
 #define USMIN  600 // This is the rounded 'minimum' microsecond length based on the minimum pulse of 150
 #define USMAX  2400 // This is the rounded 'maximum' microsecond length based on the maximum pulse of 600
-#define SERVO_FREQ 60 // Analog servos run at ~50 Hz updates
+
+#define SERVO_FREQ 50 // Analog servos run at ~50 Hz updates
+
+#define REWSERVOMIN  190 // This is the 'minimum' pulse length count (out of 4096)
+#define REWSERVOMAX  560 // This is the 'maximum' pulse length count (out of 4096)
+#define REWUSMIN  750 // This is the rounded 'minimum' microsecond length based on the minimum pulse of 150
+#define REWUSMAX  2250 // This is the rounded 'maximum' microsecond length based on the maximum pulse of 600
+
+
 #define GRATSERVOMIN  225 // This is the 'minimum' pulse length count (out of 4096) for the https://www.pololu.com/file/0J1435/FS90-specs.pdf
 #define GRATSERVOMAX  525 // This is the 'maximum' pulse length count (out of 4096) for the https://www.pololu.com/file/0J1435/FS90-specs.pdf
 #define GRATSERVOUSMIN 900 // for the https://www.pololu.com/file/0J1435/FS90-specs.pdf
@@ -60,8 +68,8 @@ int time1 = 0;
 int time2 = 0;
 int pulseLen = 0;
 int pelletDropped = 0;
-int rewPulseLen1 = map(90, 0, 180, SERVOMIN, SERVOMAX);
-int rewPulseLen2 = map(45, 0, 180, SERVOMIN, SERVOMAX);
+int rewPulseLen1 = map(90, 0, 180, REWSERVOMIN, REWSERVOMAX);
+int rewPulseLen2 = map(45, 0, 180, REWSERVOMIN, REWSERVOMAX);
 
 SerialCommand sCmd;     // The demo SerialCommand object
 
