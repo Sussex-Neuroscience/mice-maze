@@ -1,48 +1,28 @@
 # import all needed libraries
-import numpy as np
-import cv2 as cv
-import pandas as pd
-import supFun as sf
-import time
-import serial
-import os
-import pandas as pd
 from tkinter import filedialog as fd
 from tkinter import *
-import csv
+import time
+import os
 
+import supFun as sf
 
-# for code inspection and testing of the code purposes we add a small pause in between frames in
-# the main code loop... this variable just below this needs to be set to False if one is running the actual experiments
-pause_between_frames = True
+import pandas as pd
+import cv2 as cv
+import numpy as np
+import serial
 
-# whenever working without the actual servos and ESP32 set the next variable to False
-serialOn = False
-
-# if running experiments "testing" should be False (related to testing the code)
-testing = True
-
-# If ROIs need to be drawn by experiementer, set the next variable to TRUE
-drawRois = False
-
-# If just testing and no video needs to be recorded, set the next variable to FALSE
-recordVideo = False
-# define where the video is coming from. Use 0 for the first camera on the computer,
-# or a complete file path to use a pre-recorded video
-videoInput = "/home/andre/Desktop/maze_test.mp4"
 
 
 # get the identification of each grating
-gratingID = pd.read_csv("grating_maps.csv", index_col=0)
+gratingID = pd.read_csv(sf.config.grating_maps_path, index_col=0)
 # gratingID = [match for match in list(trialsIDs.keys()) if "motor" in match]
 
 
 # get the current date and time, so all files created do not overwrite existing data
 date_time = sf.get_current_time_formatted()
 
-if testing:
-    new_dir_path = "/home/andre/Desktop/maze_recordings/"
-    # new_dir_path = "C:/Users/labadmin/Desktop/maze_recordings/"
+if sf.config.testing:
+    new_dir_path = sf.config.output_dir
     experiment_phase = 3
     # create  trials and save them to csv (later this csv needs to go to the appropriate session folder)
     trials = sf.create_trials(
@@ -55,7 +35,7 @@ if testing:
     trialsIDs = trials
 else:
     animal_ID, session_ID, experiment_phase = sf.get_user_inputs()
-    base_path = os.path.join(os.path.expanduser("~"), "Desktop", "maze_recordings")
+    base_path = sf.config.output_dir
     sf.ensure_directory_exists(base_path)
 
     new_dir_path = sf.setup_directories(base_path, date_time, animal_ID, session_ID)
@@ -74,35 +54,30 @@ else:
     trialsIDs = pd.read_csv(sf.choose_csv())
 
 
-if serialOn:
-    # create a serial object and connect to it
-
+if sf.config.serial_enabled:
+    # Create a serial object and connect to it
     ser = serial.Serial("COM5", 115200)
     print(ser.in_waiting)
+
     while ser.in_waiting > 0:
         ser.readline()
+
     ser.flush()
 
 
-if drawRois:
+if sf.config.draw_rois:
     sf.define_rois(
-        video_input=videoInput,
+        video_input=sf.config.video_location,
         roi_names=["entrance1", "entrance2", "rewA", "rewB", "rewC", "rewD"],
         output_name=new_dir_path + "/" + "rois1.csv",
     )
-    rois = pd.read_csv(new_dir_path + "/" + "rois1.csv", index_col=0)
+    rois = pd.read_csv(sf.config.roi_paths[0], index_col=0)
 else:
-    rois = pd.read_csv(new_dir_path + "/" + "rois1.csv", index_col=0)
-    # rois_save = rois[:]
-    # rois_save.to_csv(new_dir_path+"/"+"rois1.csv")
-# load ROI information
+    rois = pd.read_csv(sf.config.roi_paths[0], index_col=0)
 
 
-thresholds = dict()
-# timeSpentAreas = dict()
-for item in rois:
-    # create threshold values for each area
-    thresholds[item] = 0
+# create threshold values for each area
+thresholds = {reigon: 0 for reigon in rois}
 
 
 # create variables that will store session data
@@ -115,12 +90,13 @@ incorrect = list()
 hasVisited = dict()
 mousePresent = dict()
 
-cap = sf.start_camera(video_input=videoInput)
+cap = sf.start_camera(video_input=sf.config.video_location)
 
 frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 fps = int(cap.get(cv.CAP_PROP_FPS))
-if recordVideo:
+
+if sf.config.record_video:
     videoFileObject = sf.record_video(cap, recordFile, frame_width, frame_height, fps)
 
 
@@ -184,7 +160,7 @@ for trial in trials.index:
         motor1 = motor[motor.find(" ") + 1 :]
         message = "grt{0} 45\n".format(motor1)
         # print(message)
-        if serialOn:
+        if sf.config.serial_enabled:
             ser.write(message.encode("utf-8"))
             ser.flush()
 
@@ -197,7 +173,7 @@ for trial in trials.index:
         else:
             message = "grt{0} 0\n".format(grtPosition[0:2])
 
-        if serialOn:
+        if sf.config.serial_enabled:
             ser.write(message.encode("utf-8"))
             ser.flush()
 
@@ -222,7 +198,7 @@ for trial in trials.index:
     first_rew_area = "X"
     while trialOngoing:
 
-        if pause_between_frames:
+        if sf.config.pause_between_frames:
             time.sleep(0.05)
 
         valid, grayOriginal = cap.read()
@@ -234,7 +210,7 @@ for trial in trials.index:
             print("Can't receive frame (stream end?). Exiting ...")
             break
 
-        if recordVideo:
+        if sf.config.record_video:
             videoFileObject.write(grayOriginal)
 
         # display rois on top of the frame for user feedback
@@ -371,7 +347,7 @@ for trial in trials.index:
                         if not mistake:
                             data.loc[trial, "hit"] = 1
                             message = "rew{0}\n".format(trials.rewlocation[trial])
-                            if serialOn:
+                            if sf.config.serial_enabled:
                                 ser.write(message.encode("utf-8"))
                                 ser.flush()
 
@@ -424,6 +400,5 @@ sessionDuration = time.time() - sessionStartTime
 # When everything done, release the capture
 cap.release()
 cv.destroyAllWindows()
-if recordVideo:
+if sf.config.record_video:
     videoFileObject.release()  # videoFile.release()
-    # pass

@@ -1,0 +1,39 @@
+# Enables debugging features while running 
+# Should be set to false before running experiments 
+testing: true 
+
+# Add a small pause between frames in the main loop for debugging
+# Should be set to false before running experiments 
+pause_between_frames: true 
+
+# Whether or not the program is to make use of the servos and ESP32 
+serial_enabled: false 
+
+# Whether or not the experimenter is to define the regions of interest themselves 
+draw_rois: false 
+
+# Whether or not to save the video 
+# Should be set to true before running experiments 
+record_video: false
+
+# Absolute path of an example video used for testing and debugging 
+# Not necessary when running experiments 
+video_location: "/Users/henrywilliams/Downloads/videos/maze_test.mp4"
+
+# Absolute path of the grating mappings csv file 
+grating_maps_path: "/Users/henrywilliams/Documents/programming/python/mice-maze-rewrite/code/simplermaze/grating_maps.csv"
+
+# Absolute path of the reward sequencing csv file 
+reward_seqs_path: "/Users/henrywilliams/Documents/programming/python/mice-maze-rewrite/code/simplermaze/reward_sequences.csv"
+
+# List of reigion of interest definition files
+# There must be at least one entry in this list 
+roi_paths:
+  - "/Users/henrywilliams/Documents/programming/python/mice-maze-rewrite/code/simplermaze/rois1.csv"
+
+# Where to store the data gathered from the experiments 
+output_dir: "/Users/henrywilliams/Documents/programming/python/mice-maze-rewrite/maze_recordings"
+
+# Whether or not to record logs 
+# This should always be true
+do_logs: true 

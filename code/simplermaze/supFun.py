@@ -7,11 +7,17 @@ from re import Pattern
 from typing import Optional, Callable, Dict, Tuple, List
 import re
 from datetime import datetime
+import logging
 
 import pandas as pd
 import cv2
 import numpy as np
 
+from config import Config
+
+config = Config("/Users/henrywilliams/Documents/programming/python/mice-maze-rewrite/code/simplermaze/config.yaml")
+
+logger = logging.getLogger("simple_maze.supFun")
 
 def safe_input(
     prompt: str,
@@ -37,12 +43,13 @@ def safe_input(
     >>> import re
     >>> def is_positive_number(s):
     ...     return s.isdigit() and int(s) > 0
-    >>> safe_input("Enter a positive number: ", accepted_pattern=re.compile(r'^\d+$'), check_function=is_positive_number)
+    >>> safe_input("Enter a positive number: ", accepted_pattern=re.compile(r'^\\d+$'), check_function=is_positive_number)
     Enter a positive number: -5
     Invalid input, please try again
     Enter a positive number: 10
     '10'
     """
+    logger.info('safe_input invoked')
     user_input = input(prompt)
 
     matches_pattern = (
@@ -51,6 +58,12 @@ def safe_input(
     passes_check = check_function(user_input) if check_function is not None else True
 
     while not (matches_pattern and passes_check):
+        logger.log('input failed validation')
+        if not matches_pattern:
+            logger.info("input failed regex check")
+        if not passes_check: 
+            logger.info("input failed custom check")
+
         print("Invalid input, please try again")
         user_input = input(prompt)
 
@@ -153,6 +166,7 @@ def collect_metadata(animal_id, session_id):
         "animal gender": "m",
     }
     """
+    logger.info("collecting metadata for animal %s, session %s", animal_id, session_id)
     ear_mark = safe_input(
         "Ear mark identifiers? (y/n): \n",
         accepted_pattern=re.compile(r"y|n|Y|N"),
@@ -173,6 +187,8 @@ def collect_metadata(animal_id, session_id):
         accepted_pattern=re.compile(r"m|f|M|F"),
         check_function=lambda g: g in ["m", "M", "f", "F"],
     ).lower()
+
+    logger.info("finished collecting metadata")
 
     data = {
         "animal ID": animal_id,
@@ -216,8 +232,9 @@ def save_metadata_to_csv(data: Dict[str, str], new_dir_path: str, file_name: str
     """
     df = pd.DataFrame([data])
     csv_path = os.path.join(new_dir_path, file_name)
+    logger.info("saving metadata to %s", csv_path)
     df.to_csv(csv_path, index=False)
-    print(f"Metadata saved to: {csv_path}")
+    logger.info("successfully saved metadata")
 
 
 def setup_directories(base_path: str, date_time: str, animal_id: str, session_id: int):
@@ -248,6 +265,7 @@ def setup_directories(base_path: str, date_time: str, animal_id: str, session_id
     """
     new_directory = f"{date_time}{animal_id}{session_id}"
     new_dir_path = os.path.join(base_path, new_directory)
+    logger.info("setting up directory at %s", new_dir_path)
     ensure_directory_exists(new_dir_path)
     return new_dir_path
 
@@ -273,9 +291,9 @@ def ensure_directory_exists(path: str) -> None:
     """
     if not os.path.exists(path):
         os.makedirs(path)
-        print(f"Directory created: {path}")
+        logger.info("directory created: %s", path)
     else:
-        print(f"Directory already exists: {path}")
+        logger.info("directory already exists: %s", path)
 
 
 def get_user_inputs() -> Tuple[str, str, int]:
@@ -387,10 +405,12 @@ def start_camera(video_input: int = 0) -> Optional[cv2.VideoCapture]:
     >>>     cap.release()
     >>>     cv2.destroyAllWindows()
     """
+    logger.info("attempting to begin video capture")
     cap = cv2.VideoCapture(video_input)
     if not cap.isOpened():
-        print("Cannot open camera")
+        logger.fatal("failed to open video capture")
         exit()
+    logger.info("successfully started video capture")
     return cap
 
 
@@ -439,6 +459,7 @@ def record_video(
     >>>     cap.release()
     >>>     cv2.destroyAllWindows()
     """
+    logger.info("recording video")
     cc = cv2.VideoWriter_fourcc(*"XVID")
     videoFileObject = cv2.VideoWriter(record_file, cc, fps, (frame_width, frame_height))
     return videoFileObject
@@ -475,6 +496,7 @@ def csv_to_dict(file_name: str = "rois.csv") -> Dict[str, dict]:
     >>> print(data_dict)
     {'column1': {0: 'value1', 1: 'value2', ...}, 'column2': {0: 'value3', 1: 'value4', ...}, ...}
     """
+    logger.info("converting csv to dictionary")
     csv = pd.read_csv(file_name, index_col=0)
     return csv.transpose().to_dict()
 
@@ -508,30 +530,30 @@ def define_rois(
     >>> # Output: Saves ROI coordinates to "my_rois.csv" and returns a DataFrame with ROI data.
     """
 
+    logger.info("defining regions of interest")
     cap = start_camera(video_input)
-
-    if not cap.isOpened():
-        print("Cannot open camera")
-        exit()
 
     ret, frame = cap.read()
 
     if not ret:
-        print("Can't receive frame (stream end?). Exiting ...")
+        logger.fatal("can't receive frame (stream end?)")
         exit()
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    logger.info("converting frame to hsv")
 
     cap.release()
 
     rois = {}
 
     for entry in roi_names:
-        print(f"please select location of {entry}")
+        logger.info("defining region of interest for %s", entry)
+        print(f"Please select location of {entry}")
         rois[entry] = cv2.selectROI("frame", gray)
 
     df = pd.DataFrame(rois)
     df.index = ["xstart", "ystart", "xlen", "ylen"]
+    logger.info("saving regions of interest to %s", output_name)
     df.to_csv(output_name, index=["xstart", "ystart", "xlen", "ylen"])
     cv2.destroyAllWindows()
 
@@ -564,12 +586,14 @@ def grab_cut(
     >>> cv2.waitKey(0)
     >>> cv2.destroyAllWindows()
     """
+    logger.info("performing grab cut")
     cut = frame[ystart : ystart + ylen, xstart : xstart + xlen]
     return cut
 
 
 def create_trials(
-    num_trials: int = 100, experiment_phase: int = 2, nonRepeat: bool = False
+    num_trials: int = 100, experiment_phase: int = 2, nonRepeat: bool = False,
+    grating_map: Optional[pd.DataFrame] = None, reward_sequences: Optional[pd.DataFrame] = None
 ) -> pd.DataFrame:
     """
     Create trial sequences based on experiment parameters and conditions.
@@ -597,16 +621,27 @@ def create_trials(
     3           10       False         False
     4           12       False         False
     """
-
+    logger.info("creating trials")
     if not (1 <= experiment_phase <= 4):
+        logger.warning("invalid experiment phase, defaulting to phase 1")
         print("Invalid session stage, defaulting to stage 1 - habituation")
         experiment_phase = 1
 
-    grating_map = pd.read_csv("./simplermaze/grating_maps.csv")
-    reward_sequences = pd.read_csv("./simplermaze/reward_sequences.csv")
+    if grating_map is None: 
+        grating_map = pd.read_csv(config.grating_maps_path)
+        logger.info("cached grating map not found, reading from file")
+    else: 
+        logger.info("using cached grating maps")
+
+    if reward_sequences is None: 
+        reward_sequences = pd.read_csv(config.reward_seqs_path)
+        logger.info("cached reward sequences not found, reading from file")
+    else: 
+        logger.info("using cached reward sequences")
+
     stage = reward_sequences[reward_sequences.sessionID == f"Stage {experiment_phase}"]
     trials_distribution = dict()
-
+    logger.info("creating sub-trials")
     for index, location in enumerate(stage.rewloc):
         subTrials = int(np.floor(num_trials * list(stage.portprob)[index]))
         probRewardLocation = np.random.choice(
@@ -634,21 +669,24 @@ def create_trials(
     # now shuffle the list
     np.random.shuffle(all_together)
 
+
     if nonRepeat:
+        logger.info("no-repeat enabled, re-arrainging trials")
         # rearrange the list so that two/three consecutive trials rewarding the same location never happens
         for i in range(4):
             for index in range(len(all_together) - 1):
                 if all_together[index][0] == all_together[index + 1][0]:
-                    print("repeat coming up... fixing")
                     temp = all_together[index + 1]
                     all_together.append(temp)
                     all_together.pop(index + 1)
+        logger.info("finished re-arrainging trials")
 
     # create DataFrame using data
     trials = pd.DataFrame(
         all_together, columns=["rewlocation", "givereward", "wrongallowed"]
     )
 
+    logger.info("finished creating trials")
     return trials
 
 
@@ -668,10 +706,12 @@ def choose_csv() -> str:
     >>> print(f"Selected CSV file: {csv_file}")
     Selected CSV file: /path/to/selected/file.csv
     """
+    logger.info("selecting csv file")
     root = Tk()
     # Show the file dialog and get the selected file name
     filename = fd.askopenfilename()
     root.destroy()
+    logger.info("finished selecting csv file")
     return filename
 
 
@@ -705,7 +745,7 @@ def empty_frame(
 
     [5 rows x 14 columns]
     """
-
+    logger.info("creating an empty dataframe")
     columns = [
         "hit",
         "miss",
@@ -719,6 +759,7 @@ def empty_frame(
         "first_reward_area_visited",
     ] + roi_names
     data = pd.DataFrame(None, index=range(rows), columns=columns)
+    logger.info("finished creating empty dataframe")
     return data
 
 
@@ -763,6 +804,7 @@ def write_data(
     Example usage:
     >>> write_data("output.csv", "w", ["data1", "data2", "data3"])
     """
+    logger.info("writing csv")
     with open(file_name, mode) as data_file:
         data_writer = csv.writer(data_file, delimiter=",")
         data_writer.writerow(data)
