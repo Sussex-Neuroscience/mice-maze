@@ -1,0 +1,5 @@
+.yolo-test/
+frames/ 
+mice-maze.yolov8/
+runs/ 
+yolov8.pt
