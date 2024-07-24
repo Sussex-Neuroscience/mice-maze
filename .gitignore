@@ -133,6 +133,18 @@ dmypy.json
 .pyre/
 
 
+yolo-test/.yolo-test
+yolo-test/frames
+yolo-test/runs
+yolo-test/wandb
+yolo-test/mice-maze.yolov8
+yolo-test/*.pt
+**/maze_recordings
+**/wandb
+yolo-test/ultralytics
+runs/
 *.log
 
 /maze_recordings
+
+.vscode/
