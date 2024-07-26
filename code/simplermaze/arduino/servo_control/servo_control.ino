@@ -77,7 +77,7 @@ SerialCommand sCmd;     // The demo SerialCommand object
 void setup() {
   Serial.begin(115200);
 
-  Wire.begin(14, 27); 
+  //Wire.begin(14, 27);
   pinMode(IRsensorA,INPUT);
   pinMode(IRsensorB,INPUT);
   pinMode(IRsensorC,INPUT);
