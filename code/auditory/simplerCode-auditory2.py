@@ -68,7 +68,7 @@ if make_sounds:
     trials = sf.create_trials(frequency, volume, waveform)
 
     #save trials to csv
-    trials.to_csv(os.path.join(new_dir_path,"trials_.csv"))
+    trials.to_csv(os.path.join(new_dir_path,f"trials_{date_time}.csv"))
 
 
 
@@ -140,7 +140,7 @@ absolute_time_start = sf.time_in_millis()
 trials = pd.read_csv(sf.choose_csv())
 
 unique_trials = trials['trial_ID'].unique()
-trial_lengths = [10, 15, 2, 15, 2, 15, 2, 15, 2]
+trial_lengths = [1, 15, 2, 15, 2, 15, 2, 15, 2]
 
 ######## start working from here ###########
 for trial in unique_trials:
@@ -167,6 +167,9 @@ for trial in unique_trials:
     ent2History = [False,False]
     started_trial_timer = False
     ongoing_trial_duration = 0
+    time_old_frame= 0 
+
+
     while trialOngoing:
         #routine to check if enough time has elapsed
         #if started_trial_timer:
@@ -221,24 +224,20 @@ for trial in unique_trials:
             rois_list= ['ROI1', 'ROI2', 'ROI3', 'ROI4']
 
             if mousePresent[item]:
-                #print(item)
                 
                 hasVisited[item] = True
                 duration=time_frame-time_old_frame
                 #print(duration)
 
                 if item in rois_list:
-                    trial_id_index = trials['trial_ID'] 
-                    roi_index = trials['ROIs']    
-
-                    condition = (trial_id_index == trial) & (roi_index == item)
+                    condition = (trials['trial_ID'] == trial) & (trials['ROIs'] == item)
                     
-                    #add time spent in rois per specific trial
-                    if trials.loc[condition, 'time spent'].item() == None:
+                    if pd.isna(trials.loc[condition, 'time spent']).all():
                         trials.loc[condition, 'time spent'] = duration
                     else:
-                        trials.loc[condition, 'time spent'] = trial[item][trial]+duration
-                    
+                        trials.loc[condition, 'time spent'] += duration
+
+        time_old_frame = time_frame
         #time_old_frame=time_frame
         
     
@@ -292,6 +291,9 @@ for trial in unique_trials:
             print(f"Starting trial {trial} for {time_trial} minutes.")
             start_time = time.time()
             end_time = start_time + time_trial * 60 
+
+            if time.time() >= end_time:
+                trialOngoing=False
 
             #put in the  df the time the mouse entered the maze
             trials.loc[trials["trial_ID"] == trial,"mouse_enter_time"]=time_frame#-trial_start_time
@@ -349,8 +351,7 @@ for trial in unique_trials:
                                                
         time_old_frame=time_frame
 
-    if time.time() >= end_time:
-        trialOngoing=False
+
 
     
 
