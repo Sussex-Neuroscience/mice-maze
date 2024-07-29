@@ -65,7 +65,8 @@ if make_sounds:
         sound_data = sf.generate_sound_data(frequency[i], volume[i], waveform[i])
         # sf.save_sound(sound_data, frequency[i], waveform[i])
 
-    trials = sf.create_trials(frequency, volume, waveform)
+    trials,sound_arrays = sf.create_trials(frequency, volume, waveform)
+    np.save(os.path.join(new_dir_path,f"trials_{date_time}.npy"),sound_arrays)
 
     #save trials to csv
     trials.to_csv(os.path.join(new_dir_path,f"trials_{date_time}.csv"))
@@ -137,7 +138,11 @@ absolute_time_start = sf.time_in_millis()
 #sound_folder= sf.select_sound_folder()
 
 #load the trials file (description of each trial)
-trials = pd.read_csv(sf.choose_csv())
+base_name = sf.choose_csv()
+base_name = base_name[:base_name.find(".")]
+trials = pd.read_csv(base_name+".csv")
+
+sound_array = np.load(base_name+".npy")
 
 unique_trials = trials['trial_ID'].unique()
 trial_lengths = [1, 15, 2, 15, 2, 15, 2, 15, 2]
@@ -294,7 +299,10 @@ for trial in unique_trials:
             if start_new_time:
                 start_time = time.time()
                 start_new_time=False
-            
+                sound1 = sound_array[trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI1')].index[0]]
+                sound2 = sound_array[trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI2')].index[0]]
+                sound3 = sound_array[trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI3')].index[0]]
+                sound4 = sound_array[trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI4')].index[0]]
             
             
 
@@ -329,8 +337,9 @@ for trial in unique_trials:
                    not mousePresent["ROI2"] and \
                    not mousePresent["ROI3"] and \
                    not mousePresent["ROI4"]:
-                   sd.stop()
-
+                    reset_play=True
+                    sd.stop()
+                    
                 
                     
 
@@ -341,23 +350,23 @@ for trial in unique_trials:
                     #print("item",item)
                     #print("mouse present",mousePresent)
                     if mousePresent[item]:
-                        if trials["waveform"][trials["trial_ID"][trial]]!="none":
+                        #temp
+                        if trials[trials["trial_ID"]==trial]["waveform"].values[0]!="none":
                         #temp_roi= trials["ROIs"][trials["trial_ID"][trial]]
                         
-                            
-                            if item=="ROI1":    
-                                sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI1'), 'wave_arrays'].item()
-                                
-                            if item=="ROI2" :
-                                sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI2'), 'wave_arrays'].item()
-                                
-                            if item=="ROI3" :
-                                sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI3'), 'wave_arrays'].item()
-                                
-                            if item=="ROI4" :
-                                sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI4'), 'wave_arrays'].item()
-                            
-                            sf.play_sound(sound)
+                            #print("putting sound")
+                            if item=="ROI1"and reset_play:    
+                                reset_play=False
+                                sf.play_sound(sound1)
+                            if item=="ROI2"and reset_play :
+                                reset_play=False                              
+                                sf.play_sound(sound2)
+                            if item=="ROI3"and reset_play :
+                                reset_play=False                                                                
+                                sf.play_sound(sound3)
+                            if item=="ROI4" and reset_play:                           
+                                reset_play=False
+                                sf.play_sound(sound4)
                         
                         
                             
