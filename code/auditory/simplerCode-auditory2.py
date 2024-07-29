@@ -21,7 +21,7 @@ import soundfile as sf1
 #for code inspection and testing of the code purposes we add a small pause in between frames in
 #the main code loop... this variable just below this needs to be set to False if one is running
 #the actual experiments
-pause_between_frames=False
+pause_between_frames=True
 
 #If ROIs need to be drawn by experiementer, set the next variable to TRUE
 drawRois = False
@@ -35,7 +35,7 @@ make_sounds = False
 recordVideo = False
 #define where the video is coming from. Use 0 for the first camera on the computer,
 #or a complete file path to use a pre-recorded video
-videoInput =  "C:/Users/aleja/Downloads/maze_test.mp4"
+videoInput =  "/home/andre/Desktop/maze_test.mp4"
 
 #get the current date and time, so all files created do not overwrite existing data
 date_time = sf.get_current_time_formatted()
@@ -145,6 +145,7 @@ trial_lengths = [1, 15, 2, 15, 2, 15, 2, 15, 2]
 ######## start working from here ###########
 for trial in unique_trials:
     time_trial = trial_lengths[trial-1]
+    print("trial_duration: ", time_trial)
     if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
         break
 
@@ -325,21 +326,25 @@ for trial in unique_trials:
                 
 
                 if "1" in item or "2" in item or "3" in item or "4" in item:
-                    print("item",item)
-                    print("mouse present",mousePresent)
+                    #print("item",item)
+                    #print("mouse present",mousePresent)
                     if mousePresent[item]:
+                        if trials["waveform"][trials["trial_ID"][trial]]!="none":
+                        #temp_roi= trials["ROIs"][trials["trial_ID"][trial]]
                         
-                        if item=="ROI1" & trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI1'), ['waveform']] != 'none':    
-                            sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI1'), 'wave_arrays'].item()
-                            sf.play_sound(sound)
-                        if item=="ROI2" & trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI2'), ['waveform']] != 'none':
-                            sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI2'), 'wave_arrays'].item()
-                            sf.play_sound(sound)
-                        if item=="ROI3" & trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI3'), ['waveform']] != 'none':
-                            sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI3'), 'wave_arrays'].item()
-                            sf.play_sound(sound)
-                        if item=="ROI4" & trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI4'), ['waveform']] != 'none':
-                            sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI4'), 'wave_arrays'].item()
+                            
+                            if item=="ROI1":    
+                                sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI1'), 'wave_arrays'].item()
+                                
+                            if item=="ROI2" :
+                                sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI2'), 'wave_arrays'].item()
+                                
+                            if item=="ROI3" :
+                                sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI3'), 'wave_arrays'].item()
+                                
+                            if item=="ROI4" :
+                                sound= trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI4'), 'wave_arrays'].item()
+                            
                             sf.play_sound(sound)
                         
                         
