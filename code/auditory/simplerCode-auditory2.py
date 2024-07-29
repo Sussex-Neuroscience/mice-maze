@@ -170,7 +170,7 @@ for trial in unique_trials:
     ongoing_trial_duration = 0
     time_old_frame= 0 
 
-
+    start_new_time=True
     while trialOngoing:
         #routine to check if enough time has elapsed
         #if started_trial_timer:
@@ -284,25 +284,34 @@ for trial in unique_trials:
             
         if e2Aftere1 and enteredMaze==False:
             print(f"mouse entered the maze for trial {trial}")
+            #mouse_in_maze=True
             #if started_trial_timer==False:
                 #starting time stamp
                 #routine to start the timer
             #    started_trial_timer=True
             #start timer from the time the mouse has entered the maze
             print(f"Starting trial {trial} for {time_trial} minutes.")
-            start_time = time.time()
-            end_time = start_time + time_trial * 60 
+            if start_new_time:
+                start_time = time.time()
+                start_new_time=False
+            
+            
+            
 
-            if time.time() >= end_time:
-                trialOngoing=False
+            
+            end_time = start_time + time_trial * 60
+            print(end_time)
 
             #put in the  df the time the mouse entered the maze
             trials.loc[trials["trial_ID"] == trial,"mouse_enter_time"]=time_frame#-trial_start_time
             trials.loc[trials["trial_ID"] == trial,"trial_start_time"]=start_time
             trials.loc[trials["trial_ID"] == trial,"end_trial_time"]=end_time
             enteredMaze = True
-        if e1Aftere2:
+        if e1Aftere2 and enteredMaze:
             print("mouse has left the maze")
+            if time.time() >= end_time:
+                print(time.time()>=end_time)
+                trialOngoing=False
             #trialOngoing=False
             #trialDurations.append((trial,time.time()-trialStartTime))
             enteredMaze = False
@@ -310,7 +319,10 @@ for trial in unique_trials:
         #
         # while time.time() < end_time:        
         if enteredMaze:
-        
+            if time.time() >= end_time:
+                trialOngoing=False
+            #print(end_time-time.time())
+            
 
             for item in mousePresent:
                 if not mousePresent["ROI1"] and \
@@ -352,7 +364,7 @@ for trial in unique_trials:
                                 
                             
         
-                        print("animal has reached sound zone")
+                        #print("animal has reached sound zone")
                                                
         time_old_frame=time_frame
 
