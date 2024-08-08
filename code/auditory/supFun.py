@@ -128,47 +128,59 @@ def csv_to_dict(fileName="rois.csv"):
     return output
 
 
-def define_rois(videoInput = 0,
-                roiNames = ["entrance1","entrance2",
-                             "ROI1","ROI2","ROI3","ROI4"],
-                outputName = "rois.csv"):
+def define_rois(videoInput=0,
+                roiNames=["entrance1", "entrance2", "ROI1", "ROI2", "ROI3", "ROI4"],
+                outputName="rois.csv"):
     
-
     cap = cv.VideoCapture(videoInput)
-    #cap = cv.VideoCapture(0)
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
 
     # Capture frame-by-frame
     ret, frame = cap.read()
-    # if frame is read correctly ret is True
     if not ret:
         print("Can't receive frame (stream end?). Exiting ...")
-        #break
-    # Our operations on the frame come here
+        cap.release()
+        exit()
+
+    # Convert frame to grayscale for display
     gray = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-    # Display the resulting frame
-    #cv.imshow('frame', gray)
-
-    #release the capture
-    cap.release()
-
-    rois = {}
-    for entry in roiNames:
-        print("please select location of "+str(entry))
-        rois[entry] = cv.selectROI('frame', gray)
-        #print(rois[entry])
     
+    # Dictionary to store ROIs
+    rois = {}
+
+    for entry in roiNames:
+        print(f"Please select location of {entry}")
+
+        # Display the current frame with already selected ROIs
+        for name, roi in rois.items():
+            x, y, w, h = roi
+            cv.rectangle(gray, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            cv.putText(gray, name, (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1, cv.LINE_AA)
+        
+        # Show the frame and select ROI
+        cv.imshow('frame', gray)
+        rois[entry] = cv.selectROI('frame', gray, fromCenter=False, showCrosshair=True)
+        
+        # Draw the selected ROI on the frame
+        x, y, w, h = rois[entry]
+        cv.rectangle(gray, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv.putText(gray, entry, (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv.LINE_AA)
+
+    # Convert the dictionary to a DataFrame
     df = pd.DataFrame(rois)
-    #print(df)
-    #print(roiNames)
-    df.index = ["xstart","ystart","xlen","ylen"]
-    df.to_csv(outputName,index=["xstart","ystart","xlen","ylen"])
-    #when all done destroy windows
+    df.index = ["xstart", "ystart", "xlen", "ylen"]
+    
+    # Save the DataFrame to a CSV file
+    df.to_csv(outputName, index=["xstart", "ystart", "xlen", "ylen"])
+    
+    # Release the capture and destroy windows
+    cap.release()
     cv.destroyAllWindows()
 
     return df
+
 
 
 #def draw_on_video(frame=gray,roi=(0,0,0,0)):
@@ -207,7 +219,7 @@ def empty_frame(rows=25,roi_names=["entrance1","entrance2","ROI1","ROI2","ROI3",
     #during the session we will fill up this df with data
     
     columns = ["ROIs", "frequency", "waveform", "volume", "time spent", "visitation count",
-           "trial_start_time","end_trial_time","mouse_enter_time"]+roi_names
+           "trial_start_time","end_trial_time"]+roi_names
     data = pd.DataFrame(None, index=range(rows), columns=columns)
     return data
 
