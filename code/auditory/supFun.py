@@ -89,7 +89,7 @@ def start_camera(videoInput=0):
     return cap
 
 def record_video(cap, recordFile, frame_width, frame_height, fps):
-    cc = cv.VideoWriter_fourcc(*'XVID')
+    cc = cv.VideoWriter_fourcc(*'mp4v')
     videoFileObject = cv.VideoWriter(recordFile, cc, fps, (frame_width, frame_height))
     return videoFileObject
     #if not videoFile.isOpened():
@@ -357,7 +357,8 @@ def create_trials(frequency, volume, waveform,
 
 def play_sound(sound_data, fs=44100):
     """Play sound using sounddevice library."""
-    sd.play(sound_data, fs)
+    sound_data_normalised = np.int16((sound_data / np.max(np.abs(sound_data))) * 32767)
+    sd.play(sound_data_normalised, fs)
 
 def save_sound(sound_data, frequency, waveform):
     parent_folder_selected = filedialog.askdirectory()

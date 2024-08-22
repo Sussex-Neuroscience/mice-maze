@@ -13,12 +13,15 @@ from tkinter import filedialog as fd
 from tkinter import *
 
 # Variables
-pause_between_frames = True
+pause_between_frames = False
 drawRois = False
 make_sounds = False
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
-recordVideo = False
-videoInput = "C:/Users/aleja/Downloads/maze_test.mp4"
+recordVideo = True
+videoInput = 1
+#
+#"C:/Users/aleja/OneDrive/Desktop/maze_experiments/maze_recordings/2024-08-15_16_12_305872/5872_2024-08-15_16_12_30.mp4"
+#"C:/Users/aleja/Downloads/maze_test.mp4"
 
 # Setup -- ask users for mouse info
 date_time = sf.get_current_time_formatted()
@@ -28,10 +31,10 @@ base_path = os.path.join(os.path.expanduser('~'), 'OneDrive/Desktop/maze_experim
 sf.ensure_directory_exists(base_path)
 new_dir_path = sf.setup_directories(base_path, date_time, animal_ID)
 #save recording in new directory
-rec_name = f"{animal_ID}_{date_time}.mp4"
+rec_name = f"mouse{animal_ID}_at{date_time}.mp4"
 recordFile = os.path.join(new_dir_path, rec_name)
 metadata = sf.collect_metadata(animal_ID)
-sf.save_metadata_to_csv(metadata, new_dir_path, f"{animal_ID}_{date_time}.csv")
+sf.save_metadata_to_csv(metadata, new_dir_path, f"mouse{animal_ID}_at{date_time}.csv")
 
 # Make sounds 
 if make_sounds:
@@ -56,7 +59,7 @@ thresholds = {item: 0 for item in rois}
 hasVisited = {item: False for item in rois}
 mousePresent = {item: False for item in rois}
 visitation_count = {item: 0 for item in rois}
-previous_state = {item: False for item in rois}
+
 
 cap = sf.start_camera(videoInput=videoInput)
 frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
@@ -87,7 +90,7 @@ base_name = base_name[:base_name.find(".")]
 trials = pd.read_csv(base_name + ".csv")
 sound_array = np.load(base_name + ".npy")
 unique_trials = trials['trial_ID'].unique()
-trial_lengths = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+trial_lengths = [10, 15, 2, 15, 2, 15, 2, 15, 2]
 
 for trial in unique_trials:
     time_trial = trial_lengths[trial - 1]
@@ -95,9 +98,10 @@ for trial in unique_trials:
     if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
         break
 
-# initialising the variables for the trials
+# initialising the variables for each trial
     for item in rois:
         hasVisited[item] = False
+        visitation_count[item]= 0
     
     trialOngoing = True
     enteredMaze = False
@@ -119,7 +123,7 @@ for trial in unique_trials:
         #read the video 
         valid, grayOriginal = cap.read()
         ret, gray = cv.threshold(grayOriginal, 180, 255, cv.THRESH_BINARY)
-        time_frame = sf.time_in_millis() - absolute_time_start
+        time_frame = sf.time_in_millis() - absolute_time_start # constantly updating - represents how many ms into the trial the frame(?) is
 
         if not valid:
             print("Can't receive frame (stream end?). Exiting ...")
@@ -162,25 +166,30 @@ for trial in unique_trials:
 
             
             if mousePresent[item]:
-                print(f"mouse in {item}")
-                hasVisited[item] = True
-                visitation_count[item] +=1
-                duration = time_frame - time_old_frame
+                #print(f"mouse in {item}")
+                duration = time_frame - time_old_frame #
+                
+            
 
                 if item in rois_list:
+                    
                     condition = (trials['trial_ID'] == trial) & (trials['ROIs'] == item)
+
+                    if not hasVisited[item]: 
+                        visitation_count[item]+= 1
+                        print(f'visitation count for {item} : {visitation_count[item]}')
+                        hasVisited[item] = True
+                        trials.loc[condition, 'visitation count'] = visitation_count[item]
+                        
 
                     #trials.loc[condition, 'visitation count'] = visitation_count[item]
 
                     if pd.isna(trials.loc[condition, 'time spent']).all():
                         trials.loc[condition, 'time spent'] = duration
                     else:
-                        trials.loc[condition, 'time spent'] += duration
-
-                    # Detect Transitions
-                    if not previous_state[item] and mousePresent[item]:  # Mouse just entered the ROI
-                        visitation_count[item] += 1
-                        trials.loc[condition, 'visitation count'] = visitation_count[item]
+                        trials.loc[condition, 'time spent'] += duration       
+            else:
+                hasVisited[item]= False            
 
 
                     
@@ -231,8 +240,8 @@ for trial in unique_trials:
             enteredMaze = False
 
         if enteredMaze:
-            if time.time() >= end_time:
-                trialOngoing = False
+            #if time.time() >= end_time:
+                #trialOngoing = False
 
             for item in mousePresent:
                 if not mousePresent["ROI1"] and \
@@ -242,7 +251,7 @@ for trial in unique_trials:
                     reset_play = True
                     sd.stop()
 
-                if "1" in item or "2" in item or "3" in item or "4" in item:
+                if "ROI1" in item or "ROI2" in item or "ROI3" in item or "ROI4" in item:
                     if mousePresent[item]:
                         if trials[trials["trial_ID"] == trial]["waveform"].values[0] != "none":
                             if item == "ROI1" and reset_play:
@@ -257,12 +266,11 @@ for trial in unique_trials:
                             if item == "ROI4" and reset_play:
                                 reset_play = False
                                 sf.play_sound(sound4)
+                            
+                            print (f"Playing sound ")
 
         time_old_frame = time_frame
 
-        # Update previous_state dictionary with current state
-        for item in rois_list:
-            previous_state[item] = mousePresent[item]
 
     # Save the updated trials DataFrame to CSV after each trial
     print(f"Saving trials data for trial {trial} to CSV")
