@@ -25,16 +25,18 @@ videoInput = 1
 
 # Setup -- ask users for mouse info
 date_time = sf.get_current_time_formatted()
+date_time= f"time_{date_time}"
 animal_ID, = sf.get_user_inputs()
+animal_ID= f"mouse{animal_ID}"
 #create new directory
 base_path = os.path.join(os.path.expanduser('~'), 'OneDrive/Desktop/maze_experiments', 'maze_recordings')
 sf.ensure_directory_exists(base_path)
 new_dir_path = sf.setup_directories(base_path, date_time, animal_ID)
 #save recording in new directory
-rec_name = f"mouse{animal_ID}_at{date_time}.mp4"
+rec_name = f"{animal_ID}_{date_time}.mp4"
 recordFile = os.path.join(new_dir_path, rec_name)
 metadata = sf.collect_metadata(animal_ID)
-sf.save_metadata_to_csv(metadata, new_dir_path, f"mouse{animal_ID}_at{date_time}.csv")
+sf.save_metadata_to_csv(metadata, new_dir_path, f"{animal_ID}_{date_time}.csv")
 
 # Make sounds 
 if make_sounds:
