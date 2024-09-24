@@ -14,9 +14,9 @@ from tkinter import *
 
 # Variables
 pause_between_frames = False
-drawRois = True
+drawRois = False
 #make_sounds = False
-make_sequences = False
+make_sequences = True
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
 recordVideo = False
 videoInput = "C:/Users/aleja/Downloads/maze_test.mp4"
@@ -42,9 +42,9 @@ sf.save_metadata_to_csv(metadata, new_dir_path, f"{animal_ID}_{date_time}.csv")
 # Make sequences of sounds
 if make_sequences:
     frequency, patterns= sf.ask_music_info()
-    for i in range(len(frequency)):
-        for j in range(len(frequency[i])):
-            sound_data = sf.generate_sound_data(frequency[i][j])
+    # for i in range(len(frequency)):
+    #     for j in range(len(frequency[i])):
+    #         sound_data = sf.generate_sound_data(frequency[i][j])
     trials, sound_arrays = sf.create_trials(frequency, patterns)
     np.save(os.path.join(new_dir_path, f"trials_{date_time}.npy"), sound_arrays)
     trials.to_csv(os.path.join(new_dir_path, f"trials_{date_time}.csv"))
@@ -96,7 +96,7 @@ base_name = base_name[:base_name.find(".")]
 trials = pd.read_csv(base_name + ".csv")
 sound_array = np.load(base_name + ".npy", allow_pickle=True)
 unique_trials = trials['trial_ID'].unique()
-trial_lengths = [0.1, 15, 2, 15, 2, 15, 2, 15, 2]
+trial_lengths = [0.1, 0.2, 0.2, 2, 0.2, 2, 0.2, 2, 0.2]
 
 for trial in unique_trials:
     time_trial = trial_lengths[trial - 1]
@@ -172,7 +172,7 @@ for trial in unique_trials:
 
             
             if mousePresent[item]:
-                print(f"mouse in {item}")
+                #print(f"mouse in {item}")
                 duration = time_frame - time_old_frame #
                 
             
@@ -259,7 +259,7 @@ for trial in unique_trials:
 
                 if "ROI1" in item or "ROI2" in item or "ROI3" in item or "ROI4" in item:
                     if mousePresent[item]:
-                        if trials[trials["trial_ID"] == trial]["waveform"].values[0] != "none":
+                        if trials[trials["trial_ID"] == trial]["pattern"].values[0] != 0:
                             if item == "ROI1" and reset_play:
                                 reset_play = False
                                 sf.play_sound(sound1)

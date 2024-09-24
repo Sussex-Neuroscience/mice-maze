@@ -333,7 +333,7 @@ def create_trials(frequency, patterns, volume=100, waveform="sine",
                     random.shuffle(trial_list)
 
 
-                # Convert trial_list to a tuple of tuples
+                # Convert trial_list to a tuple of tuples ##add wavefrom as a tuple
                 trial_tuple_as_tuple = tuple((tuple(freq), tuple(pat)) for freq, pat in trial_list)
                 #print(type(trial_tuple_as_tuple))
 
@@ -347,11 +347,10 @@ def create_trials(frequency, patterns, volume=100, waveform="sine",
 
                             #to generate the sounds data in a way that they play continuously
                             concatenated_array = []
-                            concatenated_sounds=[]
                             for k in range(len(frequency[j])):
                                 sounds = generate_sound_data(frequency[j][k])  # Generate sound data
                                 concatenated_array.append(sounds)
-                                concatenated_sounds= np.concatenate(concatenated_array)
+                            concatenated_sounds= np.concatenate(concatenated_array)
                             wave_arrays.append(concatenated_sounds)
 
 
@@ -362,12 +361,12 @@ def create_trials(frequency, patterns, volume=100, waveform="sine",
                             frequency_final.append(freq)
                             patterns_final.append(pat)
                             concatenated_array = []
-                            concatenated_sounds=[]
-                            for k in range(len(trial_list[j])):
+                            
+                            for k in range(len(freq)):
                                 sounds = generate_sound_data(freq[k])  # Generate sound data
                                 #print(trial_list[j][k])
                                 concatenated_array.append(sounds)
-                                concatenated_sounds= np.concatenate(concatenated_array)
+                            concatenated_sounds= np.concatenate(concatenated_array)
                             wave_arrays.append(concatenated_sounds)
 
 
