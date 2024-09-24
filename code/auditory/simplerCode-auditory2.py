@@ -1,7 +1,7 @@
 import numpy as np
 import cv2 as cv
 import pandas as pd
-import supFun as sf
+import supfun_sequences as sf
 import time
 #from serial import Serial
 import serial
@@ -14,11 +14,12 @@ from tkinter import *
 
 # Variables
 pause_between_frames = False
-drawRois = False
-make_sounds = False
+drawRois = True
+#make_sounds = False
+make_sequences = False
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
-recordVideo = True
-videoInput = 1
+recordVideo = False
+videoInput = "C:/Users/aleja/Downloads/maze_test.mp4"
 #
 #"C:/Users/aleja/OneDrive/Desktop/maze_experiments/maze_recordings/2024-08-15_16_12_305872/5872_2024-08-15_16_12_30.mp4"
 #"C:/Users/aleja/Downloads/maze_test.mp4"
@@ -38,16 +39,19 @@ recordFile = os.path.join(new_dir_path, rec_name)
 metadata = sf.collect_metadata(animal_ID)
 sf.save_metadata_to_csv(metadata, new_dir_path, f"{animal_ID}_{date_time}.csv")
 
-# Make sounds 
-if make_sounds:
-    frequency, volume, waveform = sf.ask_music_info()
+# Make sequences of sounds
+if make_sequences:
+    frequency, patterns= sf.ask_music_info()
     for i in range(len(frequency)):
-        sound_data = sf.generate_sound_data(frequency[i], volume[i], waveform[i])
-    trials, sound_arrays = sf.create_trials(frequency, volume, waveform)
+        for j in range(len(frequency[i])):
+            sound_data = sf.generate_sound_data(frequency[i][j])
+    trials, sound_arrays = sf.create_trials(frequency, patterns)
     np.save(os.path.join(new_dir_path, f"trials_{date_time}.npy"), sound_arrays)
     trials.to_csv(os.path.join(new_dir_path, f"trials_{date_time}.csv"))
 
-# Draw ROIs 
+#make sequences of sounds of different complexity 
+
+# Draw ROIs jup
 if drawRois:
     sf.define_rois(videoInput=videoInput,
                    roiNames=["entrance1", "entrance2", "ROI1", "ROI2", "ROI3", "ROI4"],
@@ -90,9 +94,9 @@ absolute_time_start = sf.time_in_millis()
 base_name = sf.choose_csv()
 base_name = base_name[:base_name.find(".")]
 trials = pd.read_csv(base_name + ".csv")
-sound_array = np.load(base_name + ".npy")
+sound_array = np.load(base_name + ".npy", allow_pickle=True)
 unique_trials = trials['trial_ID'].unique()
-trial_lengths = [10, 15, 2, 15, 2, 15, 2, 15, 2]
+trial_lengths = [0.1, 15, 2, 15, 2, 15, 2, 15, 2]
 
 for trial in unique_trials:
     time_trial = trial_lengths[trial - 1]
@@ -168,7 +172,7 @@ for trial in unique_trials:
 
             
             if mousePresent[item]:
-                #print(f"mouse in {item}")
+                print(f"mouse in {item}")
                 duration = time_frame - time_old_frame #
                 
             
@@ -181,15 +185,15 @@ for trial in unique_trials:
                         visitation_count[item]+= 1
                         print(f'visitation count for {item} : {visitation_count[item]}')
                         hasVisited[item] = True
-                        trials.loc[condition, 'visitation count'] = visitation_count[item]
+                        trials.loc[condition, 'visitation_count'] = visitation_count[item]
                         
 
                     #trials.loc[condition, 'visitation count'] = visitation_count[item]
 
-                    if pd.isna(trials.loc[condition, 'time spent']).all():
-                        trials.loc[condition, 'time spent'] = duration
+                    if pd.isna(trials.loc[condition, 'time_spent']).all():
+                        trials.loc[condition, 'time_spent'] = duration
                     else:
-                        trials.loc[condition, 'time spent'] += duration       
+                        trials.loc[condition, 'time_spent'] += duration       
             else:
                 hasVisited[item]= False            
 
