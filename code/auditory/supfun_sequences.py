@@ -218,7 +218,7 @@ def empty_frame(rows=25,roi_names=["entrance1","entrance2","ROI1","ROI2","ROI3",
     #create a dataframe that will contain only nans for all things to be measured.
     #during the session we will fill up this df with data
     
-    columns = ["ROIs", "frequency", "waveform", "volume", "time spent", "visitation count",
+    columns = ["ROIs", "frequency", "waveform", "volume", "time_spent", "visitation_count",
            "trial_start_time","end_trial_time"]+roi_names
     data = pd.DataFrame(None, index=range(rows), columns=columns)
     return data
@@ -241,7 +241,7 @@ def ask_music_info():
     frequency2=[]
     frequency3=[]
 
-    for i in range(25):
+    for i in range(100):
         frequency1.append("A")
         frequency1.append("o")
         frequency2.append("A")
@@ -251,7 +251,7 @@ def ask_music_info():
         frequency3.append("C")
         
         
-    frequency4=[random.choice(events) for _ in range(100)]
+    frequency4=[random.choice(events) for _ in range(200)]
 
         
     f1= [events_dict[i] for i in frequency1]
@@ -296,6 +296,14 @@ def shuffle_data(frequency, volume, waveform):
     random.shuffle(combined)
     return zip(*combined)
 
+def trim_arrays(arrays, min_length):
+    trimmed_arrays=[]
+
+    for array in arrays:
+        trimmed_array = array[:min_length]
+        trimmed_arrays.append(trimmed_array)
+
+    return trimmed_arrays
 
 def create_trials(frequency, patterns, volume=100, waveform="sine",
                   total_repetitions = 9,
