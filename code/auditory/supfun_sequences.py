@@ -218,30 +218,54 @@ def empty_frame(rows=25,roi_names=["entrance1","entrance2","ROI1","ROI2","ROI3",
     #create a dataframe that will contain only nans for all things to be measured.
     #during the session we will fill up this df with data
     
-    columns = ["ROIs", "frequency", "waveform", "volume", "time spent", "visitation count",
+    columns = ["ROIs", "frequency", "waveform", "volume", "time_spent", "visitation_count",
            "trial_start_time","end_trial_time"]+roi_names
     data = pd.DataFrame(None, index=range(rows), columns=columns)
     return data
 
 
 def ask_music_info():
-    frequency = []
-    volume = []
-    waveform = []
+    freqs = []
+    events = ["A", "B", "C", "o"]
 
-    for i in range(1, 5): 
-        freqs = int(input(f"Insert frequency for sound #{i}\n"))
-        frequency.append(freqs)
+    for i in range(1,4): 
 
-        vols = int(input(f"Insert volume for sound #{i} [1-100]\n"))
-        volume.append(vols)
+        freq = int(input(f"Insert frequency for sound #{i}\n"))
+        freqs.append(freq)
+    freqs.append(0)
 
-        waves = input(f"Insert waveform for sound #{i} [sine, square, sawtooth, triangle, pulse wave, white noise]\n").lower()
-        waveform.append(waves)
+    events_dict = dict(zip(events, freqs))
+    #each sound is 0.1 seconds, sequences need to be 10 seconds long, so 100 notes (or 50 for 0.2))
 
-    return frequency, volume, waveform
+    frequency1= []
+    frequency2=[]
+    frequency3=[]
 
-def generate_sound_data(frequency, volume, waveform, duration = 10,fs = 44100):
+    for i in range(100):
+        frequency1.append("A")
+        frequency1.append("o")
+        frequency2.append("A")
+        frequency2.append("B")
+        frequency3.append("A")
+        frequency3.append("B")
+        frequency3.append("C")
+        
+        
+    frequency4=[random.choice(events) for _ in range(200)]
+
+        
+    f1= [events_dict[i] for i in frequency1]
+    f2= [events_dict[i] for i in frequency2]
+    f3= [events_dict[i] for i in frequency3]
+    f4= [events_dict[i] for i in frequency4]
+
+
+    patterns = [frequency1, frequency2, frequency3, frequency4]
+    frequency = [f1, f2, f3, f4]
+
+    return frequency, patterns
+
+def generate_sound_data(frequency, volume=100, waveform="sine", duration = 0.2,fs = 44100):
       # seconds
       # Sample rate
     t = np.linspace(0, duration, int(fs * duration), False)
@@ -272,33 +296,32 @@ def shuffle_data(frequency, volume, waveform):
     random.shuffle(combined)
     return zip(*combined)
 
-def create_trials(frequency, volume, waveform,
+def trim_arrays(arrays, min_length):
+    trimmed_arrays=[]
+
+    for array in arrays:
+        trimmed_array = array[:min_length]
+        trimmed_arrays.append(trimmed_array)
+
+    return trimmed_arrays
+
+def create_trials(frequency, patterns, volume=100, waveform="sine",
                   total_repetitions = 9,
                   zero_repetitions = 5,
                   rois = ["ROI1", "ROI2", "ROI3", "ROI4"]):
-    
-    # Number of repetitions for each ROI
-    
-    
-    # ROIs to be used
     
     # Create a list of ROIs repeated total_repetitions times
     rois_repeated = rois * total_repetitions
 
     # Initialize lists to store the shuffled frequency, volume, and waveform
     frequency_final = []
-    volume_final = []
-    waveform_final = []
     wave_arrays = []
     repetition_numbers = []
+    patterns_final= []
 
     # Total number of sound data sets
     num_sounds = len(frequency)
     previous_trials = set()
-
-    
-
-
 
     # Create trials
     for i in range(total_repetitions):
@@ -306,54 +329,74 @@ def create_trials(frequency, volume, waveform,
             for j in range(len(rois)):
                 repetition_numbers.append(i + 1)  # Add repetition number
                 frequency_final.append(0)
-                volume_final.append(0)
-                waveform_final.append('none')
-                temp_array = np.zeros(441000)
+                patterns_final.append(0)
                 wave_arrays.append(np.zeros(441000))  # Assuming 10 seconds of silence
         else:
             while True:
                 if i == 1:  # Trial 2 should use the initial list
-                    trial_tuple = get_trial_tuple(frequency, volume, waveform)
-                else:  # Other trials should be unique and shuffled
-                    shuffled_frequency, shuffled_volume, shuffled_waveform = shuffle_data(frequency, volume, waveform)
-                    trial_tuple = get_trial_tuple(shuffled_frequency, shuffled_volume, shuffled_waveform)
+                    trial_list = list(zip(frequency, patterns))
 
-                if trial_tuple not in previous_trials:
-                    previous_trials.add(trial_tuple)
+                else:  # Other trials should be unique and shuffled
+                    trial_list = list(zip(frequency, patterns))
+                    random.shuffle(trial_list)
+
+
+                # Convert trial_list to a tuple of tuples ##add wavefrom as a tuple
+                trial_tuple_as_tuple = tuple((tuple(freq), tuple(pat)) for freq, pat in trial_list)
+                #print(type(trial_tuple_as_tuple))
+
+                if trial_tuple_as_tuple not in previous_trials:
+                    previous_trials.add(trial_tuple_as_tuple)
                     if i == 1:
                         for j in range(len(rois)):
                             repetition_numbers.append(i + 1)  # Add repetition number
                             frequency_final.append(frequency[j])
-                            volume_final.append(volume[j])
-                            waveform_final.append(waveform[j])
-                            wave_arrays.append(generate_sound_data(frequency[j], volume[j], waveform[j]))
+                            patterns_final.append(patterns[j])
+
+                            #to generate the sounds data in a way that they play continuously
+                            concatenated_array = []
+                            for k in range(len(frequency[j])):
+                                sounds = generate_sound_data(frequency[j][k])  # Generate sound data
+                                concatenated_array.append(sounds)
+                            concatenated_sounds= np.concatenate(concatenated_array)
+                            wave_arrays.append(concatenated_sounds)
+
+
                     else:
                         for j in range(len(rois)):
                             repetition_numbers.append(i + 1)  # Add repetition number
-                            frequency_final.append(shuffled_frequency[j])
-                            volume_final.append(shuffled_volume[j])
-                            waveform_final.append(shuffled_waveform[j])
-                            wave_arrays.append(generate_sound_data(shuffled_frequency[j], shuffled_volume[j], shuffled_waveform[j]))
+                            freq, pat = trial_list[j]
+                            frequency_final.append(freq)
+                            patterns_final.append(pat)
+                            concatenated_array = []
+                            
+                            for k in range(len(freq)):
+                                sounds = generate_sound_data(freq[k])  # Generate sound data
+                                #print(trial_list[j][k])
+                                concatenated_array.append(sounds)
+                            concatenated_sounds= np.concatenate(concatenated_array)
+                            wave_arrays.append(concatenated_sounds)
+
+
+
                     break
 
     # Create the DataFrame with the repetition numbers, repeated ROIs, and final data
     df = pd.DataFrame({
         "trial_ID": repetition_numbers,
         "ROIs": rois_repeated,
-        "frequency": frequency_final,
-        "volume": volume_final,
-        "waveform": waveform_final,
-        #"wave_arrays": wave_arrays
+        "pattern": patterns_final,
+        "frequency_seq": frequency_final,
+        "wave_arrays": wave_arrays
     })
 
     # Add other necessary columns filled with NaNs or default values
-    df["time spent"] = [None] * len(df)
-    df["visitation count"] = [None] * len(df)
+    df["time_spent"] = [None] * len(df)
+    df["visitation_count"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
-    df["mouse_enter_time"] = [None] * len(df)
 
-    return df,wave_arrays
+    return df, wave_arrays
 
 def play_sound(sound_data, fs=44100):
     """Play sound using sounddevice library."""

@@ -46,18 +46,18 @@ int servoNum = 100;
 
 //reward location A
 #define IRsensorA 2
-#define rewardMotorA 8
+#define rewardMotorA 6
 //reward location B
 #define IRsensorB 15
-#define rewardMotorB 9
+#define rewardMotorB 7
 //reward location C
 #define IRsensorC 17
-#define rewardMotorC 10
+#define rewardMotorC 8
 //reward location D
 #define IRsensorD 16
-#define rewardMotorD 11
+#define rewardMotorD 9
 
-
+int max_degree =180;
 
 //int servoNum = 0;
 int rewardServoMovTime = 400;
@@ -71,13 +71,14 @@ int pelletDropped = 0;
 int rewPulseLen1 = map(90, 0, 180, REWSERVOMIN, REWSERVOMAX);
 int rewPulseLen2 = map(45, 0, 180, REWSERVOMIN, REWSERVOMAX);
 
-SerialCommand sCmd;     // The demo SerialCommand object
+//SerialCommand sCmd;     // The demo SerialCommand object
 
 
 void setup() {
   Serial.begin(115200);
 
   //Wire.begin(14, 27);
+  //Wire.begin(5, 18);
   pinMode(IRsensorA,INPUT);
   pinMode(IRsensorB,INPUT);
   pinMode(IRsensorC,INPUT);
@@ -86,22 +87,12 @@ void setup() {
 
 
   
-  sCmd.addCommand("grtL",  gratingL); // 
-  sCmd.addCommand("grtR",  gratingR); // 
-  sCmd.addCommand("grtLR",  gratingLR); // 
-  sCmd.addCommand("grtRL",  gratingRL); // 
-  sCmd.addCommand("grtLL",  gratingLL); // 
-  sCmd.addCommand("grtRR",  gratingRR); // 
-  
-  sCmd.addCommand("rewA", rewardA); // activate reward routine (reward 10) // start reward routine on servo 10
-  sCmd.addCommand("rewB", rewardB);
-  sCmd.addCommand("rewC", rewardC);
-  sCmd.addCommand("rewD", rewardD);
+
   
   // generic functions for development/understanding the parsing library
-  sCmd.addCommand("HELLO", sayHello);        // Echos the string argument back
-  sCmd.addCommand("P",     processCommand);  // Converts two arguments to integers and echos them back
-  sCmd.setDefaultHandler(unrecognized);      // Handler for command that isn't matched  (says "What?")
+  //sCmd.addCommand("HELLO", sayHello);        // Echos the string argument back
+  //sCmd.addCommand("P",     processCommand);  // Converts two arguments to integers and echos them back
+  //sCmd.setDefaultHandler(unrecognized);      // Handler for command that isn't matched  (says "What?")
 
 
   //servo library initialization
@@ -131,7 +122,40 @@ void setup() {
 
 void loop() {
   //Serial.println("aqui");
-  sCmd.readSerial();     // We don't do much, just process serial commands
+  for (int i=0;i<10;i++ ){
+    for (int servo_num=0;servo_num<10;servo_num++){
+      Serial.println(servo_num);
+      for (int atempts=0;atempts<5;atempts++){
+        if (servo_num<6){
+          int serv_min = GRATSERVOMIN;
+          int serv_max = GRATSERVOMAX;
+          int max_degree =120;
+        
+        }
+        else{
+          int serv_min = REWSERVOMIN;
+          int serv_max = REWSERVOMAX;
+          int max_degree =180;
+        }
+        for (int degree = 10; degree<max_degree-10;degree = degree+30){
+          Serial.println(degree);
+        //Serial.println(pulseLen);
+        pulseLen = map(degree, 0, max_degree, REWSERVOMIN, REWSERVOMAX);  
+        pwm.setPWM(servo_num, 0, pulseLen);
+        delay(100);
+      }
+      for (int degree = max_degree-10; degree>10;degree = degree-30){
+        //Serial.println(pulseLen);
+        pulseLen = map(degree, 0, max_degree, REWSERVOMIN, REWSERVOMAX);  
+        pwm.setPWM(servo_num, 0, pulseLen);
+        delay(100);
+      }
+      }
+    }
+
+
+  }
+  //sCmd.readSerial();     // We don't do much, just process serial commands
 } //end loop
 
 ///servo callback functions -------------------------------------------------/////////////////////////////////////////////
@@ -139,7 +163,7 @@ void gratingRoutine(int degree=90, int servoNum=0){
 
 
   pulseLen = map(degree, 0, 120, GRATSERVOMIN, GRATSERVOMAX);
-  Serial.println(pulseLen);
+  //Serial.println(pulseLen);
   pwm.setPWM(servoNum, 0, pulseLen);
 
 }// grating routines
@@ -179,164 +203,4 @@ void pelletRoutine(int IRsensor=0,int servoNum=0, int rewardServoMovTimeLoc = re
   }//if
 }// end pellet routine
 
-
-void gratingL(){
-
-  char *arg;
-  int degree;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     degree = atoi(arg);
-  
-gratingRoutine(degree=degree, servoNum=gratingLnum);
-  }//if
-  else {
-    Serial.println("No arguments");
-  }   
-}//end gratingL
-
-void gratingR(){
-
-  char *arg;
-  int degree;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     degree = atoi(arg);
-  
-gratingRoutine(degree=degree, servoNum=gratingRnum);
-  }//if
-  else {
-    Serial.println("No arguments");
-  }   
-}//end gratingR
-
-void gratingLR(){
-
-  char *arg;
-  int degree;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     degree = atoi(arg);
-  
-gratingRoutine(degree=degree, servoNum=gratingLRnum);
-  }//if
-  else {
-    Serial.println("No arguments");
-  }   
-}//end gratingLR
-
-void gratingRL(){
-
-  char *arg;
-  int degree;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     degree = atoi(arg);
-  
-gratingRoutine(degree=degree, servoNum=gratingRLnum);
-  }//if
-  else {
-    Serial.println("No arguments");
-  }   
-}//end gratingRL
-
-void gratingLL(){
-  char *arg;
-  int degree;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     degree = atoi(arg);
-  
-gratingRoutine(degree=degree, servoNum=gratingLLnum);
-  }//if
-  else {
-    Serial.println("No arguments");
-  }       
-}//end gratingLL
-
-void gratingRR(){
-
-  char *arg;
-  int degree;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     degree = atoi(arg);
-  
-gratingRoutine(degree=degree, servoNum=gratingRRnum);
-  }//if
-  else {
-    Serial.println("No arguments");
-  }     
-}//end gratingRR
-
-void rewardA(){
-  //Serial.println("rewardA");
-  pelletRoutine(IRsensor=IRsensorA,servoNum=rewardMotorA);
-     
-}//end Reward
-
-void rewardB(){
-  pelletRoutine(IRsensor=IRsensorB,servoNum=rewardMotorB);
-     
-}//end Reward
-void rewardC(){
-  pelletRoutine(IRsensor=IRsensorC,servoNum=rewardMotorC);
-     
-}//end Reward
-void rewardD(){
-  pelletRoutine(IRsensor=IRsensorD,servoNum=rewardMotorD);
-     
-}//end Reward
-/////////////////////////////////////////
-
-
-void test_IR(){
-
-
-  
-}
-
-void sayHello() {
-
-  char *arg;
-  arg = sCmd.next();    // Get the next argument from the SerialCommand object buffer
-  if (arg != NULL) {    // As long as it existed, take it
-    Serial.print("Hello ");
-    Serial.println(arg);
-  }
-  else {
-    Serial.println("Hello, whoever you are");
-  }
-}
-
-void processCommand() {
-  int aNumber;
-  char *arg;
-
-  Serial.println("We're in processCommand");
-  arg = sCmd.next();
-  if (arg != NULL) {
-    aNumber = atoi(arg);    // Converts a char string to an integer
-    Serial.print("First argument was: ");
-    Serial.println(aNumber);
-  }
-  else {
-    Serial.println("No arguments");
-  }
-
-  arg = sCmd.next();
-  if (arg != NULL) {
-    aNumber = atol(arg);
-    Serial.print("Second argument was: ");
-    Serial.println(aNumber);
-  }
-  else {
-    Serial.println("No second argument");
-  }
-}
-
-// This gets set as the default handler, and gets called when no other command matches.
-void unrecognized(const char *command) {
-  Serial.println("What?");
-}
 
