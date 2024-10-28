@@ -10,6 +10,9 @@ import csv
 import random
 import wave
 import sounddevice as sd
+from sympy import *
+from sympy.plotting import plot_parametric
+import matplotlib.pyplot as plt
 
 
 def collect_metadata(animal_ID):
@@ -181,8 +184,6 @@ def define_rois(videoInput=0,
 
     return df
 
-
-
 #def draw_on_video(frame=gray,roi=(0,0,0,0)):
     #cv2.rectangle(frame, (roi[0], roi[1]), (roi[2], roi[3]), (0, 0, 0), -1)
 def read_rois_from_csv(csvfile):
@@ -329,10 +330,39 @@ def ask_info_intervals():
     
     frequencies = [sound1, sound2, sound3, sound4]
     interval_list = [intervals_strings["unison"], intervals_strings[consonant_choice], intervals_strings[dissonant_choice], ["0"]]
+    interval_names = ["unison", consonant_choice, dissonant_choice, 'no_interval']
+    return frequencies, interval_list, interval_names
     
-    return frequencies, interval_list
+def plotting_lissajous(interval):
+    t = symbols('t')
+    
+    intervals_names = ["unison", "min_2", "maj_2", "min_3", "maj_3", "perf_4", "tritone", 
+             "perf_5", "min_6", "maj_6", "min_7", "maj_7", "octave"]
+
+    intervals_values = ["1/1", "16/15", "9/8", "6/5", "5/4", "4/3", "45/32", "3/2", "8/5", "5/3", "16/9", "15/8", "2/1"]
+
+
+    intervals = dict(zip(intervals_names, intervals_values))
+    
+    if len(intervals[interval])==5: 
+        a= int(intervals[interval][0:2])
+        b= int(intervals[interval][3:5])
+    elif len(intervals[interval])==3:
+        a= int(intervals[interval][0])
+        b= int(intervals[interval][2])
+        
     
     
+    #s = 0 because the interval (a,b) plays at the same time
+    s = 0 #pi/2
+
+
+    title = f'a = {a}, b = {b}'
+    x = sin(a*t + s)
+    y = sin(b*t)
+    p = plot_parametric(x, y, (t, 0, 2*pi), title=title)
+    
+    p.save(f"{interval}_plot.png")    
     
 
  
@@ -531,7 +561,7 @@ def create_trials_for_sequences(frequency, patterns, volume=100, waveform="sine"
 
     return df, wave_arrays
 
-def create_trials_for_intervals(frequency, intervals, volume=100, waveform="sine",
+def create_trials_for_intervals(frequency, intervals, intervals_names, volume=100, waveform="sine",
                   total_repetitions = 9,
                   zero_repetitions = 5,
                   rois = ["ROI1", "ROI2", "ROI3", "ROI4"]):
@@ -542,6 +572,7 @@ def create_trials_for_intervals(frequency, intervals, volume=100, waveform="sine
     # Initialize lists to store the shuffled frequency, volume, and waveform
     frequency_final = []
     intervals_final = []
+    intervals_names_final = []
     wave_arrays = []
     repetition_numbers = []
 
@@ -588,17 +619,18 @@ def create_trials_for_intervals(frequency, intervals, volume=100, waveform="sine
                 repetition_numbers.append(i + 1)  # Add repetition number
                 frequency_final.append(0)
                 intervals_final.append(0)
+                intervals_names_final.append(0)
                 wave_arrays.append(np.zeros(441000))  # Assuming 10 seconds of silence
         else:
             while True:
                 if i == 1:  # Trial 2 should use the initial list
-                    trial_list = list(zip(frequency, intervals, dual_array_sounds))
+                    trial_list = list(zip(frequency, intervals, intervals_names, dual_array_sounds))
 
                     #print(f"trial 1: {trial_list}")
 
 
                 else:  # Other trials should be unique and shuffled
-                    trial_list = list(zip(frequency, intervals, dual_array_sounds))
+                    trial_list = list(zip(frequency, intervals, intervals_names, dual_array_sounds))
                     random.shuffle(trial_list)
                     #print(f"trial {i}: {trial_list}")
 
@@ -619,15 +651,17 @@ def create_trials_for_intervals(frequency, intervals, volume=100, waveform="sine
                             repetition_numbers.append(i + 1)  # Add repetition number
                             frequency_final.append(frequency[j])
                             intervals_final.append(intervals[j])
+                            intervals_names_final.append(intervals_names[j])
                             wave_arrays.append(tuple(dual_array_sounds[j]))
 
 
                     else:
                         for j in range(len(rois)):
                             repetition_numbers.append(i + 1)  # Add repetition number
-                            freq, inter, wave = trial_list[j]
+                            freq, inter, inter_name, wave = trial_list[j]
                             frequency_final.append(freq)
                             intervals_final.append(inter)
+                            intervals_names_final.append(inter_name)
                             wave_arrays.append(tuple(wave))
 
 
@@ -638,7 +672,8 @@ def create_trials_for_intervals(frequency, intervals, volume=100, waveform="sine
     df = pd.DataFrame({
         "trial_ID": repetition_numbers,
         "ROIs": rois_repeated,
-        "interval": intervals_final,
+        "interval": intervals_names_final,
+        "interval_ratio": intervals_final,
         "frequencies": frequency_final,
         "wave_arrays": wave_arrays
     })
