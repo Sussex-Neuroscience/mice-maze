@@ -214,17 +214,26 @@ def choose_csv():
     root.destroy()
     return filename
 
-def empty_frame(rows=25,roi_names=["entrance1","entrance2","ROI1","ROI2","ROI3","ROI3"]):
-    #create a dataframe that will contain only nans for all things to be measured.
-    #during the session we will fill up this df with data
-    
-    columns = ["ROIs", "frequency", "waveform", "volume", "time_spent", "visitation_count",
-           "trial_start_time","end_trial_time"]+roi_names
-    data = pd.DataFrame(None, index=range(rows), columns=columns)
-    return data
+def read_wav_file(file_path):
+    with wave.open(file_path, 'rb') as wav_file:
+        # Extract parameters
+        n_channels = wav_file.getnchannels()
+        sample_width = wav_file.getsampwidth()
+        framerate = wav_file.getframerate()
+        n_frames = wav_file.getnframes()
+        
+        # Read frames and convert to numpy array
+        frames = wav_file.readframes(n_frames)
+        sound_data = np.frombuffer(frames, dtype=np.int16)
+        
+        # If stereo, reshape to two columns
+        if n_channels == 2:
+            sound_data = sound_data.reshape(-1, 2)
+        
+        return sound_data, framerate
 
 
-def ask_music_info():
+def ask_music_info_sequences():
     freqs = []
     events = ["A", "B", "C", "o"]
 
@@ -265,26 +274,76 @@ def ask_music_info():
 
     return frequency, patterns
 
-def generate_sound_data(frequency, volume=100, waveform="sine", duration = 0.2,fs = 44100):
-      # seconds
-      # Sample rate
-    t = np.linspace(0, duration, int(fs * duration), False)
+def ask_music_info_simple_sounds():
+    frequency = []
 
+    for i in range(1, 5): 
+        freqs = int(input(f"Insert frequency for sound #{i}\n"))
+        frequency.append(freqs)
+
+    return frequency
+
+def ask_info_intervals():
+    
+    # create a dictionary with interval names and values
+    intervals_names = ["unison", "min_2", "maj_2", "min_3", "maj_3", "perf_4", "tritone", 
+                 "perf_5", "min_6", "maj_6", "min_7", "maj_7", "octave"]
+    intervals_values = [1/1, 16/15, 9/8, 6/5, 5/4, 4/3, 64/45, 3/2, 8/5, 5/3, 16/9, 15/8, 2]
+    intervals_values_strings= ["1/1", "16/15", "9/8", "6/5", "5/4", "4/3", "45/32", "3/2", "8/5", "5/3", "16/9", "15/8", "2/1"]
+    
+    intervals = dict(zip(intervals_names, intervals_values))
+    intervals_strings = dict(zip(intervals_names, intervals_values_strings))
+    
+        
+    consonant_intervals = [intervals_names[i] for i in (3,4,5,7,8,9,12)]
+    dissonant_intervals = [intervals_names[i] for i in (1,2,6,10,11)]
+    
+    # ask for frequency of tonal centre
+    central_tone= float(input("insert frequency that will be the tonal centre:\n"))
+    #this is the pure tone
+    sound1= [central_tone, round(central_tone*intervals["unison"],2)]
+    
+    #prompt for consonant/dissonant interval
+    consonant_choice= input(f"insert the consonant interval of choice {consonant_intervals}:\n")
+    consonant_choice= consonant_choice.lower()
+    #this is the consonant interval
+    sound2= [central_tone, round(central_tone*intervals[consonant_choice],2)]
+    
+    dissonant_choice= input(f"insert the dissonant interval of choice {dissonant_intervals}:\n")
+    dissonant_choice = dissonant_choice.lower()
+    #this is the dissonant interval
+    sound3 = [central_tone, round(central_tone*intervals[dissonant_choice], 2)]
+    
+    #ask user if there will be a vocalisation.
+    vocalisation = (input("want to select a .wav file containing a sound vocalisation?(y/n)\nif n, one of the ROIs will be silent \n")).lower()
+    
+    if vocalisation == "y":
+        wav_file = choose_csv()
+        sound4= [wav_file, 0]
+
+    else:
+        sound4= [0, 0]
+        
+        
+    
+    
+    frequencies = [sound1, sound2, sound3, sound4]
+    interval_list = [intervals_strings["unison"], intervals_strings[consonant_choice], intervals_strings[dissonant_choice], ["0"]]
+    
+    return frequencies, interval_list
+    
+    
+    
+
+ 
+
+def generate_sound_data(frequency, volume=0.5, waveform="sine", duration=3, fs=44100):
+    """Generate sound data for a given frequency and waveform."""
+    t = np.linspace(0, duration, int(fs * duration), False)
     sound = np.zeros_like(t)
 
     if waveform == 'sine':
         sound = np.sin(frequency * t * 2 * np.pi)
-    elif waveform == 'square':
-        sound = np.sign(np.sin(frequency * t * 2 * np.pi))
-    elif waveform == 'sawtooth':
-        sound = 2 * (t * frequency % 1) - 1
-    elif waveform == 'triangle':
-        sound = 2 * np.abs(2 * (t * frequency - np.floor(0.5 + t * frequency))) - 1
-    elif waveform == 'pulse wave':
-        sound = np.where((t % (1 / frequency)) < (1 / frequency) * 0.5, 1.0, -1.0)  # 0.5 in this case is the duty cycle
-    elif waveform == 'white noise':
-        samples = int(fs * duration)
-        sound = np.random.uniform(low=-1.0, high=1.0, size=samples)
 
     return sound * volume
 
@@ -296,16 +355,90 @@ def shuffle_data(frequency, volume, waveform):
     random.shuffle(combined)
     return zip(*combined)
 
-def trim_arrays(arrays, min_length):
-    trimmed_arrays=[]
+def create_simple_trials(frequency, volume=100, waveform="sine",
+                  total_repetitions = 9,
+                  zero_repetitions = 5,
+                  rois = ["ROI1", "ROI2", "ROI3", "ROI4"]):
+    
+    # Number of repetitions for each ROI
+    
+    
+    # ROIs to be used
+    
+    # Create a list of ROIs repeated total_repetitions times
+    rois_repeated = rois * total_repetitions
 
-    for array in arrays:
-        trimmed_array = array[:min_length]
-        trimmed_arrays.append(trimmed_array)
+    # Initialize lists to store the shuffled frequency, volume, and waveform
+    frequency_final = []
+    volume_final = []
+    waveform_final = []
+    wave_arrays = []
+    repetition_numbers = []
 
-    return trimmed_arrays
+    # Total number of sound data sets
+    num_sounds = len(frequency)
+    previous_trials = set()
 
-def create_trials(frequency, patterns, volume=100, waveform="sine",
+    
+
+
+
+    # Create trials
+    for i in range(total_repetitions):
+        if i % 2 == 0:  # Alternate zero data repetitions
+            for j in range(len(rois)):
+                repetition_numbers.append(i + 1)  # Add repetition number
+                frequency_final.append(0)
+                volume_final.append(0)
+                waveform_final.append('none')
+                temp_array = np.zeros(441000)
+                wave_arrays.append(np.zeros(441000))  # Assuming 10 seconds of silence
+        else:
+            while True:
+                if i == 1:  # Trial 2 should use the initial list
+                    trial_tuple = get_trial_tuple(frequency, volume, waveform)
+                else:  # Other trials should be unique and shuffled
+                    shuffled_frequency, shuffled_volume, shuffled_waveform = shuffle_data(frequency, volume, waveform)
+                    trial_tuple = get_trial_tuple(shuffled_frequency, shuffled_volume, shuffled_waveform)
+
+                if trial_tuple not in previous_trials:
+                    previous_trials.add(trial_tuple)
+                    if i == 1:
+                        for j in range(len(rois)):
+                            repetition_numbers.append(i + 1)  # Add repetition number
+                            frequency_final.append(frequency[j])
+                            volume_final.append(volume[j])
+                            waveform_final.append(waveform[j])
+                            wave_arrays.append(generate_sound_data(frequency[j], volume[j], waveform[j]))
+                    else:
+                        for j in range(len(rois)):
+                            repetition_numbers.append(i + 1)  # Add repetition number
+                            frequency_final.append(shuffled_frequency[j])
+                            volume_final.append(shuffled_volume[j])
+                            waveform_final.append(shuffled_waveform[j])
+                            wave_arrays.append(generate_sound_data(shuffled_frequency[j], shuffled_volume[j], shuffled_waveform[j]))
+                    break
+
+    # Create the DataFrame with the repetition numbers, repeated ROIs, and final data
+    df = pd.DataFrame({
+        "trial_ID": repetition_numbers,
+        "ROIs": rois_repeated,
+        "frequency": frequency_final,
+        "volume": volume_final,
+        "waveform": waveform_final,
+        #"wave_arrays": wave_arrays
+    })
+
+    # Add other necessary columns filled with NaNs or default values
+    df["time spent"] = [None] * len(df)
+    df["visitation count"] = [None] * len(df)
+    df["trial_start_time"] = [None] * len(df)
+    df["end_trial_time"] = [None] * len(df)
+    df["mouse_enter_time"] = [None] * len(df)
+
+    return df,wave_arrays
+
+def create_trials_for_sequences(frequency, patterns, volume=100, waveform="sine",
                   total_repetitions = 9,
                   zero_repetitions = 5,
                   rois = ["ROI1", "ROI2", "ROI3", "ROI4"]):
@@ -398,10 +531,146 @@ def create_trials(frequency, patterns, volume=100, waveform="sine",
 
     return df, wave_arrays
 
+def create_trials_for_intervals(frequency, intervals, volume=100, waveform="sine",
+                  total_repetitions = 9,
+                  zero_repetitions = 5,
+                  rois = ["ROI1", "ROI2", "ROI3", "ROI4"]):
+
+    # Create a list of ROIs repeated total_repetitions times
+    rois_repeated = rois * total_repetitions
+
+    # Initialize lists to store the shuffled frequency, volume, and waveform
+    frequency_final = []
+    intervals_final = []
+    wave_arrays = []
+    repetition_numbers = []
+
+
+    # Total number of sound data sets
+    num_sounds = len(frequency)
+    previous_trials = set()
+
+    #generate the sounds and create an array containing 4 lists, each containing 2 arrays containing each sound
+    dual_array_sounds = []
+    for i in frequency: 
+
+        frequencies_sound_data = []
+        #run the loop for the first 3 items that definitely contain a frequency
+        if i[1] != 0:
+            for j in i:
+                sound = generate_sound_data(j)
+                frequencies_sound_data.append([sound])
+
+    #     #now the fourth item always has i[1] == 0
+        if i[1] == 0 :
+            if i[0] == 0:
+                #if the first item of the 4th array is 0, they are both 0s and we can proceed 
+                for j in i:
+                        sound = generate_sound_data(j)
+                        frequencies_sound_data.append([sound])
+
+            #if in the 4th item, the first element of the array is not 0, we need to convert the .wav into a sound data array
+            else:
+                sound_data, framerate = read_wav_file(i[0])
+                sound1 = generate_sound_data(sound_data, framerate)
+                frequencies_sound_data.append([sound1])
+                sound2 = generate_sound_data(i[1])
+                frequencies_sound_data.append([sound2])
+
+        dual_array_sounds.append(frequencies_sound_data)
+
+    # Create trials
+    #first trial is going to be silent 
+    #i is the trial_ID
+    for i in range(total_repetitions):
+        if i % 2 == 0:  # Alternate zero data repetitions
+            for j in range(len(rois)):
+                repetition_numbers.append(i + 1)  # Add repetition number
+                frequency_final.append(0)
+                intervals_final.append(0)
+                wave_arrays.append(np.zeros(441000))  # Assuming 10 seconds of silence
+        else:
+            while True:
+                if i == 1:  # Trial 2 should use the initial list
+                    trial_list = list(zip(frequency, intervals, dual_array_sounds))
+
+                    #print(f"trial 1: {trial_list}")
+
+
+                else:  # Other trials should be unique and shuffled
+                    trial_list = list(zip(frequency, intervals, dual_array_sounds))
+                    random.shuffle(trial_list)
+                    #print(f"trial {i}: {trial_list}")
+
+
+
+                # Convert trial_list to a tuple of tuples ##add wavefrom as a tuple
+                trial_tuple_as_tuple = tuple(item[1] for item in trial_list)
+                #print(trial_tuple_as_tuple)
+
+                #trying to convert the whole list of freq, int, wave requires too much, try to see if just affing the freq works
+
+                #try to use nested lists instead
+                #print(type(trial_list))
+                if trial_tuple_as_tuple not in previous_trials:
+                    previous_trials.add(trial_tuple_as_tuple)
+                    if i == 1:
+                        for j in range(len(rois)):
+                            repetition_numbers.append(i + 1)  # Add repetition number
+                            frequency_final.append(frequency[j])
+                            intervals_final.append(intervals[j])
+                            wave_arrays.append(tuple(dual_array_sounds[j]))
+
+
+                    else:
+                        for j in range(len(rois)):
+                            repetition_numbers.append(i + 1)  # Add repetition number
+                            freq, inter, wave = trial_list[j]
+                            frequency_final.append(freq)
+                            intervals_final.append(inter)
+                            wave_arrays.append(tuple(wave))
+
+
+
+                    break
+
+    # Create the DataFrame with the repetition numbers, repeated ROIs, and final data
+    df = pd.DataFrame({
+        "trial_ID": repetition_numbers,
+        "ROIs": rois_repeated,
+        "interval": intervals_final,
+        "frequencies": frequency_final,
+        "wave_arrays": wave_arrays
+    })
+
+    # Add other necessary columns filled with NaNs or default values
+    df["time_spent"] = [None] * len(df)
+    df["visitation_count"] = [None] * len(df)
+    df["trial_start_time"] = [None] * len(df)
+    df["end_trial_time"] = [None] * len(df)
+
+    return df, wave_arrays
+
 def play_sound(sound_data, fs=44100):
     """Play sound using sounddevice library."""
     sound_data_normalised = np.int16((sound_data / np.max(np.abs(sound_data))) * 32767)
     sd.play(sound_data_normalised, fs)
+
+def play_interval(sound_data1, sound_data2, fs=44100):
+    """Play two sounds simultaneously using the sounddevice library."""
+    # Ensure both sound_data arrays are the same length
+    min_length = min(len(sound_data1), len(sound_data2))
+    sound_data1 = sound_data1[:min_length]
+    sound_data2 = sound_data2[:min_length]
+    
+    # Sum the two sound data arrays
+    combined_sound_data = sound_data1 + sound_data2
+    
+    # Normalize the combined sound data
+    combined_sound_data_normalised = np.int16((combined_sound_data / np.max(np.abs(combined_sound_data))) * 32767)
+    
+    # Play the combined sound
+    sd.play(combined_sound_data_normalised, fs)
 
 def save_sound(sound_data, frequency, waveform):
     parent_folder_selected = filedialog.askdirectory()
