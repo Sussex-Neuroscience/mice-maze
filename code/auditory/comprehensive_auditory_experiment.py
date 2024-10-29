@@ -12,9 +12,12 @@ import soundfile as sf1
 from tkinter import filedialog as fd
 from tkinter import *
 
+sd.default.samplerate = 44100
+sd.default.device = 2
 # Variables
+testing= False
 pause_between_frames = False
-drawRois = False
+drawRois = True
 #set to true to make individual sine sounds
 make_simple_sounds = False
 # set to true to make sequences of tones
@@ -25,9 +28,9 @@ make_complex_sounds= True
 
 
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
-recordVideo = False
-videoInput = "C:/Users/aleja/Downloads/maze_test.mp4"
-#
+recordVideo = True
+videoInput = 0
+#"C:/Users/labadmin/Desktop/auditory_maze_experiments/maze_recordings/maze_recordings_sequences/time_2024-09-25_11_47_12mouse6705/mouse6705_time_2024-09-25_11_47_12.mp4"
 #"C:/Users/aleja/OneDrive/Desktop/maze_experiments/maze_recordings/2024-08-15_16_12_305872/5872_2024-08-15_16_12_30.mp4"
 #"C:/Users/aleja/Downloads/maze_test.mp4"
 
@@ -37,7 +40,7 @@ date_time= f"time_{date_time}"
 animal_ID, = sf.get_user_inputs()
 animal_ID= f"mouse{animal_ID}"
 #create new directory
-base_path = os.path.join(os.path.expanduser('~'), 'OneDrive/Desktop/maze_experiments', 'maze_recordings')
+base_path = os.path.join(os.path.expanduser('~'), 'Desktop/auditory_maze_experiments/maze_recordings', 'maze_recordings_sequences')
 sf.ensure_directory_exists(base_path)
 new_dir_path = sf.setup_directories(base_path, date_time, animal_ID)
 #save recording in new directory
@@ -59,13 +62,15 @@ if make_simple_sounds:
 
 # Make sequences of sounds
 if make_sequences:
-    frequency, patterns= sf.ask_music_info_sequences()
-    # for i in range(len(frequency)):
-    #     for j in range(len(frequency[i])):
-    #         sound_data = sf.generate_sound_data(frequency[i][j])
-    trials, sound_arrays = sf.create_trials_for_sequences(frequency, patterns)
-    np.save(os.path.join(new_dir_path, f"trials_{date_time}.npy"), np.array(sound_arrays, dtype=object))
+    frequency, patterns= sf.ask_music_info()
+    trials, sound_arrays = sf.create_trials(frequency, patterns)
+    #make all arrays the same size because otherwise it won't save sound arrays
+    min_length = min(len(arr) for arr in sound_arrays)
+     # Trim the arrays to the minimum length
+    trimmed_sound_arrays = sf.trim_arrays(sound_arrays, min_length)
+    np.save(os.path.join(new_dir_path, f"trials_{date_time}.npy"), np.array(trimmed_sound_arrays, dtype=object))
     trials.to_csv(os.path.join(new_dir_path, f"trials_{date_time}.csv"))
+
 
 #make complex sounds
 elif make_complex_sounds:
@@ -124,7 +129,12 @@ base_name = base_name[:base_name.find(".")]
 trials = pd.read_csv(base_name + ".csv")
 sound_array = np.load(base_name + ".npy", allow_pickle=True)
 unique_trials = trials['trial_ID'].unique()
-trial_lengths = [0.1, 0.5, 0.2, 2, 0.2, 2, 0.2, 2, 0.2]
+
+if testing:
+    trial_lengths = [0.1, 0.2, 0.2, 2, 0.2, 2, 0.2, 2, 0.2]
+else:
+    trial_lengths = [10, 15, 2, 15, 2, 15, 2, 15, 2]
+
 
 for trial in unique_trials:
     time_trial = trial_lengths[trial - 1]
@@ -259,7 +269,11 @@ for trial in unique_trials:
                 sound4 = sound_array[trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == 'ROI4')].index[0]]
 
             end_time = start_time + time_trial * 60
-            print(end_time)
+            remaining_total_time= end_time - time.time()
+            remaining_minutes= int((end_time - time.time())/60)
+            remaining_seconds= int((end_time - time.time())%60)
+            print(f"Remaining Time: {remaining_total_time}\nApprox: {remaining_minutes}:{remaining_seconds}")
+
 
             #trials.loc[trials["trial_ID"] == trial, "mouse_enter_time"] = start_time #add to supfun code again if we want mouse enter time
             trials.loc[trials["trial_ID"] == trial, "trial_start_time"] = start_time
@@ -287,7 +301,7 @@ for trial in unique_trials:
 
                 if "ROI1" in item or "ROI2" in item or "ROI3" in item or "ROI4" in item:
                     if mousePresent[item]:
-                        if trials[trials["trial_ID"] == trial]["frequencies"].values[0] != 0:
+                        if trials[trials["trial_ID"] == trial]["interval"].values[0] != "0":
                             if item == "ROI1" and reset_play:
                                 reset_play = False
                                 if make_complex_sounds:
