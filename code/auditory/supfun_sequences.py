@@ -367,7 +367,7 @@ def plotting_lissajous(interval):
 
  
 
-def generate_sound_data(frequency, volume=0.5, waveform="sine", duration=3, fs=44100):
+def generate_sound_data(frequency, volume=1, waveform="sine", duration=15, fs=44100):
     """Generate sound data for a given frequency and waveform."""
     t = np.linspace(0, duration, int(fs * duration), False)
     sound = np.zeros_like(t)
@@ -385,11 +385,13 @@ def shuffle_data(frequency, volume, waveform):
     random.shuffle(combined)
     return zip(*combined)
 
-def create_simple_trials(frequency, volume=100, waveform="sine",
+def create_simple_trials(frequency,
                   total_repetitions = 9,
                   zero_repetitions = 5,
                   rois = ["ROI1", "ROI2", "ROI3", "ROI4"]):
     
+    volume = [1, 1, 1, 1]
+    waveform = ["sine", "sine", "sine", "sine"] 
     # Number of repetitions for each ROI
     
     
@@ -439,14 +441,14 @@ def create_simple_trials(frequency, volume=100, waveform="sine",
                             frequency_final.append(frequency[j])
                             volume_final.append(volume[j])
                             waveform_final.append(waveform[j])
-                            wave_arrays.append(generate_sound_data(frequency[j], volume[j], waveform[j]))
+                            wave_arrays.append(generate_sound_data(frequency[j]))
                     else:
                         for j in range(len(rois)):
                             repetition_numbers.append(i + 1)  # Add repetition number
                             frequency_final.append(shuffled_frequency[j])
                             volume_final.append(shuffled_volume[j])
                             waveform_final.append(shuffled_waveform[j])
-                            wave_arrays.append(generate_sound_data(shuffled_frequency[j], shuffled_volume[j], shuffled_waveform[j]))
+                            wave_arrays.append(generate_sound_data(shuffled_frequency[j]))
                     break
 
     # Create the DataFrame with the repetition numbers, repeated ROIs, and final data
@@ -460,11 +462,11 @@ def create_simple_trials(frequency, volume=100, waveform="sine",
     })
 
     # Add other necessary columns filled with NaNs or default values
-    df["time spent"] = [None] * len(df)
-    df["visitation count"] = [None] * len(df)
+    df["time_spent"] = [None] * len(df)
+    df["visitation_count"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
-    df["mouse_enter_time"] = [None] * len(df)
+    
 
     return df,wave_arrays
 
@@ -549,7 +551,7 @@ def create_trials_for_sequences(frequency, patterns, volume=100, waveform="sine"
         "trial_ID": repetition_numbers,
         "ROIs": rois_repeated,
         "pattern": patterns_final,
-        "frequency_seq": frequency_final,
+        "frequency": frequency_final,
         "wave_arrays": wave_arrays
     })
 
@@ -637,7 +639,7 @@ def create_trials_for_intervals(frequency, intervals, intervals_names, volume=10
 
 
                 # Convert trial_list to a tuple of tuples ##add wavefrom as a tuple
-                trial_tuple_as_tuple = tuple(item[1] for item in trial_list)
+                trial_tuple_as_tuple = tuple(item[2] for item in trial_list)
                 #print(trial_tuple_as_tuple)
 
                 #trying to convert the whole list of freq, int, wave requires too much, try to see if just affing the freq works
@@ -674,7 +676,7 @@ def create_trials_for_intervals(frequency, intervals, intervals_names, volume=10
         "ROIs": rois_repeated,
         "interval": intervals_names_final,
         "interval_ratio": intervals_final,
-        "frequencies": frequency_final,
+        "frequency": frequency_final,
         "wave_arrays": wave_arrays
     })
 

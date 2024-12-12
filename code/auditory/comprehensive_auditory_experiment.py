@@ -17,7 +17,7 @@ sd.default.device = 2
 # Variables
 testing= False
 pause_between_frames = False
-drawRois = True
+drawRois = False
 #set to true to make individual sine sounds
 make_simple_sounds = False
 # set to true to make sequences of tones
@@ -301,33 +301,36 @@ for trial in unique_trials:
 
                 if "ROI1" in item or "ROI2" in item or "ROI3" in item or "ROI4" in item:
                     if mousePresent[item]:
-                        if trials[trials["trial_ID"] == trial]["interval"].values[0] != "0":
-                            if item == "ROI1" and reset_play:
-                                reset_play = False
-                                if make_complex_sounds:
-                                    sf.play_interval(sound1[0][0], sound1[1][0])
-                                else:
-                                    sf.play_sound(sound1)
-                            if item == "ROI2" and reset_play:
-                                reset_play = False
-                                if make_complex_sounds:
-                                    sf.play_interval(sound2[0][0], sound2[1][0])
-                                else:
-                                    sf.play_sound(sound2)
-                            if item == "ROI3" and reset_play:
-                                reset_play = False
-                                if make_complex_sounds:
-                                    sf.play_interval(sound3[0][0], sound3[1][0])
-                                else:
-                                    sf.play_sound(sound3)
-                            if item == "ROI4" and reset_play:
-                                reset_play = False
-                                if make_complex_sounds:
-                                    sf.play_interval(sound4[0][0], sound4[1][0])
-                                else:
-                                    sf.play_sound(sound4)
-                            
-                            print (f"Playing sound ")
+                        if trials[trials["trial_ID"] == trial]["frequency"].values[0] != "0":
+                            if trials[trials["trial_ID"] == trial]["frequency"].values[0] != 0:
+                                if trials[trials["trial_ID"] == trial]["frequency"].values[0] != [0,0]:
+
+                                    if item == "ROI1" and reset_play:
+                                        reset_play = False
+                                        if make_complex_sounds:
+                                            sf.play_interval(sound1[0][0], sound1[1][0])
+                                        else:
+                                            sf.play_sound(sound1)
+                                    if item == "ROI2" and reset_play:
+                                        reset_play = False
+                                        if make_complex_sounds:
+                                            sf.play_interval(sound2[0][0], sound2[1][0])
+                                        else:
+                                            sf.play_sound(sound2)
+                                    if item == "ROI3" and reset_play:
+                                        reset_play = False
+                                        if make_complex_sounds:
+                                            sf.play_interval(sound3[0][0], sound3[1][0])
+                                        else:
+                                            sf.play_sound(sound3)
+                                    if item == "ROI4" and reset_play:
+                                        reset_play = False
+                                        if make_complex_sounds:
+                                            sf.play_interval(sound4[0][0], sound4[1][0])
+                                        else:
+                                            sf.play_sound(sound4)
+                                    
+                                    print (f"Playing sound ")
 
         time_old_frame = time_frame
 
