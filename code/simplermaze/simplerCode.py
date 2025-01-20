@@ -15,22 +15,22 @@ import copy
 
 #for code inspection and testing of the code purposes we add a small pause in between frames in
 #the main code loop... this variable just below this needs to be set to False if one is running the actual experiments
-pause_between_frames = True
+pause_between_frames = False
 
 #whenever working without the actual servos and ESP32 set the next variable to False
-serialOn = False
+serialOn = True
 
 #if running experiments "testing" should be False (related to testing the code)
-testing = True
+testing = False
 
 #If ROIs need to be drawn by experiementer, set the next variable to TRUE
 drawRois = False
 
 #If just testing and no video needs to be recorded, set the next variable to FALSE
-recordVideo = False
+recordVideo = True
 #define where the video is coming from. Use 0 for the first camera on the computer,
 #or a complete file path to use a pre-recorded video
-videoInput = '/home/andre/Desktop/maze_test.mp4'
+videoInput = 0
 
 
 #get the identification of each grating
@@ -42,9 +42,10 @@ gratingID = pd.read_csv("grating_maps.csv",index_col=0)
 date_time = sf.get_current_time_formatted()
 
 if testing:
-    new_dir_path = '/home/andre/Desktop/maze_recordings/'
+    base_path = "C:/Users/labadmin/Desktop/maze_recordings/"
+    new_dir_path = "C:/Users/labadmin/Desktop/maze_recordings/"
     #new_dir_path = "C:/Users/labadmin/Desktop/maze_recordings/"
-    experiment_phase = 3
+    experiment_phase = 1
     #create  trials and save them to csv (later this csv needs to go to the appropriate session folder)
     trials = sf.create_trials(numTrials = 100, sessionStage=experiment_phase, nonRepeat=True)
     trials.to_csv(os.path.join(new_dir_path,f"trials_before_session_{date_time}.csv"))
@@ -77,7 +78,7 @@ else:
 if serialOn:
     #create a serial object and connect to it
 
-    ser = serial.Serial("COM5",115200)
+    ser = serial.Serial("COM4",115200)
     print(ser.in_waiting)
     while ser.in_waiting>0:
         ser.readline()
@@ -88,10 +89,10 @@ if drawRois:
     sf.define_rois(videoInput = videoInput,
                     roiNames = ["entrance1","entrance2",
                             "rewA","rewB","rewC","rewD"],
-                    outputName = new_dir_path+"/"+"rois1.csv")
-    rois = pd.read_csv(new_dir_path+"/"+"rois1.csv",index_col=0)
+                    outputName = base_path+"/"+"rois1.csv")
+    rois = pd.read_csv(base_path+ "/"+"rois1.csv",index_col=0)
 else:
-    rois = pd.read_csv(new_dir_path+"rois1.csv",index_col=0)
+    rois = pd.read_csv(base_path+"/"+ "rois1.csv",index_col=0)
     #rois_save = rois[:]
     #rois_save.to_csv(new_dir_path+"/"+"rois1.csv")
 #load ROI information
@@ -126,6 +127,11 @@ if recordVideo:
 
 #grab one frame:
 valid,gray = cap.read()
+#quick and dirty method to grab more frames from the camera to see if there are any issues with
+#stabilization in the beginning:
+for i in range(5):
+    valid,gray = cap.read()
+    time.sleep(0.1)
 ret,gray = cv.threshold(gray,100,255,cv.THRESH_BINARY)
 
 #run a loop to catch each area and sum the pixel values on that area of the frame
@@ -184,7 +190,7 @@ for trial in trials.index:
     print("set all grating motors to neutral position")
     for motor in gratingID:
         motor1 = motor[motor.find(" ")+1:]
-        message = 'grt{0} 45\n'.format(motor1)
+        message = 'grt{0} 0\n'.format(motor1)
         #print(message)
         if serialOn:
             ser.write(message.encode('utf-8'))
@@ -198,7 +204,7 @@ for trial in trials.index:
             message = 'grt{0}\n'.format(grtPosition)
             #print (message)
         else:
-            message = 'grt{0} 0\n'.format(grtPosition[0:2])
+            message = 'grt{0} 20\n'.format(grtPosition[0:2])
 
         if serialOn:
             ser.write(message.encode('utf-8'))
@@ -225,6 +231,15 @@ for trial in trials.index:
     
     visited_any_rew_area_flag = False
     first_rew_area = "X"
+    
+    #quick and dirty method to grab more frames from the camera to see if there are any issues with
+    #stabilization in the beginning:
+    if trial == 0:
+
+        for i in range(5):
+            valid,gray = cap.read()
+            time.sleep(0.1)
+    
     while trialOngoing:
         
         if pause_between_frames:
@@ -263,6 +278,10 @@ for trial in trials.index:
                                (rois[item]["xstart"]+rois[item]["xlen"],
                                 rois[item]["ystart"]+rois[item]["ylen"]),
                            color=(120,0,0), thickness=2)
+                        # Add the name of the ROI above the rectangle
+            cv.putText(gray, item,
+               (rois[item]["xstart"], rois[item]["ystart"] - 15),
+               cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1, cv.LINE_AA)
 
         # Display the resulting frame
         cv.imshow('binary maze plus ROIs', gray)
