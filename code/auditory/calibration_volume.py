@@ -1,8 +1,10 @@
 import time
 import sounddevice as sd
 import numpy as np
+import supfun_sequences as sf
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
+
 
 
 #if using a focusrite soundcard, refer to this https://support.focusrite.com/hc/en-gb/articles/115004120965-Sample-Rate-Bit-Depth-Buffer-Size-Explained
@@ -39,17 +41,16 @@ def check_sounds(sample_rate):
     sound4= generate_sound_data(22000,volume = 0.1, fs=sample_rate)
     sound5= generate_sound_data(32000,volume = 10, fs=sample_rate)
     sound6= generate_sound_data(40000,volume = 10, fs=sample_rate)
-
-
-    sounds = [sound1, sound2, sound3, sound4, sound5, sound6]
-
     
+  sounds = [sound1, sound2, sound3, sound4, sound5, sound6]
 
     for i in range(len(sounds)):
         print(f"playing sound{i}")
         sd.play(sounds[i], sample_rate)
-
+    
         time.sleep(10)
+
+# this is to test intervals
     #     # if i<= 2:
         #     sf.play_interval(sounds[i], sounds[i+1])
         #     time.sleep(10)
