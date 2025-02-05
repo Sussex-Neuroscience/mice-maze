@@ -15,6 +15,13 @@ from sympy.plotting import plot_parametric
 import matplotlib.pyplot as plt
 
 
+
+def get_rois_list(rois_number):
+    rois_list = []
+    for i in range(rois_number):
+        rois_list.append(f"ROI{i+1}")
+    return rois_list
+
 def collect_metadata(animal_ID):
     ear_mark = input("Ear mark identifiers? (y/n): \n").lower()
     birth_date = input("Insert animal birth date (dd/mm/yyyy): \n")
@@ -233,58 +240,189 @@ def read_wav_file(file_path):
         
         return sound_data, framerate
 
+def get_interval(interval_name):
 
-def ask_music_info_sequences():
-    freqs = []
-    events = ["A", "B", "C", "o"]
+    intervals_names = ["unison", "min_2", "maj_2", "min_3", "maj_3", "perf_4", "tritone", 
+             "perf_5", "min_6", "maj_6", "min_7", "maj_7", "octave"]
+    intervals_values = [1/1, 16/15, 9/8, 6/5, 5/4, 4/3, 64/45, 3/2, 8/5, 5/3, 16/9, 15/8, 2]
+    intervals_values_strings= ["1/1", "16/15", "9/8", "6/5", "5/4", "4/3", "45/32", "3/2", "8/5", "5/3", "16/9", "15/8", "2/1"]
 
-    for i in range(1,4): 
+    intervals = dict(zip(intervals_names, intervals_values))
+    intervals_strings = dict(zip(intervals_names, intervals_values_strings))
+    
+    return intervals[interval_name], intervals_strings[interval_name]
 
-        freq = int(input(f"Insert frequency for sound #{i}\n"))
-        freqs.append(freq)
-    freqs.append(0)
+def get_chord(chord):
+    chords_dict= {
+        "major": ["unison", "maj_3", "perf_5"],
+        "minor": ["unison", "min_3", "perf_5"],
+        "maj_6th": ["unison", "maj_3", "perf_5", "maj_6"],
+        "min_6th": ["unison", "min_3", "perf_5", "maj_6"],
+        "sus4": ["unison", "perf_4", "perf_5"],
+        "dim": ["unison", "min_3", "tritone"],
+        "aug": ["unison", "maj_3", "min_6"],
+        "dominant_7th": ["unison", "maj_3", "perf_5", "min_7"],
+        "min_7th": ["unison", "min_3", "perf_5", "min_7"],
+        "maj_7th": ["unison", "maj_3", "perf_5", "maj_7"]
+    }
+    
+    return chords_dict[chord]
 
-    events_dict = dict(zip(events, freqs))
-    #each sound is 0.1 seconds, sequences need to be 10 seconds long, so 100 notes (or 50 for 0.2))
+def get_intervals_from_chord(root_frequency, chord):
+    sequence_of_intervals = get_chord(chord)
 
-    frequency1= []
-    frequency2=[]
-    frequency3=[]
+    interval_values = []
+    interval_strings = []
+    frequencies = []
+    for i in sequence_of_intervals: 
+        interval_value, interval_string = get_interval(i)
+        interval_values.append(interval_value)
+        interval_strings.append(interval_string)
+        frequencies.append(int(interval_value * root_frequency))
 
-    for i in range(100):
-        frequency1.append("A")
-        frequency1.append("o")
-        frequency2.append("A")
-        frequency2.append("B")
-        frequency3.append("A")
-        frequency3.append("B")
-        frequency3.append("C")
+    return sequence_of_intervals, interval_strings, frequencies
+
+def check_if_lower(pattern):
+    lower = ["random", "RANDOM", "Random", "ran", "rdm", "Ran", "RDM", "silence", "SILENCE", "sil", "Sil", "Silence"]
+    mixed = ["AoAo", "AOAO", "aoao", "A0A0", "a0a0"]
+    
+    if pattern in mixed: 
+        pattern = "AoAo"
+    else:
+        if pattern in lower:
+            pattern = pattern.lower()
+        else:
+            pattern = pattern.upper()
+    return pattern
+
+def ask_pattern(rois_number):
+    pattern_list= []
+    for i in range(1, rois_number+1):        
+        pattern = input(f"insert pattern #{i}\n(e.g. AoAo, ABAB, ABCABC, ABCDABCD, random, silence, BABA, CBACBA)\n")
+        pattern = check_if_lower(pattern)
+        pattern_list.append(pattern)
+    return (pattern_list)
+
+def ask_pattern_chords(number_consonants, number_dissonants):
+    consonant_patterns = []
+    dissonant_patterns= []
+    
+    if number_consonants == number_dissonants: 
+        for i in range(1, number_consonants+1):
+            pattern = (input(f"insert pattern #{i}\n(ABAB, ABCABC, ABCDABCD, random, BABA, CBACBA):\n"))
+            pattern = check_if_lower(pattern)
+            consonant_patterns.append(pattern)
+            dissonant_patterns.append(pattern)
+            
+    elif number_consonants >  number_dissonants : 
+        difference= number_consonants -  number_dissonants
+        same_n_rois = number_consonants - (difference)
+
+        for i in range(1, same_n_rois+1):
+            pattern = (input(f"insert pattern #{i}\n(ABAB, ABCABC, ABCDABCD, random, BABA, CBACBA):\n"))
+            pattern = check_if_lower(pattern)
+            consonant_patterns.append(pattern)
+            dissonant_patterns.append(pattern)
+
+        for i in range(1, difference+1):
+            pattern = (input(f"insert the additional consonant pattern #{i}\n(ABAB, ABCABC, ABCDABCD, random, BABA, CBACBA):\n"))
+            pattern = check_if_lower(pattern)
+            consonant_patterns.append(pattern)
+
+    else: 
+        difference=  number_dissonants - number_consonants
+        same_n_rois =  number_dissonants - (difference)
+
+        for i in range(1, same_n_rois+1):
+            pattern = (input(f"insert pattern #{i}\n(ABAB, ABCABC, ABCDABCD, random, BABA, CBACBA):\n"))
+            pattern = check_if_lower(pattern)
+            consonant_patterns.append(pattern)
+            dissonant_patterns.append(pattern)
+
+        for i in range(1, difference+1):
+            pattern = (input(f"insert the additional dissonant pattern #{i}\n(ABAB, ABCABC, ABCDABCD, random, BABA, CBACBA):\n"))
+            pattern = check_if_lower(pattern)
+            dissonant_patterns.append(pattern)
+            
+    return consonant_patterns, dissonant_patterns
+
+def ask_music_info_sequences(rois_number):
+
+    intervals_vs_custom= input("would you like to add custom values or to generate sequences based on intervals? (custom/intervals)")
+
+    if intervals_vs_custom == "custom":
+        pattern_list = []
         
+        #for each ROI, ask the user for the desired pattern
+        ask_for_pattern_input = (input("would you like to make new patterns?\n (select y if you want to insert the patterns, n if you want to hard code the patterns)")).lower()
         
-    frequency4=[random.choice(events) for _ in range(200)]
+        if ask_for_pattern_input == "y":
+            pattern_list= ask_pattern(rois_number)
+        else:
+            pattern_list = ['BABA','AoAo','random', 'silence',  'AAAAA', 'ABCABC', 'BABA', 'CBACBA', 'ABCDEABCDE', 'DCBADCBA']   
+        
+        #to determine the individual events, exclude random and silence
+        patterns_nonpatterns = ["random", "silence"]
+        
+        #get the sorted individual events in the sequences and map them to frequencies
+        events = []
+        freqs = []
+        for i in sorted(pattern_list):
+            if i not in patterns_nonpatterns: 
+                for j in i:
+                    if j not in events:
+                        events.append(j)
+                        #ask the user the frequency for the event
+                        if j !='o':
+                            freq = int(input(f"Insert frequency for sound {j}:\n"))
+                            freqs.append(freq)
+                        else:
+                            freqs.append(0)
 
         
-    f1= [events_dict[i] for i in frequency1]
-    f2= [events_dict[i] for i in frequency2]
-    f3= [events_dict[i] for i in frequency3]
-    f4= [events_dict[i] for i in frequency4]
+        #map frequency to event in a dictionary
+        sound_dict = dict(zip(events,freqs))
+        
+        sequence_from_pattern= []
+        repetitions = 50
+        #generate the sequences of events from patterns 
+        for index, item in enumerate(pattern_list):
+            #print (index+1, item)
+            if item not in patterns_nonpatterns: 
+                #print (index, item)
+                sequence_from_pattern.append(list(item*repetitions))
+            elif item == "random": 
+                sequence_from_pattern.append([random.choice(events) for _ in range(200)])
+            else:
+                sequence_from_pattern.append(['o' for _ in range(200) ])
+            
+    #print(sequence_from_pattern)
+    sequence_of_frequencies = [[sound_dict[char] for char in sublist] for sublist in sequence_from_pattern]
 
+    #
+    #
+    #
+    #
+    #
+    #
+    #
+    #
+    #
+    ###continue with the intervals patterns one #### 
 
-    patterns = [frequency1, frequency2, frequency3, frequency4]
-    frequency = [f1, f2, f3, f4]
+    return sequence_of_frequencies, pattern_list
+    
 
-    return frequency, patterns
-
-def ask_music_info_simple_sounds():
+def ask_music_info_simple_sounds(rois_number):
     frequency = []
 
-    for i in range(1, 5): 
+    for i in range(1, rois_number+1): 
         freqs = int(input(f"Insert frequency for sound #{i}\n"))
         frequency.append(freqs)
 
     return frequency
 
-def ask_info_intervals():
+def ask_info_intervals(rois_number):
     
     # create a dictionary with interval names and values
     intervals_names = ["unison", "min_2", "maj_2", "min_3", "maj_3", "perf_4", "tritone", 
@@ -385,25 +523,19 @@ def shuffle_data(frequency, volume, waveform):
     random.shuffle(combined)
     return zip(*combined)
 
-def create_simple_trials(frequency,
+def create_simple_trials(rois, frequency,
                   total_repetitions = 9,
                   zero_repetitions = 5,
-                  rois = ["ROI1", "ROI2", "ROI3", "ROI4"]):
-    
-    volume = [1, 1, 1, 1]
-    waveform = ["sine", "sine", "sine", "sine"] 
-    # Number of repetitions for each ROI
-    
-    
-    # ROIs to be used
+                  sample_rate = 192000):
+
     
     # Create a list of ROIs repeated total_repetitions times
     rois_repeated = rois * total_repetitions
 
     # Initialize lists to store the shuffled frequency, volume, and waveform
     frequency_final = []
-    volume_final = []
-    waveform_final = []
+    # volume_final = []
+    # waveform_final = []
     wave_arrays = []
     repetition_numbers = []
 
@@ -413,25 +545,26 @@ def create_simple_trials(frequency,
 
     
 
-
-
     # Create trials
     for i in range(total_repetitions):
         if i % 2 == 0:  # Alternate zero data repetitions
             for j in range(len(rois)):
                 repetition_numbers.append(i + 1)  # Add repetition number
                 frequency_final.append(0)
-                volume_final.append(0)
-                waveform_final.append('none')
-                temp_array = np.zeros(441000)
-                wave_arrays.append(np.zeros(441000))  # Assuming 10 seconds of silence
+                # volume_final.append(0)
+                # waveform_final.append('none')
+                temp_array = np.zeros(sample_rate*10)
+                wave_arrays.append(np.zeros(sample_rate*10))  # Assuming 10 seconds of silence
         else:
             while True:
                 if i == 1:  # Trial 2 should use the initial list
-                    trial_tuple = get_trial_tuple(frequency, volume, waveform)
-                else:  # Other trials should be unique and shuffled
-                    shuffled_frequency, shuffled_volume, shuffled_waveform = shuffle_data(frequency, volume, waveform)
-                    trial_tuple = get_trial_tuple(shuffled_frequency, shuffled_volume, shuffled_waveform)
+                    trial_tuple = tuple(frequency)  #get_trial_tuple(frequency, volume, waveform)
+                else:  # Other trials should be unique and shuffled 
+                    trial_list = list(frequency)
+                    random.shuffle(trial_list)
+                    trial_tuple = tuple(trial_list)
+                    
+
 
                 if trial_tuple not in previous_trials:
                     previous_trials.add(trial_tuple)
@@ -439,16 +572,16 @@ def create_simple_trials(frequency,
                         for j in range(len(rois)):
                             repetition_numbers.append(i + 1)  # Add repetition number
                             frequency_final.append(frequency[j])
-                            volume_final.append(volume[j])
-                            waveform_final.append(waveform[j])
+                            # volume_final.append(volume[j])
+                            # waveform_final.append(waveform[j])
                             wave_arrays.append(generate_sound_data(frequency[j]))
                     else:
                         for j in range(len(rois)):
                             repetition_numbers.append(i + 1)  # Add repetition number
-                            frequency_final.append(shuffled_frequency[j])
-                            volume_final.append(shuffled_volume[j])
-                            waveform_final.append(shuffled_waveform[j])
-                            wave_arrays.append(generate_sound_data(shuffled_frequency[j]))
+                            frequency_final.append(trial_tuple[j])
+                            # volume_final.append(shuffled_volume[j])
+                            # waveform_final.append(shuffled_waveform[j])
+                            wave_arrays.append(generate_sound_data(trial_tuple[j]))
                     break
 
     # Create the DataFrame with the repetition numbers, repeated ROIs, and final data
@@ -456,9 +589,9 @@ def create_simple_trials(frequency,
         "trial_ID": repetition_numbers,
         "ROIs": rois_repeated,
         "frequency": frequency_final,
-        "volume": volume_final,
-        "waveform": waveform_final,
-        #"wave_arrays": wave_arrays
+        # "volume": volume_final,
+        # "waveform": waveform_final,
+        # #"wave_arrays": wave_arrays
     })
 
     # Add other necessary columns filled with NaNs or default values
@@ -470,10 +603,10 @@ def create_simple_trials(frequency,
 
     return df,wave_arrays
 
-def create_trials_for_sequences(frequency, patterns, volume=100, waveform="sine",
+def create_trials_for_sequences(rois, frequency, patterns, volume=100, waveform="sine",
                   total_repetitions = 9,
                   zero_repetitions = 5,
-                  rois = ["ROI1", "ROI2", "ROI3", "ROI4"]):
+                  sample_rate = 192000):
     
     # Create a list of ROIs repeated total_repetitions times
     rois_repeated = rois * total_repetitions
@@ -495,7 +628,7 @@ def create_trials_for_sequences(frequency, patterns, volume=100, waveform="sine"
                 repetition_numbers.append(i + 1)  # Add repetition number
                 frequency_final.append(0)
                 patterns_final.append(0)
-                wave_arrays.append(np.zeros(441000))  # Assuming 10 seconds of silence
+                wave_arrays.append(np.zeros(sample_rate*10))  # Assuming 10 seconds of silence
         else:
             while True:
                 if i == 1:  # Trial 2 should use the initial list
@@ -563,10 +696,10 @@ def create_trials_for_sequences(frequency, patterns, volume=100, waveform="sine"
 
     return df, wave_arrays
 
-def create_trials_for_intervals(frequency, intervals, intervals_names, volume=100, waveform="sine",
+def create_trials_for_intervals(rois, frequency, intervals, intervals_names, volume=100, waveform="sine",
                   total_repetitions = 9,
                   zero_repetitions = 5,
-                  rois = ["ROI1", "ROI2", "ROI3", "ROI4"]):
+                  sample_rate=192000):
 
     # Create a list of ROIs repeated total_repetitions times
     rois_repeated = rois * total_repetitions
@@ -622,7 +755,7 @@ def create_trials_for_intervals(frequency, intervals, intervals_names, volume=10
                 frequency_final.append(0)
                 intervals_final.append(0)
                 intervals_names_final.append(0)
-                wave_arrays.append(np.zeros(441000))  # Assuming 10 seconds of silence
+                wave_arrays.append(np.zeros(sample_rate*10))  # Assuming 10 seconds of silence
         else:
             while True:
                 if i == 1:  # Trial 2 should use the initial list
