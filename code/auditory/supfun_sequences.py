@@ -425,51 +425,75 @@ def ask_music_info_simple_sounds(rois_number):
 def ask_info_intervals(rois_number):
     
     # create a dictionary with interval names and values
-    intervals_names = ["unison", "min_2", "maj_2", "min_3", "maj_3", "perf_4", "tritone", 
-                 "perf_5", "min_6", "maj_6", "min_7", "maj_7", "octave"]
-    intervals_values = [1/1, 16/15, 9/8, 6/5, 5/4, 4/3, 64/45, 3/2, 8/5, 5/3, 16/9, 15/8, 2]
-    intervals_values_strings= ["1/1", "16/15", "9/8", "6/5", "5/4", "4/3", "45/32", "3/2", "8/5", "5/3", "16/9", "15/8", "2/1"]
-    
-    intervals = dict(zip(intervals_names, intervals_values))
-    intervals_strings = dict(zip(intervals_names, intervals_values_strings))
-    
         
+    #define intervals to get consonant and dissonant intervals
+    intervals_names = ["unison", "min_2", "maj_2", "min_3", "maj_3", "perf_4", "tritone", 
+                       "perf_5", "min_6", "maj_6", "min_7", "maj_7", "octave"]
+    
     consonant_intervals = [intervals_names[i] for i in (3,4,5,7,8,9,12)]
     dissonant_intervals = [intervals_names[i] for i in (1,2,6,10,11)]
     
-    # ask for frequency of tonal centre
-    central_tone= float(input("insert frequency that will be the tonal centre:\n"))
-    #this is the pure tone
-    sound1= [central_tone, round(central_tone*intervals["unison"],2)]
     
-    #prompt for consonant/dissonant interval
-    consonant_choice= input(f"insert the consonant interval of choice {consonant_intervals}:\n")
-    consonant_choice= consonant_choice.lower()
-    #this is the consonant interval
-    sound2= [central_tone, round(central_tone*intervals[consonant_choice],2)]
+
+    usable_rois = rois_number - 2
+    #one is going to be unison, the other one is going to be silence
+    rois_per_nance= int(usable_rois/2)
     
-    dissonant_choice= input(f"insert the dissonant interval of choice {dissonant_intervals}:\n")
-    dissonant_choice = dissonant_choice.lower()
-    #this is the dissonant interval
-    sound3 = [central_tone, round(central_tone*intervals[dissonant_choice], 2)]
+    number_consonants = rois_per_nance
+    number_dissonants = rois_per_nance
     
-    #ask user if there will be a vocalisation.
+    if rois_number %2 !=0:
+        
+        choice_odd_roi = (input('''you have an odd number of ROIs.\nWould you like to have an extra consonant or dissonant ROI?\n''')).lower()
+        if choice_odd_roi == "consonant":
+            number_consonants +=1
+            
+        elif choice_odd_roi == "dissonant":
+            number_dissonants +=1
+
+            
+    tonal_centre = int(input("insert the frequency that will be the tonal centre:\n"))
+    tonal_centre_interval, tonal_centre_string = get_interval("unison")
+    
+    #the frequencies list will contain lists containing the 2 frequencies that make up the interval. 
+    frequencies =[[tonal_centre, int(tonal_centre*tonal_centre_interval)]]
+    interval_numerical_list = [tonal_centre_string]
+    interval_string_names = ["unison"]
+    
+    
+    
+    for i in range(number_consonants):
+        consonant_choice= input(f"insert the consonant interval of choice {consonant_intervals}:\n")
+        consonant_choice= consonant_choice.lower()
+        interval, interval_as_string = get_interval(consonant_choice)
+        frequencies.append([tonal_centre, int(tonal_centre*interval)])
+        interval_numerical_list.append(interval_as_string)
+        interval_string_names.append(consonant_choice)
+    
+    for i in range(number_dissonants):
+        dissonant_choice= input(f"insert the dissonant interval of choice {dissonant_intervals}:\n")
+        dissonant_choice= dissonant_choice.lower()
+        interval, interval_as_string = get_interval(dissonant_choice)
+        frequencies.append([tonal_centre, int(tonal_centre*interval)])
+        interval_numerical_list.append(interval_as_string)
+        interval_string_names.append(dissonant_choice)
+        
+        #ask user if there will be a vocalisation.
     vocalisation = (input("want to select a .wav file containing a sound vocalisation?(y/n)\nif n, one of the ROIs will be silent \n")).lower()
     
     if vocalisation == "y":
         wav_file = choose_csv()
-        sound4= [wav_file, 0]
+        frequencies.append([wav_file, 0])
+        interval_numerical_list.append(0)
+        interval_string_names.append("vocalisation")
 
     else:
-        sound4= [0, 0]
+        frequencies.append([0,0])
+        interval_numerical_list.append(["0"])
+        interval_string_names.append("no_interval")
         
         
-    
-    
-    frequencies = [sound1, sound2, sound3, sound4]
-    interval_list = [intervals_strings["unison"], intervals_strings[consonant_choice], intervals_strings[dissonant_choice], ["0"]]
-    interval_names = ["unison", consonant_choice, dissonant_choice, 'no_interval']
-    return frequencies, interval_list, interval_names
+    return frequencies, interval_numerical_list, interval_string_names
     
 def plotting_lissajous(interval):
     t = symbols('t')
