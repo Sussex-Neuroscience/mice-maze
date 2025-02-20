@@ -53,7 +53,7 @@ ax1.set_ylabel('Frequency [Hz]')
 
 # Real-time FFT
 line, = ax2.plot([], [], lw=2)
-ax2.set_xlim(0, 45000)
+ax2.set_xlim(0, sample_rate/2)
 ax2.set_ylim(0, 1)
 ax2.set_title('Real-time FFT')
 ax2.set_xlabel('Frequency [Hz]')
