@@ -66,7 +66,7 @@ else:
 
     metadata = sf.collect_metadata(animal_ID, session_ID)
     sf.save_metadata_to_csv(metadata, new_dir_path, f"{animal_ID}_{date_time}.csv")
-    trials = sf.create_trials(numTrials = 150, sessionStage=experiment_phase)
+    trials = sf.create_trials(numTrials = 150, sessionStage=experiment_phase, nonRepeat=True)
 
     trials.to_csv(os.path.join(new_dir_path,"trials_before_session.csv"))
 
