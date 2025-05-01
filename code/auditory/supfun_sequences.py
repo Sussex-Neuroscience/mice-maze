@@ -13,6 +13,7 @@ import sounddevice as sd
 from sympy import *
 from sympy.plotting import plot_parametric
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
 
 
 
@@ -397,7 +398,10 @@ def ask_music_info_sequences(rois_number):
                 sequence_from_pattern.append(['o' for _ in range(200) ])
             
     #print(sequence_from_pattern)
-    sequence_of_frequencies = [[sound_dict[char] for char in sublist] for sublist in sequence_from_pattern]
+        sequence_of_frequencies = [[sound_dict[char] for char in sublist] for sublist in sequence_from_pattern]
+
+    elif intervals_vs_custom == "intervals":
+        pass
 
     #
     #
@@ -525,19 +529,55 @@ def plotting_lissajous(interval):
     p = plot_parametric(x, y, (t, 0, 2*pi), title=title)
     
     p.save(f"{interval}_plot.png")    
+
+def compute_gain(frequency_hz):
+
+    data = pd.read_csv("C:/Users/aleja/Downloads/frequency_response_speaker.csv")
+    # interpolation function from the frequency response data extrapolated from the graph on the website
+    frequency = data['Frequency_kHz'].values * 1000  # Convert kHz to Hz
+    attenuation = data['Attenuation_dB'].values
+    interp_func = interp1d(frequency, attenuation, kind='cubic', fill_value="extrapolate")
+    #get the interpolated attenuation
+    attenuation_db = interp_func(frequency_hz)
+    #from there calculate the gain 
+    gain = 10 ** (-attenuation_db / 20)
+    return gain
+
+
     
 
  
 
-def generate_sound_data(frequency, volume=1, waveform="sine", duration=15, fs=44100):
+def generate_sound_data(frequency, waveform="sine", duration=15, fs=192000, volume=1.0, compensate=True):
     """Generate sound data for a given frequency and waveform."""
-    t = np.linspace(0, duration, int(fs * duration), False)
+    t = np.linspace(0, duration, int(fs * duration), endpoint = False)
+    gain = compute_gain(frequency) if compensate else 1.0
+    adjusted_volume = volume * gain
     sound = np.zeros_like(t)
+    
+
 
     if waveform == 'sine':
-        sound = np.sin(frequency * t * 2 * np.pi)
+        sound = np.sin(frequency * t * 2 * np.pi)  * adjusted_volume
 
-    return sound * volume
+    elif waveform == 'square':
+        sound = np.sign(np.sin(frequency * t * 2 * np.pi)) * adjusted_volume
+
+    elif waveform == 'sawtooth':
+        sound = (2 * (t * frequency % 1) - 1) * adjusted_volume
+
+    elif waveform == 'triangle':
+        sound = (2 * np.abs(2 * (t * frequency - np.floor(0.5 + t * frequency))) - 1) * adjusted_volume
+
+    elif waveform == 'pulse wave':
+        sound = np.where((t % (1 / frequency)) < (1 / frequency) * 0.5, 1.0, -1.0)  * adjusted_volume  # 0.5 in this case is the duty cycle
+    
+    elif waveform == 'white noise':
+        samples = int(fs * duration)
+        sound = np.random.uniform(low=-1.0, high=1.0, size=samples) * adjusted_volume
+
+
+    return sound
 
 def get_trial_tuple(frequency, volume, waveform):
     return tuple(zip(frequency, volume, waveform))
@@ -615,7 +655,7 @@ def create_simple_trials(rois, frequency,
         "frequency": frequency_final,
         # "volume": volume_final,
         # "waveform": waveform_final,
-        # #"wave_arrays": wave_arrays
+        "wave_arrays": wave_arrays
     })
 
     # Add other necessary columns filled with NaNs or default values
@@ -720,7 +760,7 @@ def create_trials_for_sequences(rois, frequency, patterns, volume=100, waveform=
 
     return df, wave_arrays
 
-def create_trials_for_intervals(rois, frequency, intervals, intervals_names, volume=100, waveform="sine",
+def create_trials_for_intervals(rois, frequency, intervals, intervals_names,
                   total_repetitions = 9,
                   zero_repetitions = 5,
                   sample_rate=192000):
@@ -845,10 +885,9 @@ def create_trials_for_intervals(rois, frequency, intervals, intervals_names, vol
 
     return df, wave_arrays
 
-def play_sound(sound_data, fs=44100):
+def play_sound(sound_data, fs=192000):
     """Play sound using sounddevice library."""
-    sound_data_normalised = np.int16((sound_data / np.max(np.abs(sound_data))) * 32767)
-    sd.play(sound_data_normalised, fs)
+    sd.play(sound_data, fs)
 
 def play_interval(sound_data1, sound_data2, fs=44100):
     """Play two sounds simultaneously using the sounddevice library."""
