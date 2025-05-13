@@ -467,7 +467,7 @@ def ask_info_intervals(rois_number):
     
     
     for i in range(number_consonants):
-        consonant_choice= input(f"insert the consonant interval of choice {consonant_intervals}:\n")
+        consonant_choice= input(f"insert the consonant interval of choice #{i+1} {consonant_intervals}:\n")
         consonant_choice= consonant_choice.lower()
         interval, interval_as_string = get_interval(consonant_choice)
         frequencies.append([tonal_centre, int(tonal_centre*interval)])
@@ -475,7 +475,7 @@ def ask_info_intervals(rois_number):
         interval_string_names.append(consonant_choice)
     
     for i in range(number_dissonants):
-        dissonant_choice= input(f"insert the dissonant interval of choice {dissonant_intervals}:\n")
+        dissonant_choice= input(f"insert the dissonant interval of choice #{i+1} {dissonant_intervals}:\n")
         dissonant_choice= dissonant_choice.lower()
         interval, interval_as_string = get_interval(dissonant_choice)
         frequencies.append([tonal_centre, int(tonal_centre*interval)])
@@ -497,6 +497,34 @@ def ask_info_intervals(rois_number):
         interval_string_names.append("no_interval")
         
         
+    return frequencies, interval_numerical_list, interval_string_names
+
+#hard code the freq and intervals list not to manually be prompted every time
+def info_intervals_hc(rois_number, tonal_centre, intervals_list):
+    usable_rois = rois_number - 2
+
+    tonal_centre_interval, tonal_centre_string = get_interval("unison")
+    
+    #the frequencies list will contain lists containing the 2 frequencies that make up the interval. 
+    frequencies =[[tonal_centre, int(tonal_centre*tonal_centre_interval)]]
+    interval_numerical_list = [tonal_centre_string]
+    interval_string_names = ["unison"]
+
+    if len(intervals_list) == usable_rois:
+
+        for i in range(usable_rois):
+            interval, interval_as_string = get_interval(intervals_list[i])
+            frequencies.append([tonal_centre, int(tonal_centre*interval)])
+            interval_numerical_list.append(interval_as_string)
+            interval_string_names.append(intervals_list[i])
+
+        frequencies.append([0,0])
+        interval_numerical_list.append(["0"])
+        interval_string_names.append("no_interval")
+    else:
+        print("please check that the number of intervals is rois_number - 2")
+        
+
     return frequencies, interval_numerical_list, interval_string_names
     
 def plotting_lissajous(interval):
@@ -532,7 +560,7 @@ def plotting_lissajous(interval):
 
 def compute_gain(frequency_hz):
 
-    data = pd.read_csv("C:/Users/aleja/Downloads/frequency_response_speaker.csv")
+    data = pd.read_csv("frequency_response_speaker.csv")
     # interpolation function from the frequency response data extrapolated from the graph on the website
     frequency = data['Frequency_kHz'].values * 1000  # Convert kHz to Hz
     attenuation = data['Attenuation_dB'].values
@@ -889,7 +917,7 @@ def play_sound(sound_data, fs=192000):
     """Play sound using sounddevice library."""
     sd.play(sound_data, fs)
 
-def play_interval(sound_data1, sound_data2, fs=44100):
+def play_interval(sound_data1, sound_data2, fs=192000):
     """Play two sounds simultaneously using the sounddevice library."""
     # Ensure both sound_data arrays are the same length
     min_length = min(len(sound_data1), len(sound_data2))
