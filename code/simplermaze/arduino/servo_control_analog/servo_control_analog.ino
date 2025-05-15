@@ -44,23 +44,18 @@ int servoNum = 100;
 #define gratingLLnum 4
 #define gratingRRnum 5
 
-#define gratingRRRnum 12
-#define gratingLLLnum 13
-#define gratingLRRnum 14
-#define gratingRLLnum 15
-
 //reward location A
-#define IRsensorA 2
-#define rewardMotorA 8
+#define IRsensorA A0//10//2
+#define rewardMotorA 6
 //reward location B
-#define IRsensorB 15
-#define rewardMotorB 9
+#define IRsensorB A1//11//3//15
+#define rewardMotorB 7
 //reward location C
-#define IRsensorC 17
-#define rewardMotorC 10
+#define IRsensorC A3//12//4//17
+#define rewardMotorC 8
 //reward location D
-#define IRsensorD 16
-#define rewardMotorD 11
+#define IRsensorD A2//13//5//16
+#define rewardMotorD 9
 
 
 
@@ -97,10 +92,6 @@ void setup() {
   sCmd.addCommand("grtRL",  gratingRL); // 
   sCmd.addCommand("grtLL",  gratingLL); // 
   sCmd.addCommand("grtRR",  gratingRR); // 
-  sCmd.addCommand("grtRRR",  gratingRRR); //
-  sCmd.addCommand("grtLLL",  gratingLLL); //
-  sCmd.addCommand("grtLRR",  gratingLRR); // 
-  sCmd.addCommand("grtRLL",  gratingRLL); // 
   
   sCmd.addCommand("rewA", rewardA); // activate reward routine (reward 10) // start reward routine on servo 10
   sCmd.addCommand("rewB", rewardB);
@@ -148,7 +139,7 @@ void gratingRoutine(int degree=90, int servoNum=0){
 
 
   pulseLen = map(degree, 0, 120, GRATSERVOMIN, GRATSERVOMAX);
-  Serial.println(pulseLen);
+  //Serial.println(pulseLen);
   pwm.setPWM(servoNum, 0, pulseLen);
 
 }// grating routines
@@ -164,7 +155,7 @@ void pelletRoutine(int IRsensor=0,int servoNum=0, int rewardServoMovTimeLoc = re
     while (time2-time1<rewardServoMovTimeLoc){
       IRvalue = digitalRead(IRsensor);
       //Serial.println(IRvalue);
-      if(IRvalue==0){
+      if(IRvalue<=150){
         pelletDropped=1;
         break;
       }//if
@@ -178,7 +169,7 @@ void pelletRoutine(int IRsensor=0,int servoNum=0, int rewardServoMovTimeLoc = re
       while (time2-time1<rewardServoMovTimeLoc){
         IRvalue = digitalRead(IRsensor);
         //Serial.println(IRvalue);
-        if(IRvalue==0){
+        if(IRvalue<=150){
           pelletDropped=1;
           break;
         }//if
@@ -277,79 +268,6 @@ gratingRoutine(degree=degree, servoNum=gratingRRnum);
     Serial.println("No arguments");
   }     
 }//end gratingRR
-
-
-void gratingLLL(){
-
-  char *arg;
-  int degree;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     degree = atoi(arg);
-  
-gratingRoutine(degree=degree, servoNum=gratingRRnum);
-  }//if
-  else {
-    Serial.println("No arguments");
-  }     
-}//end gratingLLL
-
-void gratingLRR(){
-
-  char *arg;
-  int degree;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     degree = atoi(arg);
-  
-gratingRoutine(degree=degree, servoNum=gratingRRnum);
-  }//if
-  else {
-    Serial.println("No arguments");
-  }     
-}//end gratingLRR
-
-void gratingRLL(){
-
-  char *arg;
-  int degree;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     degree = atoi(arg);
-  
-gratingRoutine(degree=degree, servoNum=gratingRRnum);
-  }//if
-  else {
-    Serial.println("No arguments");
-  }     
-}//end gratingRLL
-
-void gratingRRR(){
-
-  char *arg;
-  int degree;
-  arg = sCmd.next();
-  if (arg != NULL) {
-     degree = atoi(arg);
-  
-gratingRoutine(degree=degree, servoNum=gratingRRnum);
-  }//if
-  else {
-    Serial.println("No arguments");
-  }     
-}//end gratingRRR
-
-
-
-
-
-
-
-
-
-
-
-
 
 void rewardA(){
   //Serial.println("rewardA");
