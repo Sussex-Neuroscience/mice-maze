@@ -1,15 +1,15 @@
 
 
 
-###needed Python libraries:
+## needed Python libraries:
 
-OpenCV
-Pandas
-Numpy
-Tkinter
-sounddevice
-soundfile
-serial
+- OpenCV
+- Pandas
+- Numpy
+- Tkinter
+- sounddevice
+- soundfile
+- serial
 
 
 
