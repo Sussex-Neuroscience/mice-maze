@@ -1,5 +1,5 @@
-#Welcome to the Auditory part of the maze
-##Hope you're here to stay!!
+# Welcome to the Auditory part of the maze
+## Hope you're here to stay!!
 
 
 
