@@ -8,8 +8,8 @@ from scipy.io import wavfile
 
 
 #if using a focusrite soundcard, refer to this https://support.focusrite.com/hc/en-gb/articles/115004120965-Sample-Rate-Bit-Depth-Buffer-Size-Explained
-SAMPLE_RATE = 192000
-sd.default.samplerate = 192000 #available sample rates: 44.1kHz, 48kHz , 88.2kHz, 96kHz, 176.4kHz , 192 kHz
+SAMPLE_RATE = 192000 #available sample rates: 44.1kHz, 48kHz , 88.2kHz, 96kHz, 176.4kHz , 192 kHz
+sd.default.samplerate = SAMPLE_RATE 
 sd.default.device = 2 # Replace this by setting found_channel = False in  "__main__"
 
   
