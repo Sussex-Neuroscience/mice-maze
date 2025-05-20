@@ -8,7 +8,7 @@ from scipy.io import wavfile
 
 
 #if using a focusrite soundcard, refer to this https://support.focusrite.com/hc/en-gb/articles/115004120965-Sample-Rate-Bit-Depth-Buffer-Size-Explained
-
+SAMPLE_RATE = 192000
 sd.default.samplerate = 192000 #available sample rates: 44.1kHz, 48kHz , 88.2kHz, 96kHz, 176.4kHz , 192 kHz
 sd.default.device = 2 # Replace this by setting found_channel = False in  "__main__"
 
@@ -34,19 +34,19 @@ def play_sound(sound_data, fs=44100):
 
 #this function plays a series of sounds. It is used to check that the actual output of the code (frequency and volume of the sound) are correct
 #use this and modify it to calibrate volume and sample rate
-def check_sounds(sample_rate):
-    sound1 = generate_sound_data(10000, volume = 0.5, fs= sample_rate)
-    sound2= generate_sound_data(14222, volume = 0.5, fs= sample_rate)
-    sound3= generate_sound_data(16666,volume = 0.5, fs= sample_rate)
-    sound4= generate_sound_data(22000,volume = 0.1, fs=sample_rate)
-    sound5= generate_sound_data(32000,volume = 10, fs=sample_rate)
-    sound6= generate_sound_data(40000,volume = 10, fs=sample_rate)
+def check_sounds(SAMPLE_RATE):
+    sound1 = generate_sound_data(10000, volume = 0.5, fs= SAMPLE_RATE)
+    sound2= generate_sound_data(14222, volume = 0.5, fs= SAMPLE_RATE)
+    sound3= generate_sound_data(16666,volume = 0.5, fs= SAMPLE_RATE)
+    sound4= generate_sound_data(22000,volume = 0.1, fs=SAMPLE_RATE)
+    sound5= generate_sound_data(32000,volume = 10, fs=SAMPLE_RATE)
+    sound6= generate_sound_data(40000,volume = 10, fs=SAMPLE_RATE)
     
   sounds = [sound1, sound2, sound3, sound4, sound5, sound6]
 
     for i in range(len(sounds)):
         print(f"playing sound{i}")
-        sd.play(sounds[i], sample_rate)
+        sd.play(sounds[i], SAMPLE_RATE)
     
         time.sleep(10)
 
@@ -63,11 +63,11 @@ def check_sounds(sample_rate):
 
 #you can use this function to visualise the fft of the generated sound.
 
-def make_FFT(sound, sample_rate):
+def make_FFT(sound, SAMPLE_RATE):
 
     # Compute the FFT
     fft_result = np.fft.fft(sound)
-    fft_freq = np.fft.fftfreq(len(sound), 1/sample_rate)
+    fft_freq = np.fft.fftfreq(len(sound), 1/SAMPLE_RATE)
 
     # Plot the FFT
     plt.figure(figsize=(12, 6))
@@ -98,27 +98,25 @@ def find_channel(sound):
 
 
 if __name__== "__main__":
-
-    trial_sound = generate_sound_data(10000, volume = 1, fs= 44100)
-    
     #set to false when using for the first time
     found_channel= False
    
     if not found_channel:
+        trial_sound = generate_sound_data(10000, volume = 1, fs= SAMPLE_RATE)
         # this will generate a list of channels that can or cannot play the sound. Many channels will return the same output. 
         #some channels will distort the sound. Once you find the channel, go to the top of the code and change sd.default.device. 
         # Then set found_channel = True
         find_channel(trial_sound)
 
-
+    else:
         #change the sample rate to calibrate the sounds
-        sample_rate = 192000
-        check_sounds(sample_rate)
+        check_sounds(SAMPLE_RATE)
 
         #set to true if you want to visualise the FFT of the sound
         visualise_FFT = False
         if visualise_FFT:
-            make_FFT(trial_sound, sample_rate)
+            make_FFT(trial_sound, SAMPLE_RATE)
+      
 
 
 
