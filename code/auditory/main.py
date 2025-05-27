@@ -35,14 +35,15 @@ rois_number = 8
 #set to true to create/modify ROIs .csv file
 drawRois = False
 #set to true to make individual sine sounds
-make_simple_sounds = False
+make_simple_smooth_sounds = False
 # set to true to make sequences of tones
 make_sequences = False
 
 #set true to make individual complex sounds. This contains 2 intervals, 1 vocalisation and one pure tone
-make_complex_sounds= True
+make_Simple_intervals= False
 
-
+# set to true if you want to perform experiments testing the effects of temporal envelope modulation on sound preference
+make_temporal_envelope_modulation = False
 
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
 recordVideo = True
@@ -76,7 +77,7 @@ roiNames= entrance_rois + rois_list
 base_name = f"trials_{date_time}"
 
 #make just sounds
-if make_simple_sounds:
+if make_simple_smooth_sounds and not (make_sequences or make_Simple_intervals or make_temporal_envelope_modulation):
     # frequency= sf.ask_music_info_simple_sounds(rois_number)
     frequency = [10000, 12000, 14000, 16000, 18735, 20957, 22543, 24065]
     # for i in range(len(frequency)):
@@ -85,8 +86,8 @@ if make_simple_sounds:
     np.save(os.path.join(new_dir_path, f"{base_name}.npy"), np.array(sound_array, dtype=object))
     trials.to_csv(os.path.join(new_dir_path, f"{base_name}.csv"))
 
-# Make sequences of sounds
-if make_sequences:
+# Make sequences of smooth sounds
+elif make_sequences and not (make_simple_smooth_sounds or make_Simple_intervals or make_temporal_envelope_modulation):
     frequency, patterns= sf.ask_music_info_sequences(rois_number)
     trials, sound_array = sf.create_trials(rois_list, frequency, patterns)
     #make all arrays the same size because otherwise it won't save sound arrays
@@ -96,9 +97,8 @@ if make_sequences:
     np.save(os.path.join(new_dir_path, f"{base_name}.npy"), np.array(trimmed_sound_arrays, dtype=object))
     trials.to_csv(os.path.join(new_dir_path, f"{base_name}.csv"))
 
-
 #make complex sounds
-elif make_complex_sounds:
+elif make_Simple_intervals and not (make_sequences or make_simple_smooth_sounds or make_temporal_envelope_modulation):
     #essentially this gives me the option to be prompted what I want as intervals vs hard coding them
     manual = False
     if manual:
@@ -111,6 +111,40 @@ elif make_complex_sounds:
     trials, sound_array = sf.create_trials_for_intervals(rois_list, frequency, intervals, intervals_names)
     np.save(os.path.join(new_dir_path, f"{base_name}.npy"), np.array(sound_array, dtype=object))
     trials.to_csv(os.path.join(new_dir_path, f"{base_name}.csv"))
+
+elif make_temporal_envelope_modulation and not (make_sequences or make_simple_smooth_sounds or make_Simple_intervals):
+    # okay, so, this adds another layer of control. You user can choose which frequencies will be smooth, which with constant AM, and which with variable AM 
+    # you do you, depends on what level of control freak you are. No judgement, I understand. There there
+    smooth_freqs = [10000, 20000]
+    constant_rough_freqs = [10000, 20000]
+    #constant temporal modulation
+    ctm= 50 #Hz
+    complex_rough_freqs = [10000, 20000]
+    #complex temporal modulation
+    #check in supfun apply_segmented_am_modulation if you want to change parameters
+    complex_tm = [30, 50, 70] # Hz
+    
+    controls = ["vocalisation", "silent"]
+
+    
+    #insert your path to vocalisation
+    path_to_vocalisation = "C:/Users/aleja/OneDrive/Desktop/mice maze/mouse_vocalisation/Figure 3 Audio 1.mp4"
+
+   # look this next function could be easier but you bear with me, here is where we sort everything out
+
+    frequencies, temporal_modulation, sound_type, sounds_arrays = sf.info_temporal_modulation_hc(rois_number,
+                                                                                                controls, 
+                                                                                                smooth_freqs, 
+                                                                                                constant_rough_freqs, 
+                                                                                                complex_rough_freqs, 
+                                                                                                constant_rough_modulation= ctm, 
+                                                                                                complex_rough_mod = complex_tm, 
+                                                                                                path_to_voc = None)
+
+    trials, sound_array = sf.create_temporally_modulated_trials(rois_list, frequencies, temporal_modulation, sound_type, sounds_arrays,)
+    np.save(os.path.join(new_dir_path, f"{base_name}.npy"), np.array(sound_array, dtype=object))
+    trials.to_csv(os.path.join(new_dir_path, f"{base_name}.csv")) 
+                                                                                                
 
 
 # base_name = sf.choose_csv()
@@ -276,7 +310,7 @@ for trial in unique_trials:
             mousePresent[item] = np.sum(areas[item]) < thresholds[item] * 0.5
             
             
-            rois_list = ['ROI1', 'ROI2', 'ROI3', 'ROI4', "ROI5", "ROI6", "ROI7", "ROI8"]
+            #rois_list = ['ROI1', 'ROI2', 'ROI3', 'ROI4', "ROI5", "ROI6", "ROI7", "ROI8"]
 
             
             if mousePresent[item]:
@@ -383,7 +417,7 @@ for trial in unique_trials:
                                 roi_index = rois_list.index(item)
 
                                 # Dynamically play the corresponding sound
-                                if make_complex_sounds:
+                                if make_Simple_intervals:
                                     sf.play_interval(sounds[item][0][0], sounds[item][1][0])
                                 else:
                                     sf.play_sound(sounds[item])
