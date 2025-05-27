@@ -14,6 +14,8 @@ from sympy import *
 from sympy.plotting import plot_parametric
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
+import soundfile as sf
+from scipy.signal import resample
 
 
 
@@ -240,6 +242,29 @@ def read_wav_file(file_path):
             sound_data = sound_data.reshape(-1, 2)
         
         return sound_data, framerate
+
+def generate_voc_array(path_to_voc, sample_rate):
+    '''this function retrieves the sound data from the .wav files and samples them down to a more readable 192KHz'''
+    voc_sound_data = []
+    voc, fs = sf.read(path_to_voc)
+
+    if fs == sample_rate:
+        #USVs might be sampled at 250KHz. Our sound card handles max 192KHz. Check for sample rate
+        voc_sound_data.append([voc])
+
+    elif fs > sample_rate: 
+        # if sample rate is too high, we need to resample
+        n_samples_new = int(len(voc) * sample_rate / fs)
+        voc_resampled = resample(voc, n_samples_new)
+        # Ensure dtype float32
+        voc_resampled = voc_resampled.astype('float32')
+
+        voc_sound_data.append(voc_resampled)
+    else:
+        print(f"The sample rate of this recording is {fs}, which is too low\n Please ensure that the fs is at least 192 KHz")
+
+    return voc_sound_data
+
 
 def get_interval(interval_name):
 
@@ -486,9 +511,8 @@ def ask_info_intervals(rois_number):
     vocalisation = (input("want to select a .wav file containing a sound vocalisation?(y/n)\nif n, one of the ROIs will be silent \n")).lower()
     
     if vocalisation == "y":
-        wav_file = choose_csv()
-        frequencies.append([wav_file, 0])
-        interval_numerical_list.append(0)
+        frequencies.append("vocalisation")
+        interval_numerical_list.append([9]) # arbitrary number so that I can identify this later on
         interval_string_names.append("vocalisation")
 
     else:
@@ -501,30 +525,42 @@ def ask_info_intervals(rois_number):
 
 #hard code the freq and intervals list not to manually be prompted every time
 def info_intervals_hc(rois_number, tonal_centre, intervals_list):
+    
+    #usable_rois exclude the unison and silent arm
     usable_rois = rois_number - 2
 
     tonal_centre_interval, tonal_centre_string = get_interval("unison")
-    
     #the frequencies list will contain lists containing the 2 frequencies that make up the interval. 
     frequencies =[[tonal_centre, int(tonal_centre*tonal_centre_interval)]]
     interval_numerical_list = [tonal_centre_string]
     interval_string_names = ["unison"]
 
+
     if len(intervals_list) == usable_rois:
 
         for i in range(usable_rois):
-            interval, interval_as_string = get_interval(intervals_list[i])
-            frequencies.append([tonal_centre, int(tonal_centre*interval)])
-            interval_numerical_list.append(interval_as_string)
-            interval_string_names.append(intervals_list[i])
 
+    #check if we want a vocalisation as one of the inputs, if not, continues as normal
+            if i != "vocalisation":
+                interval, interval_as_string = get_interval(intervals_list[i])
+                frequencies.append([tonal_centre, int(tonal_centre*interval)])
+                interval_numerical_list.append(interval_as_string)
+                interval_string_names.append(intervals_list[i])
+
+    # if there is a vocalisation, it retrieves the path from the main script and checks if the sample rate is correct
+            else: 
+                frequencies.append("vocalisation")
+                interval_numerical_list.append([9]) # arbitrary number so that I can identify this later on
+                interval_string_names.append("vocalisation")
+
+
+    # appends the silent frequency
         frequencies.append([0,0])
         interval_numerical_list.append(["0"])
         interval_string_names.append("no_interval")
     else:
         print("please check that the number of intervals is rois_number - 2")
-        
-
+     
     return frequencies, interval_numerical_list, interval_string_names
     
 def plotting_lissajous(interval):
@@ -576,13 +612,12 @@ def compute_gain(frequency_hz):
 
  
 
-def generate_sound_data(frequency, waveform="sine", duration=15, fs=192000, volume=1.0, compensate=True):
+def generate_sound_data(frequency, waveform="sine", duration=10, fs=192000, volume=1.0, ramp_duration = 0.01, compensate=True, give_t= False):
     """Generate sound data for a given frequency and waveform."""
     t = np.linspace(0, duration, int(fs * duration), endpoint = False)
     gain = compute_gain(frequency) if compensate else 1.0
     adjusted_volume = volume * gain
-    sound = np.zeros_like(t)
-    
+    sound = np.zeros_like(t)    
 
 
     if waveform == 'sine':
@@ -604,8 +639,150 @@ def generate_sound_data(frequency, waveform="sine", duration=15, fs=192000, volu
         samples = int(fs * duration)
         sound = np.random.uniform(low=-1.0, high=1.0, size=samples) * adjusted_volume
 
+    
+    # apply a ramp up (fade in) in seconds so that the speaker doesn't click upon stimulus presentation
+    ramp_samples = int(fs * ramp_duration)
 
-    return sound
+    envelope = np.ones_like(sound)
+    if ramp_samples > 0:
+        # Linear ramp up
+        envelope[:ramp_samples] = np.linspace(0, 1, ramp_samples)
+        # Linear ramp down
+        # envelope[-ramp_samples:] = np.linspace(1, 0, ramp_samples)
+
+    sound *= envelope
+
+    if give_t:
+        return t, sound
+    else:
+        return sound
+
+
+def apply_constant_sinusoidal_envelope(t, sound, mod_freq=50, depth=0.5):
+    """
+    Apply sinusoidal amplitude modulation to a waveform.
+    
+    Parameters:
+        t (np.ndarray): Time array (same as from generate_sound_data)
+        sound (np.ndarray): Sound waveform
+        mod_freq (float): Frequency of amplitude modulation in Hz (e.g., 50 Hz)
+        depth (float): Modulation depth (0 to 1)
+        
+    Returns:
+        modulated_sound (np.ndarray): Sound with applied amplitude modulation
+    """
+    envelope = 1 + depth * np.sin(2 * np.pi * mod_freq * t)
+    modulated_sound = sound * envelope
+    return modulated_sound
+
+def apply_segmented_am_modulation(
+    t,
+    sound,
+    mod_freqs,
+    segment_duration = 0.2,
+    am_depth=0.5,
+    fs=192000,
+    normalize=True
+):
+    """
+    Apply sequential sinusoidal amplitude modulation segments to an existing waveform.
+    
+    Parameters:
+        t (np.ndarray): Time vector
+        sound (np.ndarray): Input waveform
+        mod_freqs (list): List of modulation frequencies (Hz)
+        segment_duration (float): Duration of each modulation segment (s)
+        am_depth (float): Depth of amplitude modulation (0–1)
+        fs (int): Sampling rate
+        normalize (bool): Whether to normalize to [-1, 1] after modulation
+        
+    Returns:
+        modulated_sound (np.ndarray): The resulting waveform
+    """
+    n_samples = len(t)
+    segment_samples = int(segment_duration * fs)
+    num_segments = int(np.ceil(n_samples / segment_samples))
+    
+    # Repeat modulation frequencies if needed
+    mod_freqs_full = (mod_freqs * ((num_segments // len(mod_freqs)) + 1))[:num_segments]
+    
+    # Copy the original sound to modulate
+    modulated_sound = np.copy(sound)
+    
+    # Apply modulation segment by segment
+    for i in range(num_segments):
+        start = i * segment_samples
+        end = min((i + 1) * segment_samples, n_samples)
+        f_mod = mod_freqs_full[i]
+        envelope = 1 + am_depth * np.sin(2 * np.pi * f_mod * t[start:end])
+        modulated_sound[start:end] *= envelope
+
+    # Normalize to [-1, 1] if needed
+    if normalize and np.max(np.abs(modulated_sound)) > 1.0:
+        modulated_sound /= np.max(np.abs(modulated_sound))
+
+    return modulated_sound
+
+
+def info_temporal_modulation_hc(rois_number, 
+                                controls, 
+                                smooth_freqs, 
+                                constant_rough_freqs, 
+                                complex_rough_freqs, 
+                                constant_rough_modulation= 50, 
+                                complex_rough_mod = [30, 50, 70], 
+                                path_to_voc = None):
+    # if you don't want controls, leave blank, but ensure that len(frequencies) is the same as rois_number. Obviously. 
+    freqs = controls + smooth_freqs + constant_rough_freqs + complex_rough_freqs
+
+    frequencies = []
+    temporal_modulation = []
+    sound_type = []
+    sounds_arrays = []
+
+    #here is a double check in case you're a bit distracted. Again, no judgement. 
+    if len(freqs) != rois_number:
+        print("Bestie, double check the number of stimuli and make sure they match the number of rois")
+
+    else: 
+        for i in controls:
+            if i == "silent":
+                frequencies.append("silent_arm")
+                temporal_modulation.append("none")
+                sound_type.append("control")
+                sounds_arrays.append(0)
+            else: 
+                frequencies.append("vocalisation")
+                temporal_modulation.append("vocalisation")
+                sound_type.append("control")
+                voc_sound_array = generate_voc_array(path_to_voc, 192000)
+                sounds_arrays.append(voc_sound_array)
+
+        for i in smooth_freqs:
+            sound_data = generate_sound_data(i)
+            frequencies.append(i)
+            temporal_modulation.append("none")
+            sound_type.append("smooth")
+            sounds_arrays.append(sound_data)
+
+        for i in constant_rough_freqs:
+            t, sound_data = generate_sound_data(i, give_t = True)
+            frequencies.append(i)
+            temporal_modulation.append(constant_rough_modulation)
+            sound_type.append("rough")
+            modulated_wave = apply_constant_sinusoidal_envelope(t, sound_data, mod_freq=constant_rough_modulation)
+            sounds_arrays.append(modulated_wave)
+            
+        for i in complex_rough_freqs:
+            t, sound_data = generate_sound_data(i, give_t = True)
+            frequencies.append(i)
+            temporal_modulation.append(complex_rough_mod)
+            sound_type.append("rough")
+            modulated_wave = apply_segmented_am_modulation(t, sound_data, mod_freqs = complex_rough_mod)
+            sounds_arrays.append(modulated_wave)
+
+
+    return frequencies, temporal_modulation, sound_type, sounds_arrays
 
 def get_trial_tuple(frequency, volume, waveform):
     return tuple(zip(frequency, volume, waveform))
@@ -912,6 +1089,94 @@ def create_trials_for_intervals(rois, frequency, intervals, intervals_names,
     df["end_trial_time"] = [None] * len(df)
 
     return df, wave_arrays
+
+
+def make_another_tuple(frequency, temporal_modulation, sound_type, sounds_array):
+    return tuple(zip(frequency, temporal_modulation, sound_type, sounds_array))
+
+def shuffle_another_data(frequency, temporal_modulation, sound_type, sounds_array):
+    combined = list(zip(frequency, temporal_modulation, sound_type, sounds_array))
+    random.shuffle(combined)
+    return zip(*combined)
+
+
+def create_temporally_modulated_trials(rois, frequency, temporal_modulation, sound_type, sounds_arrays,
+                  total_repetitions = 9,
+                  zero_repetitions = 5,
+                  sample_rate = 192000):
+
+    
+    # Create a list of ROIs repeated total_repetitions times
+    rois_repeated = rois * total_repetitions
+
+    # Initialize lists to store the shuffled frequency, temporal modulations, sound types, and waveforms
+    frequency_final = []
+    temporal_modulations_final = []
+    sound_type_final = []
+    wave_arrays = []
+    repetition_numbers = []
+
+    # Total number of sound data sets
+    num_sounds = len(frequency)
+    previous_trials = set()
+
+    
+
+    # Create trials
+    for i in range(total_repetitions):
+        if i % 2 == 0:  # Alternate zero data repetitions
+            for j in range(len(rois)):
+                repetition_numbers.append(i + 1)  # Add repetition number
+                frequency_final.append(0)
+                temporal_modulations_final.append("none")
+                sound_type_final.append("silent_trial")
+                wave_arrays.append(np.zeros(sample_rate*10))  # Assuming 10 seconds of silence
+        else:
+            while True:
+                if i == 1:  # Trial 2 should use the initial list
+                    trial_tuple = make_another_tuple(frequency, temporal_modulation, sound_type, sounds_arrays)
+                else:  # Other trials should be unique and shuffled 
+                    trial_tuple = shuffle_another_data(frequency, temporal_modulation, sound_type, sounds_arrays)
+                    
+                if trial_tuple not in previous_trials:
+                    previous_trials.add(trial_tuple)
+                    if i == 1:
+                        for j in range(len(rois)):
+                            repetition_numbers.append(i + 1)  # Add repetition number
+                            frequency_final.append(frequency[j])
+                            temporal_modulations_final.append(temporal_modulation[j])
+                            sound_type_final.append(sound_type[j])
+                            wave_arrays.append(sounds_arrays[j])
+                            
+                    else:
+                        for j in range(len(rois)):
+                            repetition_numbers.append(i + 1)  # Add repetition number
+                            frequency_final.append(trial_tuple[j][0])
+                            temporal_modulations_final.append(temporal_modulation[j][1])
+                            sound_type_final.append(sound_type[j][2])
+                            wave_arrays.append(sounds_arrays[j][3])
+                    break
+
+    # Create the DataFrame with the repetition numbers, repeated ROIs, and final data
+    df = pd.DataFrame({
+        "trial_ID": repetition_numbers,
+        "ROIs": rois_repeated,
+        "frequency": frequency_final,
+        "sound_type": sound_type_final,
+        "temporal_modulation":temporal_modulations_final,        
+        "wave_arrays": wave_arrays
+    })
+
+    # Add other necessary columns filled with NaNs or default values
+    df["time_spent"] = [None] * len(df)
+    df["visitation_count"] = [None] * len(df)
+    df["trial_start_time"] = [None] * len(df)
+    df["end_trial_time"] = [None] * len(df)
+    
+
+    return df,wave_arrays
+
+
 
 def play_sound(sound_data, fs=192000):
     """Play sound using sounddevice library."""
