@@ -8,4 +8,4 @@
 - The trials generation is handled in `supfun_sequences.py`. 
 
 - If you haven't calibrated your speaker yet, what are you waiting for? Head over to `speaker calibration scripts`. 
-- If you don't need speaker calibration / have a better method (rude, but fine. At least share. How did you do it?), I recommend running `calibration_volume.py`.
+- If you don't need speaker calibration / have a better method (rude, but fine. At least share. How did you do it?), I recommend running `calibration_volume.py` to check which channel the sounds come out of. 
