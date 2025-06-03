@@ -15,7 +15,7 @@ from sympy.plotting import plot_parametric
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import soundfile as sf
-from scipy.signal import resample
+from scipy.signal import resample, resample_poly, spectrogram, butter, sosfilt
 
 
 
@@ -244,26 +244,32 @@ def read_wav_file(file_path):
         return sound_data, framerate
 
 def generate_voc_array(path_to_voc, sample_rate):
-    '''this function retrieves the sound data from the .wav files and samples them down to a more readable 192KHz'''
+    """
+    using resample_poly to downsample from fs_original → sample_rate.
+    Returns a list [resampled_audio] if fs_original ≥ sample_rate, otherwise warns.
+    """
     voc_sound_data = []
-    voc, fs = sf.read(path_to_voc)
+    voc, fs_original = sf.read(path_to_voc)  # voc: (n_samples,) or (n_samples, channels)
 
-    if fs == sample_rate:
-        #USVs might be sampled at 250KHz. Our sound card handles max 192KHz. Check for sample rate
-        voc_sound_data.append([voc])
+    if fs_original == sample_rate:
+        voc_sound_data.append(voc.astype('float32'))
 
-    elif fs > sample_rate: 
-        # if sample rate is too high, we need to resample
-        n_samples_new = int(len(voc) * sample_rate / fs)
-        voc_resampled = resample(voc, n_samples_new)
-        # Ensure dtype float32
+    elif fs_original > sample_rate:
+        from math import gcd
+        up   = sample_rate
+        down = fs_original
+        g = gcd(up, down)
+        up //= g
+        down //= g
+
+        voc_resampled = resample_poly(voc, up, down, axis=0)
         voc_resampled = voc_resampled.astype('float32')
-
         voc_sound_data.append(voc_resampled)
-    else:
-        print(f"The sample rate of this recording is {fs}, which is too low\n Please ensure that the fs is at least 192 KHz")
 
-    return voc_sound_data
+    else:
+        raise ValueError(f"Recording fs={fs_original} Hz is below target {sample_rate} Hz.")
+
+    return voc_sound_data[0]
 
 
 def get_interval(interval_name):
