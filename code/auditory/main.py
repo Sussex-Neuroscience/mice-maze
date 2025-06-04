@@ -4,7 +4,7 @@ import pandas as pd
 import supfun_sequences as sf
 import time
 #from serial import Serial
-import serial
+#import serial
 import os
 import csv
 import sounddevice as sd
@@ -15,7 +15,7 @@ from tkinter import *
 #set the default sample rate and channel for the sound card
 sd.default.samplerate = 192000
 #python -m sounddevice
-sd.default.device = 12
+sd.default.device = 3
 
 #vol needs to be around 50dB
 
@@ -33,7 +33,7 @@ rois_number = 8
 
 
 #set to true to create/modify ROIs .csv file
-drawRois = False
+drawRois = True
 #set to true to make individual sine sounds
 make_simple_smooth_sounds = False
 # set to true to make sequences of tones
@@ -43,7 +43,7 @@ make_sequences = False
 make_Simple_intervals= False
 
 # set to true if you want to perform experiments testing the effects of temporal envelope modulation on sound preference
-make_temporal_envelope_modulation = False
+make_temporal_envelope_modulation = True
 
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
 recordVideo = True
@@ -128,7 +128,7 @@ elif make_temporal_envelope_modulation and not (make_sequences or make_simple_sm
 
     
     #insert your path to vocalisation
-    path_to_vocalisation = "C:/Users/aleja/OneDrive/Desktop/mice maze/mouse_vocalisation/Figure 3 Audio 1.mp4"
+    path_to_vocalisation = "c:/Users/labuser/Downloads/mM27.18-individuality_run1_day2-2016-10-14_15-16-00_0003.WAV"
 
    # look this next function could be easier but you bear with me, here is where we sort everything out
 
@@ -139,7 +139,7 @@ elif make_temporal_envelope_modulation and not (make_sequences or make_simple_sm
                                                                                                 complex_rough_freqs, 
                                                                                                 constant_rough_modulation= ctm, 
                                                                                                 complex_rough_mod = complex_tm, 
-                                                                                                path_to_voc = None)
+                                                                                                path_to_voc = path_to_vocalisation)
 
     trials, sound_array = sf.create_temporally_modulated_trials(rois_list, frequencies, temporal_modulation, sound_type, sounds_arrays,)
     np.save(os.path.join(new_dir_path, f"{base_name}.npy"), np.array(sound_array, dtype=object))
@@ -242,6 +242,7 @@ for trial in unique_trials:
     print("trial_duration: ", time_trial)
     if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
         break
+    reset_play = True
 
 # initialising the variables for each trial
     for item in rois:
@@ -380,7 +381,7 @@ for trial in unique_trials:
             remaining_total_time= end_time - time.time()
             remaining_minutes= int((end_time - time.time())/60)
             remaining_seconds= int((end_time - time.time())%60)
-            print(f"Remaining Time: {remaining_total_time}\nApprox: {remaining_minutes}:{remaining_seconds}")
+            print(f"Remaining Time: {remaining_total_time} seconds\nApprox: {remaining_minutes}:{remaining_seconds}")
 
 
             #trials.loc[trials["trial_ID"] == trial, "mouse_enter_time"] = start_time #add to supfun code again if we want mouse enter time

@@ -10,12 +10,12 @@ from scipy.io import wavfile
 #if using a focusrite soundcard, refer to this https://support.focusrite.com/hc/en-gb/articles/115004120965-Sample-Rate-Bit-Depth-Buffer-Size-Explained
 SAMPLE_RATE = 192000 #available sample rates: 44.1kHz, 48kHz , 88.2kHz, 96kHz, 176.4kHz , 192 kHz
 sd.default.samplerate = SAMPLE_RATE 
-sd.default.device = 2 # Replace this by setting found_channel = False in  "__main__"
+sd.default.device = 3 # Replace this by setting found_channel = False in  "__main__"
 
   
 #this function generates an array of sound data according to the duration, frequency, volume and sample rate. 
 # If the sample rate fs is not defined, the default is 44100 Hz
-def generate_sound_data(frequency, volume=1, waveform="sine", duration=15, fs=44100):
+def generate_sound_data(frequency, volume=1, waveform="sine", duration=5, fs=192000):
     """Generate sound data for a given frequency and waveform."""
     t = np.linspace(0, duration, int(fs * duration), False)
     sound = np.zeros_like(t)
@@ -27,7 +27,7 @@ def generate_sound_data(frequency, volume=1, waveform="sine", duration=15, fs=44
 
 #This function normalises the sound array and plays the sound using the sd.play. Sounds can also be played non normalised 
 
-def play_sound(sound_data, fs=44100):
+def play_sound(sound_data, fs=192000):
     """Play sound using sounddevice library."""
     sound_data_normalised = np.int16((sound_data / np.max(np.abs(sound_data))) * 32767)
     sd.play(sound_data_normalised, fs)
@@ -39,15 +39,15 @@ def check_sounds(SAMPLE_RATE):
     sound2= generate_sound_data(14222, volume = 0.5, fs= SAMPLE_RATE)
     sound3= generate_sound_data(16666,volume = 0.5, fs= SAMPLE_RATE)
     sound4= generate_sound_data(22000,volume = 0.1, fs=SAMPLE_RATE)
-    sound5= generate_sound_data(32000,volume = 10, fs=SAMPLE_RATE)
-    sound6= generate_sound_data(40000,volume = 10, fs=SAMPLE_RATE)
+    sound5= generate_sound_data(32000,volume = 1, fs=SAMPLE_RATE)
+    sound6= generate_sound_data(40000,volume = 1, fs=SAMPLE_RATE)
     
-  sounds = [sound1, sound2, sound3, sound4, sound5, sound6]
+    sounds = [sound1, sound2, sound3, sound4, sound5, sound6]
 
     for i in range(len(sounds)):
         print(f"playing sound{i}")
         sd.play(sounds[i], SAMPLE_RATE)
-    
+
         time.sleep(10)
 
 # this is to test intervals
@@ -83,14 +83,18 @@ def make_FFT(sound, SAMPLE_RATE):
 #find which channels are used to send the signal to the sondcard. The channel will have to be set as sd.default.device
 
 
-def find_channel(sound):
+def find_channel(sound1, sound2, sound3):
     #this function runs through 50 channels to find the ones connected to the soundcard. 
     #50 is an arbitrary number, to find the precise number of channels, run 'python -m sounddevice' or 'python3 -m sounddevice' in the terminal
-    for i in range(50):
+    for i in range(19):
         sd.default.device=i
         try: 
-            play_sound(sound)
+            play_sound(sound1)
             print(f"using device {i}")
+            time.sleep(5)
+            play_sound(sound2)
+            time.sleep(5)
+            play_sound(sound3)
             time.sleep(5)
         except:
             print(f"unable to play with device {i}")
@@ -99,14 +103,19 @@ def find_channel(sound):
 
 if __name__== "__main__":
     #set to false when using for the first time
-    found_channel= False
+    found_channel= True
+    trial_sound = generate_sound_data(10000, volume = 1, fs= SAMPLE_RATE)
+    trial_sound2 = generate_sound_data(16000, volume = 1, fs= SAMPLE_RATE)
+    trial_sound3 = generate_sound_data(40000, volume = 1, fs= SAMPLE_RATE)
+    
    
     if not found_channel:
-        trial_sound = generate_sound_data(10000, volume = 1, fs= SAMPLE_RATE)
+        
         # this will generate a list of channels that can or cannot play the sound. Many channels will return the same output. 
         #some channels will distort the sound. Once you find the channel, go to the top of the code and change sd.default.device. 
         # Then set found_channel = True
-        find_channel(trial_sound)
+        find_channel(trial_sound, trial_sound2, trial_sound3)
+        print("please god work")
 
     else:
         #change the sample rate to calibrate the sounds

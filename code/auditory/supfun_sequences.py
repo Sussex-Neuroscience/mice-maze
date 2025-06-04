@@ -252,7 +252,7 @@ def generate_voc_array(path_to_voc, sample_rate):
     voc, fs_original = sf.read(path_to_voc)  # voc: (n_samples,) or (n_samples, channels)
 
     if fs_original == sample_rate:
-        voc_sound_data.append(voc.astype('float32'))
+        voc_sound_data.append(voc)
 
     elif fs_original > sample_rate:
         from math import gcd
@@ -263,7 +263,6 @@ def generate_voc_array(path_to_voc, sample_rate):
         down //= g
 
         voc_resampled = resample_poly(voc, up, down, axis=0)
-        voc_resampled = voc_resampled.astype('float32')
         voc_sound_data.append(voc_resampled)
 
     else:
@@ -602,7 +601,7 @@ def plotting_lissajous(interval):
 
 def compute_gain(frequency_hz):
 
-    data = pd.read_csv("frequency_response_speaker.csv")
+    data = pd.read_csv("C:/Users/labuser/Documents/GitHub/mice-maze/code/auditory/speaker calibration scripts/frequency_response_speaker.csv")
     # interpolation function from the frequency response data extrapolated from the graph on the website
     frequency = data['Frequency_kHz'].values * 1000  # Convert kHz to Hz
     attenuation = data['Attenuation_dB'].values
@@ -754,7 +753,7 @@ def info_temporal_modulation_hc(rois_number,
         for i in controls:
             if i == "silent":
                 frequencies.append("silent_arm")
-                temporal_modulation.append("none")
+                temporal_modulation.append("no_stimulus")
                 sound_type.append("control")
                 sounds_arrays.append(0)
             else: 
@@ -783,7 +782,7 @@ def info_temporal_modulation_hc(rois_number,
             t, sound_data = generate_sound_data(i, give_t = True)
             frequencies.append(i)
             temporal_modulation.append(complex_rough_mod)
-            sound_type.append("rough")
+            sound_type.append("rough_complex")
             modulated_wave = apply_segmented_am_modulation(t, sound_data, mod_freqs = complex_rough_mod)
             sounds_arrays.append(modulated_wave)
 
@@ -1103,7 +1102,15 @@ def make_another_tuple(frequency, temporal_modulation, sound_type, sounds_array)
 def shuffle_another_data(frequency, temporal_modulation, sound_type, sounds_array):
     combined = list(zip(frequency, temporal_modulation, sound_type, sounds_array))
     random.shuffle(combined)
-    return zip(*combined)
+    # unpack each component
+    freq, mod, typ, snd = zip(*combined)
+    return freq, mod, typ, snd
+
+def _make_hashable(x):
+    """Convert lists to tuples, leave other types unchanged."""
+    if isinstance(x, list):
+        return tuple(x)
+    return x
 
 
 def create_temporally_modulated_trials(rois, frequency, temporal_modulation, sound_type, sounds_arrays,
@@ -1111,76 +1118,104 @@ def create_temporally_modulated_trials(rois, frequency, temporal_modulation, sou
                   zero_repetitions = 5,
                   sample_rate = 192000):
 
-    
-    # Create a list of ROIs repeated total_repetitions times
+    """
+    Generate trials for temporally modulated sounds, ensuring unique shuffles.
+    """
+
+    # Repeat the list of ROIs for each repetition
     rois_repeated = rois * total_repetitions
 
-    # Initialize lists to store the shuffled frequency, temporal modulations, sound types, and waveforms
+    # Lists to collect final trial data
     frequency_final = []
     temporal_modulations_final = []
     sound_type_final = []
     wave_arrays = []
     repetition_numbers = []
 
-    # Total number of sound data sets
-    num_sounds = len(frequency)
     previous_trials = set()
 
-    
 
-    # Create trials
+
     for i in range(total_repetitions):
-        if i % 2 == 0:  # Alternate zero data repetitions
-            for j in range(len(rois)):
-                repetition_numbers.append(i + 1)  # Add repetition number
+        if i % 2 == 0:
+            # === Silent‐trial sections ===
+            for _ in rois:
+                repetition_numbers.append(i + 1)
                 frequency_final.append(0)
                 temporal_modulations_final.append("none")
                 sound_type_final.append("silent_trial")
-                wave_arrays.append(np.zeros(sample_rate*10))  # Assuming 10 seconds of silence
+                wave_arrays.append(np.zeros(sample_rate * 10))
         else:
+            # === Non‐silent trials: either first ordering (i == 1) or shuffled (i > 1) ===
             while True:
-                if i == 1:  # Trial 2 should use the initial list
-                    trial_tuple = make_another_tuple(frequency, temporal_modulation, sound_type, sounds_arrays)
-                else:  # Other trials should be unique and shuffled 
-                    trial_tuple = shuffle_another_data(frequency, temporal_modulation, sound_type, sounds_arrays)
-                    
-                if trial_tuple not in previous_trials:
-                    previous_trials.add(trial_tuple)
+                if i == 1:
+                    # First non‐silent repetition: use the ORIGINAL order
+                    trial_triples = []
+                    for idx in range(len(rois)):
+                        freq = frequency[idx]
+                        # Convert any inner list (e.g. [30,50,70]) into a tuple for hashing
+                        mod = _make_hashable(temporal_modulation[idx])
+                        typ = sound_type[idx]
+                        trial_triples.append((freq, mod, typ))
+                    trial_tuple_as_tuple = tuple(trial_triples)
+
+                    # Also prepare a “parallel” list of quadruples to pull sound arrays later
+                    trial_list = list(zip(frequency, temporal_modulation, sound_type, sounds_arrays))
+
+                else:
+                    # Subsequent repetitions: fully shuffle (freq, mod, type, wave) together
+                    combined = list(zip(frequency, temporal_modulation, sound_type, sounds_arrays))
+                    random.shuffle(combined)
+
+                    # Build a hashable tuple using only (freq, mod, type)
+                    trial_triples = []
+                    for (freq, mod, typ, snd) in combined:
+                        trial_triples.append((freq, _make_hashable(mod), typ))
+                    trial_tuple_as_tuple = tuple(trial_triples)
+
+                    # Keep the full quadruples around to assign replayed order
+                    trial_list = combined
+
+                # Once we have a trial_tuple_as_tuple, check uniqueness
+                if trial_tuple_as_tuple not in previous_trials:
+                    previous_trials.add(trial_tuple_as_tuple)
+
                     if i == 1:
-                        for j in range(len(rois)):
-                            repetition_numbers.append(i + 1)  # Add repetition number
-                            frequency_final.append(frequency[j])
-                            temporal_modulations_final.append(temporal_modulation[j])
-                            sound_type_final.append(sound_type[j])
-                            wave_arrays.append(sounds_arrays[j])
-                            
+                        # Assign original data (no shuffle)
+                        for idx in range(len(rois)):
+                            repetition_numbers.append(i + 1)
+                            frequency_final.append(frequency[idx])
+                            temporal_modulations_final.append(temporal_modulation[idx])
+                            sound_type_final.append(sound_type[idx])
+                            wave_arrays.append(sounds_arrays[idx])
                     else:
-                        for j in range(len(rois)):
-                            repetition_numbers.append(i + 1)  # Add repetition number
-                            frequency_final.append(trial_tuple[j][0])
-                            temporal_modulations_final.append(temporal_modulation[j][1])
-                            sound_type_final.append(sound_type[j][2])
-                            wave_arrays.append(sounds_arrays[j][3])
+                        # Assign shuffled data from trial_list
+                        for (freq_shuf, mod_shuf, typ_shuf, sounds_shuf) in trial_list:
+                            repetition_numbers.append(i + 1)
+                            frequency_final.append(freq_shuf)
+                            temporal_modulations_final.append(mod_shuf)
+                            sound_type_final.append(typ_shuf)
+                            wave_arrays.append(sounds_shuf)
                     break
 
-    # Create the DataFrame with the repetition numbers, repeated ROIs, and final data
+    # Build the DataFrame
     df = pd.DataFrame({
         "trial_ID": repetition_numbers,
         "ROIs": rois_repeated,
         "frequency": frequency_final,
         "sound_type": sound_type_final,
-        "temporal_modulation":temporal_modulations_final,        
+        "temporal_modulation": temporal_modulations_final,
         "wave_arrays": wave_arrays
     })
 
-    # Add other necessary columns filled with NaNs or default values
+    # Add extra columns for tracking mouse behavior
     df["time_spent"] = [None] * len(df)
     df["visitation_count"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
-    
 
-    return df,wave_arrays
+    return df, wave_arrays
+
 
 
 
