@@ -567,6 +567,88 @@ def info_intervals_hc(rois_number, tonal_centre, intervals_list):
         print("please check that the number of intervals is rois_number - 2")
      
     return frequencies, interval_numerical_list, interval_string_names
+
+
+
+def info_complex_intervals_hc (rois_number, controls, tonal_centre, smooth_freq, rough_freq, consonant_intervals, dissonant_intervals, path_to_voc):
+    events = controls + smooth_freq + rough_freq + consonant_intervals + dissonant_intervals
+    all_intervals = consonant_intervals + dissonant_intervals
+    
+    #the frequencies list will contain lists containing the 2 frequencies that make up the interval. 
+    frequencies =[]
+    interval_numerical_list = []
+    interval_string_names = []
+    sound_type = []
+    sounds_arrays = []
+
+    #here is a double check in case you're a bit distracted. Again, no judgement. 
+    if len(events) != rois_number:
+        print("Bestie, double check the number of stimuli and make sure they match the number of rois")
+
+    else: 
+        for i in controls:
+            interval_numerical_list.append(0)
+            interval_string_names.append("none")          
+            sound_type.append("control")
+
+            if i == "silent":
+                frequencies.append(0)
+                sounds_arrays.append([0,0])
+            else: 
+                frequencies.append(i)
+                voc_sound_array = generate_voc_array(path_to_voc, 192000)
+                sounds_arrays.append([voc_sound_array, 0])
+
+        if smooth_freq:
+            tonal_centre_interval, tonal_centre_string = get_interval("unison") 
+            frequencies.append([tonal_centre, int(tonal_centre*tonal_centre_interval)])
+            interval_numerical_list.append(tonal_centre_string)
+            interval_string_names.append("unison")
+            sound_data_1= generate_sound_data(tonal_centre)
+            sound_data_2= generate_sound_data(int(tonal_centre*tonal_centre_interval))
+
+            sound_type.append("smooth")
+            sounds_arrays.append([sound_data_1, sound_data_2])
+
+        if rough_freq:
+
+            tonal_centre_interval, tonal_centre_string = get_interval("unison")
+
+            t_1, sound_data_1 = generate_sound_data(tonal_centre, give_t = True)
+            t_2, sound_data_2 = generate_sound_data(int(tonal_centre*tonal_centre_interval), give_t = True)
+            
+            frequencies.append([tonal_centre, int(tonal_centre*tonal_centre_interval)])
+            interval_numerical_list.append(tonal_centre_string)
+            interval_string_names.append("unison")
+            sound_type.append("rough")
+            modulated_wave_1 = apply_constant_sinusoidal_envelope(t_1, sound_data_1)
+            modulated_wave_2 = apply_constant_sinusoidal_envelope(t_2, sound_data_2)
+            sounds_arrays.append(modulated_wave_1, modulated_wave_2)
+
+        for i in all_intervals: 
+            interval, interval_string = get_interval(i)
+            freq_1 = tonal_centre
+            freq_2 = interval
+
+            frequencies.append([freq_1, freq_2])
+            interval_numerical_list.append(interval_string)
+            interval_string_names.append(i)
+
+            sound_1= generate_sound_data(tonal_centre)
+            sound_2 = generate_sound_data(int(tonal_centre*interval))
+            
+            sounds_arrays.append([sound_1, sound_2])
+
+            if i in consonant_intervals: 
+                sound_type.append("consonant")
+            else:
+                sound_type.append("dissonant")
+            
+
+
+    return frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays
+
+
     
 def plotting_lissajous(interval):
     t = symbols('t')
@@ -1215,6 +1297,119 @@ def create_temporally_modulated_trials(rois, frequency, temporal_modulation, sou
     df["end_trial_time"] = [None] * len(df)
 
     return df, wave_arrays
+
+
+
+def create_complex_intervals_trials(rois, frequency,interval_numerical_list, interval_string_names, sound_type, sounds_arrays,
+                  total_repetitions = 9,
+                  zero_repetitions = 5,
+                  sample_rate = 192000):
+
+    """
+    Generate trials for temporally modulated sounds, ensuring unique shuffles.
+    """
+
+    # Repeat the list of ROIs for each repetition
+    rois_repeated = rois * total_repetitions
+
+    # Lists to collect final trial data
+    frequency_final = []
+    interval_numerical_list_final = []
+    interval_string_names_final= []
+    sound_type_final = []
+    wave_arrays = []
+    repetition_numbers = []
+
+    previous_trials = set()
+
+
+
+    for i in range(total_repetitions):
+        if i % 2 == 0:
+            # === Silent‐trial sections ===
+            for _ in rois:
+                repetition_numbers.append(i + 1)
+                frequency_final.append(0)
+                interval_numerical_list_final.append("none")
+                interval_string_names_final.append("none")
+                sound_type_final.append("silent_trial")
+                wave_arrays.append(np.zeros(sample_rate * 10))
+        else:
+            # === Non‐silent trials: either first ordering (i == 1) or shuffled (i > 1) ===
+            while True:
+                if i == 1:
+                    # First non‐silent repetition: use the ORIGINAL order
+                    trial_triples = []
+                    for idx in range(len(rois)):
+                        # _make_hashable Converts any inner list (e.g. [30,50,70]) into a tuple for hashing
+                        freq = _make_hashable(frequency[idx])
+                        int_num = interval_numerical_list[idx]
+                        int_name = interval_string_names[idx]
+                        typ = sound_type[idx]
+                        trial_triples.append((freq, int_num, int_name, typ))
+                    trial_tuple_as_tuple = tuple(trial_triples)
+
+                    # Also prepare a “parallel” list of quadruples to pull sound arrays later
+                    trial_list = list(zip(frequency, interval_numerical_list, interval_string_names, sound_type, sounds_arrays))
+
+                else:
+                    # Subsequent repetitions: fully shuffle (freq, mod, type, wave) together
+                    combined = list(zip(frequency, interval_numerical_list, interval_string_names, sound_type, sounds_arrays))
+                    random.shuffle(combined)
+
+                    # Build a hashable tuple using only (freq, mod, type)
+                    trial_triples = []
+                    for (freq, int_num, int_name, typ, snd) in combined:
+                        trial_triples.append((_make_hashable(freq),int_num, int_name, typ))
+                    trial_tuple_as_tuple = tuple(trial_triples)
+
+                    # Keep the full quadruples around to assign replayed order
+                    trial_list = combined
+
+                # Once we have a trial_tuple_as_tuple, check uniqueness
+                if trial_tuple_as_tuple not in previous_trials:
+                    previous_trials.add(trial_tuple_as_tuple)
+
+                    if i == 1:
+                        # Assign original data (no shuffle)
+                        for idx in range(len(rois)):
+                            repetition_numbers.append(i + 1)
+                            frequency_final.append(frequency[idx])
+                            interval_numerical_list_final.append(interval_numerical_list[idx])
+                            interval_string_names_final.append(interval_numerical_list[idx])
+                            
+                            sound_type_final.append(sound_type[idx])
+                            wave_arrays.append(sounds_arrays[idx])
+                    else:
+                        # Assign shuffled data from trial_list
+                        for (freq_shuf, int_num_shuf, int_name_shuf, typ_shuf, sounds_shuf) in trial_list:
+                            repetition_numbers.append(i + 1)
+                            frequency_final.append(freq_shuf)
+                            interval_numerical_list_final.append(int_num_shuf)
+                            interval_string_names_final.append(int_name_shuf)
+                            sound_type_final.append(typ_shuf)
+                            wave_arrays.append(sounds_shuf)
+                    break
+
+    # Build the DataFrame
+    df = pd.DataFrame({
+        "trial_ID": repetition_numbers,
+        "ROIs": rois_repeated,
+        "frequency": frequency_final,
+        "interval_type": sound_type_final,
+        "interval_ratio": interval_numerical_list_final,
+        "interval_name": interval_string_names_final,
+        "wave_arrays": wave_arrays
+    })
+
+    # Add extra columns for tracking mouse behavior
+    df["time_spent"] = [None] * len(df)
+    df["visitation_count"] = [None] * len(df)
+    df["trial_start_time"] = [None] * len(df)
+    df["end_trial_time"] = [None] * len(df)
+
+    return df, wave_arrays
+
 
 
 
