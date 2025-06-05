@@ -31,7 +31,7 @@ pause_between_frames = False
 rois_number = 8
 
 #set to true to create/modify ROIs .csv file
-drawRois = True
+drawRois = False
 
 
 #set to true to make individual sine sounds
@@ -42,10 +42,10 @@ make_sequences = False
 make_Simple_intervals= False
 
 # set to true if you want to perform experiments testing the effects of temporal envelope modulation on sound preference
-make_temporal_envelope_modulation = True
+make_temporal_envelope_modulation = False
 
 # set to true to perform experiments where the ROIS can be controls / frequencies of different AM/ intervals 
-make_complex_intervals = False
+make_complex_intervals = True
 
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
 recordVideo = True
@@ -146,8 +146,8 @@ elif make_complex_intervals and not (make_sequences or make_simple_smooth_sounds
     tonal_centre = 15000
     smooth_freq= True
     rough_freq = True
-    consonant_intervals = [] #"min_3", "maj_3", "perf_4", "perf_5", "min_6", "maj_6", "octave"
-    dissonant_intervals = [] # "min_2", "maj_2",  "tritone", "min_7", "maj_7"
+    consonant_intervals = ["perf_4", "perf_5"] #"min_3", "maj_3", "perf_4", "perf_5", "min_6", "maj_6", "octave"
+    dissonant_intervals = ["tritone", "min_7"] # "min_2", "maj_2",  "tritone", "min_7", "maj_7"
     controls = ["vocalisation", "silent"]
 
     

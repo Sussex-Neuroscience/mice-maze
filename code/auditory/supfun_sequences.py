@@ -571,7 +571,8 @@ def info_intervals_hc(rois_number, tonal_centre, intervals_list):
 
 
 def info_complex_intervals_hc (rois_number, controls, tonal_centre, smooth_freq, rough_freq, consonant_intervals, dissonant_intervals, path_to_voc):
-    events = controls + smooth_freq + rough_freq + consonant_intervals + dissonant_intervals
+    
+
     all_intervals = consonant_intervals + dissonant_intervals
     
     #the frequencies list will contain lists containing the 2 frequencies that make up the interval. 
@@ -582,68 +583,65 @@ def info_complex_intervals_hc (rois_number, controls, tonal_centre, smooth_freq,
     sounds_arrays = []
 
     #here is a double check in case you're a bit distracted. Again, no judgement. 
-    if len(events) != rois_number:
-        print("Bestie, double check the number of stimuli and make sure they match the number of rois")
 
-    else: 
-        for i in controls:
-            interval_numerical_list.append(0)
-            interval_string_names.append("none")          
-            sound_type.append("control")
+    for i in controls:
+        interval_numerical_list.append(0)
+        interval_string_names.append("none")          
+        sound_type.append("control")
 
-            if i == "silent":
-                frequencies.append(0)
-                sounds_arrays.append([0,0])
-            else: 
-                frequencies.append(i)
-                voc_sound_array = generate_voc_array(path_to_voc, 192000)
-                sounds_arrays.append([voc_sound_array, 0])
+        if i == "silent":
+            frequencies.append(0)
+            sounds_arrays.append([0,0])
+        else: 
+            frequencies.append(i)
+            voc_sound_array = generate_voc_array(path_to_voc, 192000)
+            sounds_arrays.append([voc_sound_array, 0])
 
-        if smooth_freq:
-            tonal_centre_interval, tonal_centre_string = get_interval("unison") 
-            frequencies.append([tonal_centre, int(tonal_centre*tonal_centre_interval)])
-            interval_numerical_list.append(tonal_centre_string)
-            interval_string_names.append("unison")
-            sound_data_1= generate_sound_data(tonal_centre)
-            sound_data_2= generate_sound_data(int(tonal_centre*tonal_centre_interval))
+    if smooth_freq:
+        tonal_centre_interval, tonal_centre_string = get_interval("unison") 
+        frequencies.append([tonal_centre, int(tonal_centre*tonal_centre_interval)])
+        interval_numerical_list.append(tonal_centre_string)
+        interval_string_names.append("unison")
+        sound_data_1= generate_sound_data(tonal_centre)
+        sound_data_2= generate_sound_data(int(tonal_centre*tonal_centre_interval))
 
-            sound_type.append("smooth")
-            sounds_arrays.append([sound_data_1, sound_data_2])
+        sound_type.append("smooth")
+        sounds_arrays.append([sound_data_1, sound_data_2])
 
-        if rough_freq:
+    if rough_freq:
 
-            tonal_centre_interval, tonal_centre_string = get_interval("unison")
+        tonal_centre_interval, tonal_centre_string = get_interval("unison")
 
-            t_1, sound_data_1 = generate_sound_data(tonal_centre, give_t = True)
-            t_2, sound_data_2 = generate_sound_data(int(tonal_centre*tonal_centre_interval), give_t = True)
-            
-            frequencies.append([tonal_centre, int(tonal_centre*tonal_centre_interval)])
-            interval_numerical_list.append(tonal_centre_string)
-            interval_string_names.append("unison")
-            sound_type.append("rough")
-            modulated_wave_1 = apply_constant_sinusoidal_envelope(t_1, sound_data_1)
-            modulated_wave_2 = apply_constant_sinusoidal_envelope(t_2, sound_data_2)
-            sounds_arrays.append(modulated_wave_1, modulated_wave_2)
+        t_1, sound_data_1 = generate_sound_data(tonal_centre, give_t = True)
+        t_2, sound_data_2 = generate_sound_data(int(tonal_centre*tonal_centre_interval), give_t = True)
+        
+        frequencies.append([tonal_centre, int(tonal_centre*tonal_centre_interval)])
+        interval_numerical_list.append(tonal_centre_string)
+        interval_string_names.append("unison")
+        sound_type.append("rough")
+        modulated_wave_1 = apply_constant_sinusoidal_envelope(t_1, sound_data_1)
+        modulated_wave_2 = apply_constant_sinusoidal_envelope(t_2, sound_data_2)
+        sounds_arrays.append([modulated_wave_1, modulated_wave_2])
 
-        for i in all_intervals: 
-            interval, interval_string = get_interval(i)
-            freq_1 = tonal_centre
-            freq_2 = interval
+    for i in all_intervals: 
+        interval, interval_string = get_interval(i)
+        freq_1 = tonal_centre
+        freq_2 = tonal_centre*interval
 
-            frequencies.append([freq_1, freq_2])
-            interval_numerical_list.append(interval_string)
-            interval_string_names.append(i)
+        frequencies.append([freq_1, freq_2])
+        interval_numerical_list.append(interval_string)
+        interval_string_names.append(i)
 
-            sound_1= generate_sound_data(tonal_centre)
-            sound_2 = generate_sound_data(int(tonal_centre*interval))
-            
-            sounds_arrays.append([sound_1, sound_2])
+        sound_1= generate_sound_data(tonal_centre)
+        sound_2 = generate_sound_data(freq_2)
+        
+        sounds_arrays.append([sound_1, sound_2])
 
-            if i in consonant_intervals: 
-                sound_type.append("consonant")
-            else:
-                sound_type.append("dissonant")
-            
+        if i in consonant_intervals: 
+            sound_type.append("consonant")
+        else:
+            sound_type.append("dissonant")
+        
 
 
     return frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays
@@ -1419,20 +1417,31 @@ def play_sound(sound_data, fs=192000):
     sd.play(sound_data, fs)
 
 def play_interval(sound_data1, sound_data2, fs=192000):
-    """Play two sounds simultaneously using the sounddevice library."""
-    # Ensure both sound_data arrays are the same length
+    """Play two sounds simultaneously—but treat any int as “all silence.”"""
+    import numpy as np
+
+    # If both are integers → nothing to play
+    if isinstance(sound_data1, (int, float)) and isinstance(sound_data2, (int, float)):
+        return
+
+    # If one side is integer, replace with zeros array of the other side’s length
+    if isinstance(sound_data1, (int, float)):
+        sound_data1 = np.zeros_like(sound_data2)
+    if isinstance(sound_data2, (int, float)):
+        sound_data2 = np.zeros_like(sound_data1)
+
+    # Now both are array‐like: trim to same length
     min_length = min(len(sound_data1), len(sound_data2))
     sound_data1 = sound_data1[:min_length]
     sound_data2 = sound_data2[:min_length]
-    
-    # Sum the two sound data arrays
+
     combined_sound_data = sound_data1 + sound_data2
-    
-    # Normalize the combined sound data
-    combined_sound_data_normalised = np.int16((combined_sound_data / np.max(np.abs(combined_sound_data))) * 32767)
-    
-    # Play the combined sound
+    combined_sound_data_normalised = np.int16(
+        (combined_sound_data / np.max(np.abs(combined_sound_data))) * 32767
+    )
     sd.play(combined_sound_data_normalised, fs)
+
+
 
 def save_sound(sound_data, frequency, waveform):
     parent_folder_selected = filedialog.askdirectory()
