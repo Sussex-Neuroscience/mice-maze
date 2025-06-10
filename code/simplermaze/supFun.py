@@ -7,6 +7,7 @@ from tkinter import filedialog as fd
 from tkinter import *
 import csv
 
+#def subtract_background()
 
 def collect_metadata(animal_ID, session_ID):
     ear_mark = input("Ear mark identifiers? (y/n): \n").lower()
@@ -246,8 +247,8 @@ def empty_frame(rows=300,roi_names=["entrance1","entrance2","rewA","rewB","rewC"
     #during the session we will fill up this df with data
     
 
-    columns = ["hit","miss","incorrect","area_rewarded","time_to_reward",
-           "trial_start_time","end_trial_time","mouse_enter_time"]+roi_names
+    columns = ["hit","miss","incorrect","rew_location","area_rewarded","time_to_reward",
+           "trial_start_time","end_trial_time","mouse_enter_time","first_reward_area_visited"]+roi_names
     data = pd.DataFrame(None, index=range(rows), columns=columns)
     return data
     

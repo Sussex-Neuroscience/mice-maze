@@ -1,0 +1,15 @@
+cffi==1.16.0
+future==1.0.0
+iso8601==2.1.0
+numpy==1.26.4
+opencv-python==4.9.0.80
+pandas==2.2.2
+pycparser==2.22
+python-dateutil==2.9.0.post0
+pytz==2024.1
+PyYAML==6.0.1
+serial==0.0.97
+six==1.16.0
+sounddevice==0.4.6
+soundfile==0.12.1
+tzdata==2024.1
