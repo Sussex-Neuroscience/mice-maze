@@ -22,8 +22,8 @@ serialOn = True
 
 #if running experiments "testing" should be False (related to testing the code)
 testing = False
-
-#If ROIs need to be drawn by experiementer, set the next variable to TRUE
+#If ROIs need to be drawn 
+# by experiementer, set the next variable to TRUE
 drawRois = False
 
 #If just testing and no video needs to be recorded, set the next variable to FALSE
@@ -31,6 +31,7 @@ recordVideo = True
 #define where the video is coming from. Use 0 for the first camera on the computer,
 #or a complete file path to use a pre-recorded video
 videoInput = 0
+#"C:/Users/labadmin/Desktop/maze_recordings/2025-02-18_14_27_3389411/8941_2025-02-18_14_27_33.mp4"
 
 
 #get the identification of each grating
@@ -45,7 +46,7 @@ if testing:
     base_path = "C:/Users/labadmin/Desktop/maze_recordings/"
     new_dir_path = "C:/Users/labadmin/Desktop/maze_recordings/"
     #new_dir_path = "C:/Users/labadmin/Desktop/maze_recordings/"
-    experiment_phase = 1
+    experiment_phase = 3
     #create  trials and save them to csv (later this csv needs to go to the appropriate session folder)
     trials = sf.create_trials(numTrials = 100, sessionStage=experiment_phase, nonRepeat=True)
     trials.to_csv(os.path.join(new_dir_path,f"trials_before_session_{date_time}.csv"))
@@ -58,20 +59,23 @@ else:
     base_path = os.path.join(os.path.expanduser('~'), 'Desktop', 'maze_recordings')
     sf.ensure_directory_exists(base_path)
     
-    new_dir_path = sf.setup_directories(base_path, date_time, animal_ID, session_ID)
+    new_dir_path = sf.setup_directories(base_path, date_time,animal_ID,session_ID)
     rec_name = f"{animal_ID}_{date_time}.mp4"
     recordFile = os.path.join(new_dir_path, rec_name)
     print(f"Video will be saved to: {recordFile}")
 
     metadata = sf.collect_metadata(animal_ID, session_ID)
     sf.save_metadata_to_csv(metadata, new_dir_path, f"{animal_ID}_{date_time}.csv")
-    trials = sf.create_trials(numTrials = 100, sessionStage=experiment_phase)
+    trials = sf.create_trials(numTrials = 150, sessionStage=experiment_phase, nonRepeat=True)
 
     trials.to_csv(os.path.join(new_dir_path,"trials_before_session.csv"))
 
     #load the trials file (description of each trial)
-    print("choose the file containing trials (default: 'trials_before_session.csv'")
-    trialsIDs = pd.read_csv(sf.choose_csv())
+    #print("choose the file containing trials (default: 'trials_before_session.csv'")
+    trialsIDs = trials
+    
+    
+    #pd.read_csv(sf.choose_csv())
 
 
 
@@ -116,6 +120,7 @@ incorrect = list()
 hasVisited = dict()
 mousePresent = dict()
 
+
 cap = sf.start_camera(videoInput=videoInput)
 
 frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
@@ -132,19 +137,24 @@ valid,gray = cap.read()
 for i in range(5):
     valid,gray = cap.read()
     time.sleep(0.1)
-ret,gray = cv.threshold(gray,100,255,cv.THRESH_BINARY)
+ret,gray = cv.threshold(gray,160,255,cv.THRESH_BINARY)
 
-#run a loop to catch each area and sum the pixel values on that area of the frame
-areas = dict()
-for item in rois:
-    areas[item] = sf.grab_cut(gray,
-                xstart = rois[item]["xstart"],
-                ystart =  rois[item]["ystart"],
-                xlen = rois[item]["xlen"],
-                ylen =  rois[item]["ylen"],
-                )
-    
-    thresholds[item] = np.sum(areas[item])
+#run a loop to catch each area and sum the pixel values on that area of the frame over 10 frames
+areas = {}
+for _ in range(10):
+    valid, gray = cap.read()
+    if not valid:
+        print("Can't receive frame (stream end?). Exiting ...")
+        break
+
+    for item in rois:
+        areas[item] = sf.grab_cut(gray,
+                                xstart=rois[item]["xstart"],
+                                ystart=rois[item]["ystart"],
+                                xlen=rois[item]["xlen"],
+                                ylen=rois[item]["ylen"])
+        thresholds[item] = np.sum(areas[item])
+        print(f"ROI: {item}, Threshold: {thresholds[item]}")
 
 
 sessionStartTime = time.time()
@@ -212,7 +222,8 @@ for trial in trials.index:
     
 
     for item in rois:
-        hasVisited[item] = False 
+        hasVisited[item] = False
+        
         
         #ent1 = 0
         #ent2 = 0
@@ -246,17 +257,29 @@ for trial in trials.index:
             time.sleep(0.05)
         
         valid,grayOriginal = cap.read()
-        ret,gray = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY)
+        if not valid:
+            print("Failed to read frame")
+            continue
+        
+        ## play around with the value after grayOriginal to set the threshold for the pixels
+
+        ret,gray = cv.threshold(grayOriginal,160,255,cv.THRESH_BINARY)
         fg_mask = back_sub.apply(gray)
+        # cv.imshow('Foreground Mask', fg_mask)
+        # cv.waitKey(0)
         #ret,gray_inv = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY_INV)
         
         try:
             contours,hierarchy = cv.findContours(fg_mask, cv.RETR_TREE,
                                           cv.CHAIN_APPROX_NONE)
-            cv.drawContours(fg_mask,contours[0],-1,255,4)
+            if contours:
+                cv.drawContours(fg_mask, contours[0], -1, 255, 4)
+                cv.drawContours(gray, contours[0], 0, (0,255,255), 2)
+            else:
+                print("No contours found")
         except:
             print("no")
-        cv.drawContours(gray,contours[0],0,(0,255,255),2)
+        #cv.drawContours(gray,contours[0],0,(0,255,255),2)
         #binGray = gray[:,:,2]
         time_frame=sf.time_in_millis()-absolute_time_start
         #if 'old_frame' in locals():
@@ -289,7 +312,7 @@ for trial in trials.index:
         #
         #contours, hierarchy = cv.findContours(fg_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         
-        cv.imshow('frame_diff', fg_mask) 
+       # cv.imshow('frame_diff', fg_mask) 
         if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
             break
         
@@ -322,12 +345,19 @@ for trial in trials.index:
                         #print("first visit to:",item)
                 
                 hasVisited[item] = True
+
                 duration=time_frame-time_old_frame
                 #print(duration)
                 if np.isnan(data.loc[trial,item]):
                     data.loc[trial,item] = duration
                 else:
                     data.loc[trial,item] = data[item][trial]+duration
+
+
+            else:
+                hasVisited[item]= False 
+
+            
                 
         #time_old_frame=time_frame
         
