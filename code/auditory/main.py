@@ -45,7 +45,9 @@ make_Simple_intervals= False
 make_temporal_envelope_modulation = False
 
 # set to true to perform experiments where the ROIS can be controls / frequencies of different AM/ intervals 
-make_complex_intervals = True
+make_complex_intervals = False
+
+just_vocalisations = True
 
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
 recordVideo = True
@@ -165,6 +167,23 @@ elif make_complex_intervals and not (make_sequences or make_simple_smooth_sounds
     
     trials, sound_array = sf.create_complex_intervals_trials(rois_list, frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays)
 
+elif just_vocalisations and not (make_complex_intervals or make_sequences or make_simple_smooth_sounds or make_Simple_intervals or make_temporal_envelope_modulation):
+    #define if there is a silent arm as control or not
+    silent_arm = True
+
+    path_to_vocalisations_folder="c:/Users/labuser/Downloads/vocalisations/trimmed"
+    file_names = os.listdir(path_to_vocalisations_folder)
+
+    if silent_arm: 
+        stimuli = ["silent"]
+    else: 
+        stimuli=[]
+    
+    for file in file_names: 
+        stimuli.append(file)
+     
+    frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays = sf.vocalisations_info_hc(rois_number, stimuli)
+    trials, sound_array = sf.create_complex_intervals_trials(rois_list, frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays)
 
 else: 
     print("go back and make sure you only choose one experiment type")

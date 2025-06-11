@@ -582,8 +582,6 @@ def info_complex_intervals_hc (rois_number, controls, tonal_centre, smooth_freq,
     sound_type = []
     sounds_arrays = []
 
-    #here is a double check in case you're a bit distracted. Again, no judgement. 
-
     for i in controls:
         interval_numerical_list.append(0)
         interval_string_names.append("none")          
@@ -646,7 +644,42 @@ def info_complex_intervals_hc (rois_number, controls, tonal_centre, smooth_freq,
 
     return frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays
 
+def vocalisations_info_hc(rois_number, stimuli):
+    #here what we do is we check if the number of stimuli corresponds to the number of ROIs and adjusting the stimuli accordingly
+    if rois_number == len(stimuli):
+        pass
+    # if there are more rois than stimuli, select random stimuli to repeat
+    elif rois_number > len(stimuli): 
 
+        difference = rois_number - len(stimuli)
+        for i in range(difference):
+            stimuli.append(random.choice(stimuli))
+    else:
+        stimuli = stimuli[:rois_number]
+
+
+    #the frequencies list will contain lists containing the 2 frequencies that make up the interval. 
+    frequencies =[]
+    interval_numerical_list = []
+    interval_string_names = []
+    sound_type = []
+    sounds_arrays = []
+
+    for i in stimuli:
+        interval_numerical_list.append(0)
+        interval_string_names.append("none")          
+        sound_type.append("control")
+
+        if i == "silent":
+            frequencies.append(0)
+            sounds_arrays.append([0,0])
+        else: 
+            frequencies.append(i)
+            voc_sound_array = generate_voc_array(i, 192000)
+            sounds_arrays.append([voc_sound_array, 0])
+
+    
+    return frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays
     
 def plotting_lissajous(interval):
     t = symbols('t')
