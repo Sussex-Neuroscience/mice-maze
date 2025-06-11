@@ -137,19 +137,24 @@ valid,gray = cap.read()
 for i in range(5):
     valid,gray = cap.read()
     time.sleep(0.1)
-ret,gray = cv.threshold(gray,100,255,cv.THRESH_BINARY)
+ret,gray = cv.threshold(gray,160,255,cv.THRESH_BINARY)
 
-#run a loop to catch each area and sum the pixel values on that area of the frame
-areas = dict()
-for item in rois:
-    areas[item] = sf.grab_cut(gray,
-                xstart = rois[item]["xstart"],
-                ystart =  rois[item]["ystart"],
-                xlen = rois[item]["xlen"],
-                ylen =  rois[item]["ylen"],
-                )
-    
-    thresholds[item] = np.sum(areas[item])
+#run a loop to catch each area and sum the pixel values on that area of the frame over 10 frames
+areas = {}
+for _ in range(10):
+    valid, gray = cap.read()
+    if not valid:
+        print("Can't receive frame (stream end?). Exiting ...")
+        break
+
+    for item in rois:
+        areas[item] = sf.grab_cut(gray,
+                                xstart=rois[item]["xstart"],
+                                ystart=rois[item]["ystart"],
+                                xlen=rois[item]["xlen"],
+                                ylen=rois[item]["ylen"])
+        thresholds[item] = np.sum(areas[item])
+        print(f"ROI: {item}, Threshold: {thresholds[item]}")
 
 
 sessionStartTime = time.time()
@@ -258,7 +263,7 @@ for trial in trials.index:
         
         ## play around with the value after grayOriginal to set the threshold for the pixels
 
-        ret,gray = cv.threshold(grayOriginal,190,255,cv.THRESH_BINARY)
+        ret,gray = cv.threshold(grayOriginal,160,255,cv.THRESH_BINARY)
         fg_mask = back_sub.apply(gray)
         # cv.imshow('Foreground Mask', fg_mask)
         # cv.waitKey(0)
@@ -307,7 +312,7 @@ for trial in trials.index:
         #
         #contours, hierarchy = cv.findContours(fg_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         
-        cv.imshow('frame_diff', fg_mask) 
+       # cv.imshow('frame_diff', fg_mask) 
         if cv.waitKey(1) & 0xFF in [ord('q'), 27]:  # Quit on 'q' or ESC
             break
         

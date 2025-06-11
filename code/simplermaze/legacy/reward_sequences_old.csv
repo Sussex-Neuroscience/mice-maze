@@ -1,6 +1,0 @@
-Trial ID ,Grating position L,Grating position R,Grating position LL,Grating position LR,Grating position RL,Grating position RR,Reward port ,Probability (%)
-Habituation ,0,0,0,0,0,0,,0
-Stage 1 A,90,0,0,90,0,0,A,100
-Stage 1 B,90,0,90,0,0,0,B,100
-Stage 1 C,0,90,0,0,90,0,C,100
-Stage 1 D ,0,90,0,0,0,90,D,100
