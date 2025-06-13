@@ -21,7 +21,7 @@ sd.default.device = 3
 
 
 # Variables
-testing= True
+testing= False
 #testing with longer silence in the middle of the sequence
 longer_silence= False
 

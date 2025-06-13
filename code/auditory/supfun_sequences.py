@@ -1053,8 +1053,8 @@ def create_trials_for_sequences(rois, frequency, patterns, volume=100, waveform=
                             concatenated_array = []
                             if frequency[j] =="vocalisation":
                                 sound = generate_voc_array(path_to_voc, 192000)
-                                concatenated_array.append(sound)
-                                wave_arrays.append(concatenated_array)
+                                
+                                wave_arrays.append(np.asarray(sound))
 
                             else:
                                 for k in range(len(frequency[j])):
@@ -1074,8 +1074,7 @@ def create_trials_for_sequences(rois, frequency, patterns, volume=100, waveform=
                             
                             if freq =="vocalisation":
                                 sound = generate_voc_array(path_to_voc, 192000)
-                                concatenated_array.append(sound)
-                                wave_arrays.append(concatenated_array)
+                                wave_arrays.append(np.asarray(sound))
 
                             else:
 
@@ -1472,11 +1471,19 @@ def create_complex_intervals_trials(rois, frequency,interval_numerical_list, int
 def play_sound(sound_data, fs=192000):
     """Play sound using sounddevice library."""
         # down-mix multi-channel to mono
+    print("play_sound got:", type(sound_data), 
+    "  content type:", 
+    type(sound_data[0]) if hasattr(sound_data, "__getitem__") else None)
+     # ensure we have an ndarray
+    sound_data = np.asarray(sound_data)
+
+    # now .ndim is safe
     if sound_data.ndim > 1:
+        # down-mix to mono
         sound_data = np.mean(sound_data, axis=1)
-    
+
     sd.play(sound_data, fs)
-    sd.wait()
+    
 
 def play_interval(sound_data1, sound_data2, fs=192000):
     """Play two sounds simultaneously—but treat any int as “all silence.”"""
