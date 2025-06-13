@@ -21,7 +21,7 @@ sd.default.device = 3
 
 
 # Variables
-testing= False
+testing= True
 #testing with longer silence in the middle of the sequence
 longer_silence= False
 
@@ -37,7 +37,7 @@ drawRois = False
 #set to true to make individual sine sounds
 make_simple_smooth_sounds = False
 # set to true to make sequences of tones
-make_sequences = False
+make_sequences = True
 #set true to make individual complex sounds. This contains 2 intervals, 1 vocalisation and one pure tone
 make_Simple_intervals= False
 
@@ -47,7 +47,7 @@ make_temporal_envelope_modulation = False
 # set to true to perform experiments where the ROIS can be controls / frequencies of different AM/ intervals 
 make_complex_intervals = False
 
-just_vocalisations = True
+just_vocalisations = False
 
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
 recordVideo = True
@@ -91,11 +91,12 @@ if make_simple_smooth_sounds and not (make_sequences or make_Simple_intervals or
 # Make sequences of smooth sounds
 elif make_sequences and not (make_simple_smooth_sounds or make_Simple_intervals or make_temporal_envelope_modulation or make_complex_intervals):
     frequency, patterns= sf.ask_music_info_sequences(rois_number)
-    trials, sound_array = sf.create_trials(rois_list, frequency, patterns)
+    path_to_vocal = "C:/Users/labuser/Downloads/vocalisationzzzzzz/trimmed_vocalisations/run3_day2_male_w_female_oestrus.wav"
+    trials, sound_array = sf.create_trials_for_sequences(rois_list, frequency, patterns, path_to_voc= path_to_vocal)
     #make all arrays the same size because otherwise it won't save sound arrays
     min_length = min(len(arr) for arr in sound_array)
-     # Trim the arrays to the minimum length
-    trimmed_sound_arrays = sf.trim_arrays(sound_array, min_length)
+    # Trim each array to the minimum length
+    trimmed_sound_arrays = [arr[:min_length] for arr in sound_array]
 
 
 #make complex sounds
@@ -171,18 +172,19 @@ elif just_vocalisations and not (make_complex_intervals or make_sequences or mak
     #define if there is a silent arm as control or not
     silent_arm = True
 
-    path_to_vocalisations_folder="c:/Users/labuser/Downloads/vocalisations/trimmed"
+    path_to_vocalisations_folder="C:/Users/labuser/Downloads/vocalisationzzzzzz/trimmed_vocalisations/"
     file_names = os.listdir(path_to_vocalisations_folder)
 
-    if silent_arm: 
-        stimuli = ["silent"]
-    else: 
-        stimuli=[]
+    stimuli=[]
     
     for file in file_names: 
-        stimuli.append(file)
+        stimuli.append(path_to_vocalisations_folder+file)
+
+    
+    if silent_arm: 
+        stimuli.append("silent")
      
-    frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays = sf.vocalisations_info_hc(rois_number, stimuli)
+    frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays = sf.vocalisations_info_hc(rois_number, stimuli, file_names)
     trials, sound_array = sf.create_complex_intervals_trials(rois_list, frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays)
 
 else: 
@@ -271,7 +273,7 @@ absolute_time_start = sf.time_in_millis()
 
 
 if testing:
-    trial_lengths = [0.1, 0.2, 0.2, 2, 0.2, 2, 0.2, 2, 0.2]
+    trial_lengths = [0.1, 1, 0.2, 2, 0.2, 2, 0.2, 2, 0.2]
 
     #inserted a longer silence trial in the middle, to check if the mice prefer the maze in silence
 elif not testing and longer_silence:
@@ -453,23 +455,33 @@ for trial in unique_trials:
                 # Check if the item belongs to the dynamically created ROIs
                 if item in rois_list:
                     if mousePresent[item]:
-                        frequency_value = trials[trials["trial_ID"] == trial]["frequency"].values[0]
-                        zeros = ["0", 0, [0, 0]]
-                        
-                        if not any(np.array_equal(frequency_value, zero) for zero in zeros):
-                            if reset_play:
-                                reset_play = False
-                                roi_index = rois_list.index(item)
+                        condition = (trials["trial_ID"] == trial) & (trials["ROIs"] == item)
+                        frequency_value = trials.loc[condition, "frequency"].values[0]
+                        # normalize to a 1D numpy array for easy testing
+                        freq_arr = np.atleast_1d(frequency_value)
 
-                                # Dynamically play the corresponding sound
-                                if make_Simple_intervals:
-                                    sf.play_interval(sounds[item][0][0], sounds[item][1][0])
+                        # if *all* entries are zero, skip playing
+                        if np.all(freq_arr == 0):
+                            continue
 
-                                elif make_complex_intervals: 
-                                    sf.play_interval(sounds[item][0], sounds[item][1])
-                                    
-                                else:
-                                    sf.play_sound(sounds[item])
+                        # otherwise play exactly once per trial
+                        if reset_play:
+                            reset_play = False
+
+                            # find your preloaded sound for this ROI
+                            sound_for_this_roi = sounds[item] 
+
+                            # now dispatch based on what kind of sound it is
+                            if make_Simple_intervals:
+                                sf.play_interval(sound_for_this_roi[0][0],
+                                                sound_for_this_roi[1][0])
+
+                            elif make_complex_intervals or just_vocalisations:
+                                sf.play_interval(sound_for_this_roi[0],
+                                                sound_for_this_roi[1])
+
+                            else:
+                                sf.play_sound(sound_for_this_roi)
                                 
                                 print(f"Playing sound for {item}")
 

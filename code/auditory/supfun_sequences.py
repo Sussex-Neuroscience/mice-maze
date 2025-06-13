@@ -390,10 +390,10 @@ def ask_music_info_sequences(rois_number):
         if ask_for_pattern_input == "y":
             pattern_list= ask_pattern(rois_number)
         else:
-            pattern_list = ['BABA','AoAo','random', 'silence',  'AAAAA', 'ABCABC', 'BABA', 'CBACBA', 'ABCDEABCDE', 'DCBADCBA']   
+            pattern_list = ['AAAAA','AoAo','ABAB','ABCABC', 'BABA', 'ABBA', "silence", "vocalisation"]   
         
         #to determine the individual events, exclude random and silence
-        patterns_nonpatterns = ["random", "silence"]
+        patterns_nonpatterns = ["silence", "vocalisation"]
         
         #get the sorted individual events in the sequences and map them to frequencies
         events = []
@@ -424,11 +424,19 @@ def ask_music_info_sequences(rois_number):
                 sequence_from_pattern.append(list(item*repetitions))
             elif item == "random": 
                 sequence_from_pattern.append([random.choice(events) for _ in range(200)])
+            elif item == "vocalisation":
+                sequence_from_pattern.append("vocalisation")
             else:
                 sequence_from_pattern.append(['o' for _ in range(200) ])
             
     #print(sequence_from_pattern)
-        sequence_of_frequencies = [[sound_dict[char] for char in sublist] for sublist in sequence_from_pattern]
+        # handle vocalisations as a sentinel, otherwise map each event char
+        sequence_of_frequencies = []
+        for sublist in sequence_from_pattern:
+            if sublist == "vocalisation":
+                sequence_of_frequencies.append("vocalisation")
+            else:
+                sequence_of_frequencies.append([sound_dict[char] for char in sublist])
 
     elif intervals_vs_custom == "intervals":
         pass
@@ -644,7 +652,10 @@ def info_complex_intervals_hc (rois_number, controls, tonal_centre, smooth_freq,
 
     return frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays
 
-def vocalisations_info_hc(rois_number, stimuli):
+def vocalisations_info_hc(rois_number, stimuli, file_names):
+
+    #dict_files = dict(zip(stimuli, file_names))
+
     #here what we do is we check if the number of stimuli corresponds to the number of ROIs and adjusting the stimuli accordingly
     if rois_number == len(stimuli):
         pass
@@ -990,7 +1001,7 @@ def create_simple_trials(rois, frequency,
 
     return df,wave_arrays
 
-def create_trials_for_sequences(rois, frequency, patterns, volume=100, waveform="sine",
+def create_trials_for_sequences(rois, frequency, patterns, volume=100, waveform="sine", path_to_voc = None,
                   total_repetitions = 9,
                   zero_repetitions = 5,
                   sample_rate = 192000):
@@ -1040,11 +1051,17 @@ def create_trials_for_sequences(rois, frequency, patterns, volume=100, waveform=
 
                             #to generate the sounds data in a way that they play continuously
                             concatenated_array = []
-                            for k in range(len(frequency[j])):
-                                sounds = generate_sound_data(frequency[j][k])  # Generate sound data
-                                concatenated_array.append(sounds)
-                            concatenated_sounds= np.concatenate(concatenated_array)
-                            wave_arrays.append(concatenated_sounds)
+                            if frequency[j] =="vocalisation":
+                                sound = generate_voc_array(path_to_voc, 192000)
+                                concatenated_array.append(sound)
+                                wave_arrays.append(concatenated_array)
+
+                            else:
+                                for k in range(len(frequency[j])):
+                                    sounds = generate_sound_data(frequency[j][k], duration = 0.04)  # Generate sound data
+                                    concatenated_array.append(sounds)
+                                concatenated_sounds= np.concatenate(concatenated_array)
+                                wave_arrays.append(concatenated_sounds)
 
 
                     else:
@@ -1055,12 +1072,19 @@ def create_trials_for_sequences(rois, frequency, patterns, volume=100, waveform=
                             patterns_final.append(pat)
                             concatenated_array = []
                             
-                            for k in range(len(freq)):
-                                sounds = generate_sound_data(freq[k])  # Generate sound data
-                                #print(trial_list[j][k])
-                                concatenated_array.append(sounds)
-                            concatenated_sounds= np.concatenate(concatenated_array)
-                            wave_arrays.append(concatenated_sounds)
+                            if freq =="vocalisation":
+                                sound = generate_voc_array(path_to_voc, 192000)
+                                concatenated_array.append(sound)
+                                wave_arrays.append(concatenated_array)
+
+                            else:
+
+                                for k in range(len(freq)):
+                                    sounds = generate_sound_data(freq[k], duration=0.04)  # Generate sound data
+                                    #print(trial_list[j][k])
+                                    concatenated_array.append(sounds)
+                                concatenated_sounds= np.concatenate(concatenated_array)
+                                wave_arrays.append(concatenated_sounds)
 
 
 
@@ -1447,7 +1471,12 @@ def create_complex_intervals_trials(rois, frequency,interval_numerical_list, int
 
 def play_sound(sound_data, fs=192000):
     """Play sound using sounddevice library."""
+        # down-mix multi-channel to mono
+    if sound_data.ndim > 1:
+        sound_data = np.mean(sound_data, axis=1)
+    
     sd.play(sound_data, fs)
+    sd.wait()
 
 def play_interval(sound_data1, sound_data2, fs=192000):
     """Play two sounds simultaneously—but treat any int as “all silence.”"""
