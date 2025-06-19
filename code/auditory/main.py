@@ -37,16 +37,14 @@ drawRois = False
 #set to true to make individual sine sounds
 make_simple_smooth_sounds = False
 # set to true to make sequences of tones
-make_sequences = True
+make_sequences = False
 #set true to make individual complex sounds. This contains 2 intervals, 1 vocalisation and one pure tone
 make_Simple_intervals= False
 
 # set to true if you want to perform experiments testing the effects of temporal envelope modulation on sound preference
 make_temporal_envelope_modulation = False
-
 # set to true to perform experiments where the ROIS can be controls / frequencies of different AM/ intervals 
-make_complex_intervals = False
-
+make_complex_intervals =True
 just_vocalisations = False
 
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
@@ -129,7 +127,7 @@ elif make_temporal_envelope_modulation and not (make_sequences or make_simple_sm
 
     
     #insert your path to vocalisation
-    path_to_vocalisation = "c:/Users/labuser/Downloads/mM27.18-individuality_run1_day2-2016-10-14_15-16-00_0003.WAV"
+    path_to_vocalisation = "c:/Users/labuser/Downloads/vocalisationzzzzzz/zenodo5771669_run1_day2_male_w_female_oestrus.WAV"
 
    # look this next function could be easier but you bear with me, here is where we sort everything out
 
@@ -149,13 +147,13 @@ elif make_complex_intervals and not (make_sequences or make_simple_smooth_sounds
     tonal_centre = 15000
     smooth_freq= True
     rough_freq = True
-    consonant_intervals = ["perf_4", "perf_5"] #"min_3", "maj_3", "perf_4", "perf_5", "min_6", "maj_6", "octave"
-    dissonant_intervals = ["tritone", "min_7"] # "min_2", "maj_2",  "tritone", "min_7", "maj_7"
+    consonant_intervals = ["min_3", "maj_6"] #"min_3", "maj_3", "perf_4", "perf_5", "min_6", "maj_6", "octave"
+    dissonant_intervals = ["min_2",  "maj_7"] # "min_2", "maj_2",  "tritone", "min_7", "maj_7"
     controls = ["vocalisation", "silent"]
 
     
     #insert your path to vocalisation
-    path_to_vocalisation = "c:/Users/labuser/Downloads/mM27.18-individuality_run1_day2-2016-10-14_15-16-00_0003.WAV"
+    path_to_vocalisation = "c:/Users/labuser/Downloads/vocalisationzzzzzz/zenodo5771669_run1_day2_male_w_female_oestrus.WAV"
 
     frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays = sf.info_complex_intervals_hc (rois_number, 
                                                                                                                            controls, 
@@ -479,11 +477,24 @@ for trial in unique_trials:
                             elif make_complex_intervals or just_vocalisations:
                                 sf.play_interval(sound_for_this_roi[0],
                                                 sound_for_this_roi[1])
+                                
+                                        
+                                # interval_pair = sound_for_this_roi
+
+                                # # unwrap nested lists if present
+                                # d1, d2 = interval_pair
+                                # if isinstance(d1, (list, tuple)):  d1 = d1[0]
+                                # if isinstance(d2, (list, tuple)):  d2 = d2[0]
+
+                                # # debug: confirm shapes
+                                # print(f"[DEBUG] ROI {item} → shapes:", getattr(d1, 'shape', None), getattr(d2, 'shape', None))
+
+                                # sf.play_interval(d1, d2)
 
                             else:
                                 sf.play_sound(sound_for_this_roi)
                                 
-                                print(f"Playing sound for {item}")
+                            print(f"Playing sound for {item}")
 
 
         time_old_frame = time_frame

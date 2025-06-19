@@ -597,11 +597,14 @@ def info_complex_intervals_hc (rois_number, controls, tonal_centre, smooth_freq,
 
         if i == "silent":
             frequencies.append(0)
-            sounds_arrays.append([0,0])
+            # 10 s of silence at 192 kHz
+            z = np.zeros(int(192000 * 10))
+            sounds_arrays.append([z, z])
         else: 
             frequencies.append(i)
-            voc_sound_array = generate_voc_array(path_to_voc, 192000)
-            sounds_arrays.append([voc_sound_array, 0])
+            voc = generate_voc_array(path_to_voc, 192000)
+            silence = np.zeros_like(voc)
+            sounds_arrays.append([voc, silence])
 
     if smooth_freq:
         tonal_centre_interval, tonal_centre_string = get_interval("unison") 
@@ -1384,10 +1387,12 @@ def create_complex_intervals_trials(rois, frequency,interval_numerical_list, int
             for _ in rois:
                 repetition_numbers.append(i + 1)
                 frequency_final.append(0)
-                interval_numerical_list_final.append("none")
-                interval_string_names_final.append("none")
+                interval_numerical_list_final.append(0)
+                interval_string_names_final.append(0)
                 sound_type_final.append("silent_trial")
-                wave_arrays.append(np.zeros(sample_rate * 10))
+                # two silent intervals of full length
+                zeros = np.zeros(sample_rate * 10)
+                wave_arrays.append((0,0))
         else:
             # === Non‐silent trials: either first ordering (i == 1) or shuffled (i > 1) ===
             while True:
@@ -1430,10 +1435,10 @@ def create_complex_intervals_trials(rois, frequency,interval_numerical_list, int
                             repetition_numbers.append(i + 1)
                             frequency_final.append(frequency[idx])
                             interval_numerical_list_final.append(interval_numerical_list[idx])
-                            interval_string_names_final.append(interval_numerical_list[idx])
+                            interval_string_names_final.append(interval_string_names[idx])
                             
                             sound_type_final.append(sound_type[idx])
-                            wave_arrays.append(sounds_arrays[idx])
+                            wave_arrays.append(tuple(sounds_arrays[idx]))
                     else:
                         # Assign shuffled data from trial_list
                         for (freq_shuf, int_num_shuf, int_name_shuf, typ_shuf, sounds_shuf) in trial_list:
@@ -1442,7 +1447,7 @@ def create_complex_intervals_trials(rois, frequency,interval_numerical_list, int
                             interval_numerical_list_final.append(int_num_shuf)
                             interval_string_names_final.append(int_name_shuf)
                             sound_type_final.append(typ_shuf)
-                            wave_arrays.append(sounds_shuf)
+                            wave_arrays.append(tuple(sounds_shuf))
                     break
 
     # Build the DataFrame
