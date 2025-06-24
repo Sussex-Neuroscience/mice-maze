@@ -21,13 +21,13 @@ pause_between_frames = False
 serialOn = True
 
 #if running experiments "testing" should be False (related to testing the code)
-testing = False
+testing = True
 #If ROIs need to be drawn 
 # by experiementer, set the next variable to TRUE
 drawRois = False
 
 #If just testing and no video needs to be recorded, set the next variable to FALSE
-recordVideo = True
+recordVideo = False
 #define where the video is coming from. Use 0 for the first camera on the computer,
 #or a complete file path to use a pre-recorded video
 videoInput = 0
@@ -42,11 +42,12 @@ gratingID = pd.read_csv("grating_maps.csv",index_col=0)
 #get the current date and time, so all files created do not overwrite existing data
 date_time = sf.get_current_time_formatted()
 
+
 if testing:
     base_path = "C:/Users/labadmin/Desktop/maze_recordings/"
     new_dir_path = "C:/Users/labadmin/Desktop/maze_recordings/"
     #new_dir_path = "C:/Users/labadmin/Desktop/maze_recordings/"
-    experiment_phase = 3
+    experiment_phase = 2
     #create  trials and save them to csv (later this csv needs to go to the appropriate session folder)
     trials = sf.create_trials(numTrials = 100, sessionStage=experiment_phase, nonRepeat=True)
     trials.to_csv(os.path.join(new_dir_path,f"trials_before_session_{date_time}.csv"))
@@ -82,7 +83,7 @@ else:
 if serialOn:
     #create a serial object and connect to it
 
-    ser = serial.Serial("COM4",115200)
+    ser = serial.Serial("COM6",115200)
     print(ser.in_waiting)
     while ser.in_waiting>0:
         ser.readline()
@@ -264,21 +265,7 @@ for trial in trials.index:
         ## play around with the value after grayOriginal to set the threshold for the pixels
 
         ret,gray = cv.threshold(grayOriginal,160,255,cv.THRESH_BINARY)
-        fg_mask = back_sub.apply(gray)
-        # cv.imshow('Foreground Mask', fg_mask)
-        # cv.waitKey(0)
-        #ret,gray_inv = cv.threshold(grayOriginal,180,255,cv.THRESH_BINARY_INV)
-        
-        try:
-            contours,hierarchy = cv.findContours(fg_mask, cv.RETR_TREE,
-                                          cv.CHAIN_APPROX_NONE)
-            if contours:
-                cv.drawContours(fg_mask, contours[0], -1, 255, 4)
-                cv.drawContours(gray, contours[0], 0, (0,255,255), 2)
-            else:
-                print("No contours found")
-        except:
-            print("no")
+
         #cv.drawContours(gray,contours[0],0,(0,255,255),2)
         #binGray = gray[:,:,2]
         time_frame=sf.time_in_millis()-absolute_time_start
@@ -329,7 +316,7 @@ for trial in trials.index:
             #cv.imshow(item,areas[item])
             #print(item+" " + str(np.sum(areas[item])))
     
-            mousePresent[item] = np.sum(areas[item])<thresholds[item]/2
+            mousePresent[item] = np.sum(areas[item])<thresholds[item]*0.5
             
             if mousePresent[item]:
                 print(item)
