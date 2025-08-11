@@ -305,6 +305,9 @@ for trial in unique_trials:
     ongoing_trial_duration = 0
     time_old_frame = 0
     start_new_time = True
+    maze_time_accum_ms = 0
+    maze_entry_ms = None
+
 
     while trialOngoing:
         if pause_between_frames:
@@ -409,6 +412,9 @@ for trial in unique_trials:
         if e2Aftere1 and not enteredMaze:
             print(f"mouse entered the maze for trial {trial}")
             print(f"Starting trial {trial} for {time_trial} minutes.")
+
+            maze_entry_ms = sf.time_in_millis() # timestamp for when the mouse enters the maze for the first time in the trial
+
             if start_new_time:
                 start_time = time.time()
                 start_new_time = False
@@ -435,8 +441,16 @@ for trial in unique_trials:
 
         if e1Aftere2 and enteredMaze:
             print("mouse has left the maze")
-            if time.time() >= end_time:
-                print(time.time() >= end_time)
+            if maze_entry_ms is not None:
+                maze_time_accum_ms += sf.time_in_millis() - maze_entry_ms
+                maze_entry_ms = None
+
+            if time.time() >= end_time: 
+                if maze_entry_ms is not None:
+                    end_time_ms = int(end_time * 1000)
+                    maze_time_accum_ms += end_time_ms - maze_entry_ms
+                    maze_entry_ms = None
+
                 trialOngoing = False
             enteredMaze = False
 
@@ -498,6 +512,8 @@ for trial in unique_trials:
 
 
         time_old_frame = time_frame
+
+    trials.loc[trials["trial_ID"] == trial, "time_in_maze_ms"] = maze_time_accum_ms
 
 
     # Save the updated trials DataFrame to CSV after each trial

@@ -998,6 +998,7 @@ def create_simple_trials(rois, frequency,
     # Add other necessary columns filled with NaNs or default values
     df["time_spent"] = [None] * len(df)
     df["visitation_count"] = [None] * len(df)
+    df["time_in_maze_ms"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
     
@@ -1104,6 +1105,7 @@ def create_trials_for_sequences(rois, frequency, patterns, volume=100, waveform=
     # Add other necessary columns filled with NaNs or default values
     df["time_spent"] = [None] * len(df)
     df["visitation_count"] = [None] * len(df)
+    df["time_in_maze_ms"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
 
@@ -1229,6 +1231,7 @@ def create_trials_for_intervals(rois, frequency, intervals, intervals_names,
     # Add other necessary columns filled with NaNs or default values
     df["time_spent"] = [None] * len(df)
     df["visitation_count"] = [None] * len(df)
+    df["time_in_maze_ms"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
 
@@ -1350,6 +1353,7 @@ def create_temporally_modulated_trials(rois, frequency, temporal_modulation, sou
     # Add extra columns for tracking mouse behavior
     df["time_spent"] = [None] * len(df)
     df["visitation_count"] = [None] * len(df)
+    df["time_in_maze_ms"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
 
@@ -1464,6 +1468,7 @@ def create_complex_intervals_trials(rois, frequency,interval_numerical_list, int
     # Add extra columns for tracking mouse behavior
     df["time_spent"] = [None] * len(df)
     df["visitation_count"] = [None] * len(df)
+    df["time_in_maze_ms"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
 

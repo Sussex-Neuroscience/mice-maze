@@ -1,7 +1,12 @@
 
+# Dependencies (aka the libraries you need to run this code)
+
+You can install the dependencies by simply opening your teminal and running:
+`pip install -r requirements.txt ` 
 
 
-## needed Python libraries:
+
+Alternatively, the essential Python libraries are:
 
 - OpenCV
 - Pandas
@@ -10,8 +15,6 @@
 - sounddevice
 - soundfile
 - serial
-
-
 
 
 If you are using virtualenv to install these packages on a Linux machine, all the libraries, 
