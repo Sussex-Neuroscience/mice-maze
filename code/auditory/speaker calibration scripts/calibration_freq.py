@@ -3,17 +3,80 @@ from tkinter import messagebox
 import sounddevice as sd
 import numpy as np
 import time
+import pandas as pd
+from scipy.interpolate import interp1d
+
 
 
 #This is 
 sd.default.samplerate = 192000 #available sample rates: 44.1kHz, 48kHz , 88.2kHz, 96kHz, 176.4kHz , 192 kHz
-sd.default.device = 4
+sd.default.device = (None, 4)
 
-def generate_sound_data(frequency, volume=1, duration=10, fs=192000):
-    """Generate a sine wave sound with the given frequency, volume, and duration."""
-    t = np.linspace(0, duration, int(fs * duration), False)
-    sound = np.sin(2 * np.pi * frequency * t) * volume
-    return sound
+
+def compute_gain(frequency_hz):
+
+
+    data = pd.read_csv("C:/Users/labuser/Documents/GitHub/mice-maze/code/auditory/speaker calibration scripts/frequency_response_speaker.csv")
+    # interpolation function from the frequency response data extrapolated from the graph on the website
+    frequency = data['Frequency_kHz'].values * 1000  # Convert kHz to Hz
+    attenuation = data['Attenuation_dB'].values
+    interp_func = interp1d(frequency, attenuation, kind='cubic', fill_value="extrapolate")
+    #get the interpolated attenuation
+    attenuation_db = interp_func(frequency_hz)
+    #from there calculate the gain 
+    gain = 10 ** (-attenuation_db / 20)
+    return gain
+
+
+    
+
+ 
+
+def generate_sound_data(frequency, waveform="sine", duration=10, fs=192000, volume=1.0, ramp_duration = 0.01, compensate=True, give_t= False):
+    """Generate sound data for a given frequency and waveform."""
+    t = np.linspace(0, duration, int(fs * duration), endpoint = False)
+    gain = compute_gain(frequency) if compensate else 1.0
+    adjusted_volume = volume * gain
+    sound = np.zeros_like(t)    
+
+
+    if waveform == 'sine':
+        sound = np.sin(frequency * t * 2 * np.pi)  * adjusted_volume
+
+    elif waveform == 'square':
+        sound = np.sign(np.sin(frequency * t * 2 * np.pi)) * adjusted_volume
+
+    elif waveform == 'sawtooth':
+        sound = (2 * (t * frequency % 1) - 1) * adjusted_volume
+
+    elif waveform == 'triangle':
+        sound = (2 * np.abs(2 * (t * frequency - np.floor(0.5 + t * frequency))) - 1) * adjusted_volume
+
+    elif waveform == 'pulse wave':
+        sound = np.where((t % (1 / frequency)) < (1 / frequency) * 0.5, 1.0, -1.0)  * adjusted_volume  # 0.5 in this case is the duty cycle
+    
+    elif waveform == 'white noise':
+        samples = int(fs * duration)
+        sound = np.random.uniform(low=-1.0, high=1.0, size=samples) * adjusted_volume
+
+    
+    # apply a ramp up (fade in) in seconds so that the speaker doesn't click upon stimulus presentation
+    ramp_samples = int(fs * ramp_duration)
+
+    envelope = np.ones_like(sound)
+    if ramp_samples > 0:
+        # Linear ramp up
+        envelope[:ramp_samples] = np.linspace(0, 1, ramp_samples)
+        # Linear ramp down
+        # envelope[-ramp_samples:] = np.linspace(1, 0, ramp_samples)
+
+    sound *= envelope
+
+    if give_t:
+        return t, sound
+    else:
+        return sound
+
 
 def play_sound(sound_data, fs=192000, volume=1.0):
     """Play sound using sounddevice library with improved volume scaling."""
@@ -21,7 +84,7 @@ def play_sound(sound_data, fs=192000, volume=1.0):
     # sound_data_scaled = np.int16(sound_data * 32767 * volume)  # Apply volume scaling in dB range
     # sd.play(sound_data_scaled, fs)
     # sd.wait()
-    sd.play(sound_data)
+    sd.play(sound_data, fs)
     sd.wait()
 
 
