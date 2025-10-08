@@ -10,7 +10,7 @@ from scipy.io import wavfile
 #if using a focusrite soundcard, refer to this https://support.focusrite.com/hc/en-gb/articles/115004120965-Sample-Rate-Bit-Depth-Buffer-Size-Explained
 SAMPLE_RATE = 192000 #available sample rates: 44.1kHz, 48kHz , 88.2kHz, 96kHz, 176.4kHz , 192 kHz
 sd.default.samplerate = SAMPLE_RATE 
-sd.default.device = 3 # Replace this by setting found_channel = False in  "__main__"
+#sd.default.device = 3 # Replace this by setting found_channel = False in  "__main__"
 
   
 #this function generates an array of sound data according to the duration, frequency, volume and sample rate. 
@@ -86,15 +86,17 @@ def make_FFT(sound, SAMPLE_RATE):
 def find_channel(sound1, sound2, sound3):
     #this function runs through 50 channels to find the ones connected to the soundcard. 
     #50 is an arbitrary number, to find the precise number of channels, run 'python -m sounddevice' or 'python3 -m sounddevice' in the terminal
-    for i in range(19):
+    for i in range(30):
         sd.default.device=i
         try: 
             play_sound(sound1)
-            print(f"using device {i}")
+            print(f"using device {i}, playing sound1")
             time.sleep(5)
             play_sound(sound2)
+            print(f"using device {i}, playing sound2")
             time.sleep(5)
             play_sound(sound3)
+            print(f"using device {i}, playing sound3")
             time.sleep(5)
         except:
             print(f"unable to play with device {i}")
@@ -103,7 +105,7 @@ def find_channel(sound1, sound2, sound3):
 
 if __name__== "__main__":
     #set to false when using for the first time
-    found_channel= True
+    found_channel= False
     trial_sound = generate_sound_data(10000, volume = 1, fs= SAMPLE_RATE)
     trial_sound2 = generate_sound_data(16000, volume = 1, fs= SAMPLE_RATE)
     trial_sound3 = generate_sound_data(40000, volume = 1, fs= SAMPLE_RATE)

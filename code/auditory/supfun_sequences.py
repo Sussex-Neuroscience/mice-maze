@@ -592,8 +592,8 @@ def info_complex_intervals_hc (rois_number, controls, tonal_centre, smooth_freq,
 
     for i in controls:
         interval_numerical_list.append(0)
-        interval_string_names.append("none")          
-        sound_type.append("control")
+        interval_string_names.append(i)          
+        sound_type.append(i)
 
         if i == "silent":
             frequencies.append(0)
@@ -1000,6 +1000,7 @@ def create_simple_trials(rois, frequency,
     df["visitation_count"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
+    df["trial_time_in_maze_ms"] = [0] * len(df)
     
 
     return df,wave_arrays
@@ -1106,6 +1107,7 @@ def create_trials_for_sequences(rois, frequency, patterns, volume=100, waveform=
     df["visitation_count"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
+    df["trial_time_in_maze_ms"] = [0] * len(df)
 
     return df, wave_arrays
 
@@ -1231,6 +1233,7 @@ def create_trials_for_intervals(rois, frequency, intervals, intervals_names,
     df["visitation_count"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
+    df["trial_time_in_maze_ms"] = [0] * len(df)
 
     return df, wave_arrays
 
@@ -1352,6 +1355,7 @@ def create_temporally_modulated_trials(rois, frequency, temporal_modulation, sou
     df["visitation_count"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
+    df["trial_time_in_maze_ms"] = [0] * len(df)
 
     return df, wave_arrays
 
@@ -1466,6 +1470,7 @@ def create_complex_intervals_trials(rois, frequency,interval_numerical_list, int
     df["visitation_count"] = [None] * len(df)
     df["trial_start_time"] = [None] * len(df)
     df["end_trial_time"] = [None] * len(df)
+    df["trial_time_in_maze_ms"] = [0] * len(df)
 
     return df, wave_arrays
 

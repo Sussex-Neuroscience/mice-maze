@@ -31,8 +31,7 @@ pause_between_frames = False
 rois_number = 8
 
 #set to true to create/modify ROIs .csv file
-drawRois = False
-
+drawRois =False
 
 #set to true to make individual sine sounds
 make_simple_smooth_sounds = False
@@ -44,7 +43,11 @@ make_Simple_intervals= False
 # set to true if you want to perform experiments testing the effects of temporal envelope modulation on sound preference
 make_temporal_envelope_modulation = False
 # set to true to perform experiments where the ROIS can be controls / frequencies of different AM/ intervals 
-make_complex_intervals =True
+make_complex_intervals =  True
+w1day2= False
+w1day3= False
+w1day4= True
+
 just_vocalisations = False
 
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
@@ -144,16 +147,41 @@ elif make_temporal_envelope_modulation and not (make_sequences or make_simple_sm
 
 
 elif make_complex_intervals and not (make_sequences or make_simple_smooth_sounds or make_Simple_intervals or make_temporal_envelope_modulation):
-    tonal_centre = 15000
-    smooth_freq= True
-    rough_freq = True
-    consonant_intervals = ["min_3", "maj_6"] #"min_3", "maj_3", "perf_4", "perf_5", "min_6", "maj_6", "octave"
-    dissonant_intervals = ["min_2",  "maj_7"] # "min_2", "maj_2",  "tritone", "min_7", "maj_7"
-    controls = ["vocalisation", "silent"]
+
+    
+
+
+    if w1day2 and not (w1day3 or w1day4):
+        tonal_centre = 15000
+        smooth_freq= True
+        rough_freq = True
+            
+        consonant_intervals = ["perf_5", "perf_4"] #"min_3", "maj_3", "perf_4", "perf_5", "min_6", "maj_6", "octave"
+        dissonant_intervals = ["tritone",  "min_7"] # "min_2", "maj_2",  "tritone", "min_7", "maj_7"
+        controls = ["vocalisation", "silent"] #"vocalisation", "silent"
+    
+    elif w1day3 and not (w1day2 or w1day4):
+        tonal_centre = 15000
+        smooth_freq= True
+        rough_freq = True
+            
+        consonant_intervals = ["maj_6", "min_3"] #"min_3", "maj_3", "perf_4", "perf_5", "min_6", "maj_6", "octave"
+        dissonant_intervals = ["maj_7",  "min_2"] # "min_2", "maj_2",  "tritone", "min_7", "maj_7"
+        controls = ["vocalisation", "silent"] #"vocalisation", "silent"
+
+    elif w1day4 and not (w1day3 or w1day2):
+
+        tonal_centre = 15000
+        smooth_freq= False
+        rough_freq = False
+            
+        consonant_intervals = ["maj_3", "perf_4", "perf_5", "min_6"] #"min_3", "maj_3", "perf_4", "perf_5", "min_6", "maj_6", "octave"
+        dissonant_intervals = ["min_7",  "maj_2", "tritone", "maj_7"] # "min_2", "maj_2",  "tritone", "min_7", "maj_7"
+        controls = [] #"vocalisation", "silent"
 
     
     #insert your path to vocalisation
-    path_to_vocalisation = "c:/Users/labuser/Downloads/vocalisationzzzzzz/zenodo5771669_run1_day2_male_w_female_oestrus.WAV"
+    path_to_vocalisation = "c:/Users/labuser/Downloads/vocalisationzzzzzz/trimmed_vocalisations/run3_day2_male_w_female_oestrus.wav"
 
     frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays = sf.info_complex_intervals_hc (rois_number, 
                                                                                                                            controls, 
@@ -294,6 +322,8 @@ for trial in unique_trials:
         visitation_count[item]= 0
     
     trialOngoing = True
+    trial_time_accum_ms = 0 #this will be the total time-in-maze for this trial
+    last_entry_ts = None #timestamp when the mouse last entered
     enteredMaze = False
     hasLeft1 = False
     hasLeft2 = False
@@ -432,12 +462,18 @@ for trial in unique_trials:
             trials.loc[trials["trial_ID"] == trial, "trial_start_time"] = start_time
             trials.loc[trials["trial_ID"] == trial, "end_trial_time"] = end_time
             enteredMaze = True
+            if last_entry_ts is None:
+                last_entry_ts = time.time()
+
 
         if e1Aftere2 and enteredMaze:
             print("mouse has left the maze")
             if time.time() >= end_time:
                 print(time.time() >= end_time)
                 trialOngoing = False
+            if last_entry_ts is not None:
+                trial_time_accum_ms += int((time.time() - last_entry_ts) * 1000)
+                last_entry_ts = None
             enteredMaze = False
 
         if enteredMaze:
@@ -499,6 +535,11 @@ for trial in unique_trials:
 
         time_old_frame = time_frame
 
+    if last_entry_ts is not None:
+        trial_time_accum_ms += int((time.time() - last_entry_ts) * 1000)
+        last_entry_ts = None
+
+    trials.loc[trials["trial_ID"] == trial, "trial_time_in_maze_ms"] = trial_time_accum_ms
 
     # Save the updated trials DataFrame to CSV after each trial
     print(f"Saving trials data for trial {trial} to CSV")

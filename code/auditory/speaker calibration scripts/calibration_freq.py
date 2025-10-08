@@ -7,7 +7,7 @@ import time
 
 #This is 
 sd.default.samplerate = 192000 #available sample rates: 44.1kHz, 48kHz , 88.2kHz, 96kHz, 176.4kHz , 192 kHz
-sd.default.device = 4
+sd.default.device = 3
 
 def generate_sound_data(frequency, volume=1, duration=10, fs=192000):
     """Generate a sine wave sound with the given frequency, volume, and duration."""
