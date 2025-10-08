@@ -46,16 +46,16 @@ int servoNum = 100;
 
 //reward location A
 #define IRsensorA 2
-#define rewardMotorA 6
+#define rewardMotorA 8
 //reward location B
 #define IRsensorB 15
-#define rewardMotorB 7
+#define rewardMotorB 9
 //reward location C
 #define IRsensorC 17
-#define rewardMotorC 8
+#define rewardMotorC 7
 //reward location D
 #define IRsensorD 16
-#define rewardMotorD 9
+#define rewardMotorD 6
 
 int max_degree =180;
 

@@ -34,7 +34,7 @@ def save_metadata_to_csv(data, new_dir_path, file_name):
 
 
 def setup_directories(base_path, date_time, animal_ID, session_ID):
-    new_directory = f"{date_time}{animal_ID}{session_ID}"
+    new_directory = f"{date_time}_{animal_ID}_session_{session_ID}"
     new_dir_path = os.path.join(base_path, new_directory)
     ensure_directory_exists(new_dir_path)
     return new_dir_path
@@ -59,19 +59,19 @@ def get_metadata():
     anID = input("enter animal identification:")
     date = input("enter date:")
     sessionID = input("enter session identification")
-    metatada = [anID, date, sessionID]
+    metadata = [anID, date, sessionID]
     #figure out what else users want to store
     return metadata
 
 def write_text(text="string",window="noWindow"):
-    font                   = cv2.FONT_HERSHEY_SIMPLEX
+    font                   = cv.FONT_HERSHEY_SIMPLEX
     bottomLeftCornerOfText = (10,500)
     fontScale              = 1
     fontColor              = (255,255,255)
     thickness              = 1
     lineType               = 2
     
-    cv2.putText(window,text, 
+    cv.putText(window,text, 
     bottomLeftCornerOfText, 
     font, 
     fontScale,
@@ -90,7 +90,7 @@ def start_camera(videoInput=0):
     return cap
 
 def record_video(cap, recordFile, frame_width, frame_height, fps):
-    cc = cv.VideoWriter_fourcc(*'XVID')
+    cc = cv.VideoWriter_fourcc(*'mp4v')
     videoFileObject = cv.VideoWriter(recordFile, cc, fps, (frame_width, frame_height))
     return videoFileObject
     #if not videoFile.isOpened():
@@ -129,47 +129,59 @@ def csv_to_dict(fileName="rois.csv"):
     return output
 
 
-def define_rois(videoInput = 0,
-                roiNames = ["entrance1","entrance2",
-                             "rew1","rew2","rew3","rew4"],
-                outputName = "rois.csv"):
+def define_rois(videoInput=0,
+                roiNames=["entrance1", "entrance2", "ROI1", "ROI2", "ROI3", "ROI4"],
+                outputName="rois.csv"):
     
-
     cap = cv.VideoCapture(videoInput)
-    #cap = cv.VideoCapture(0)
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
 
     # Capture frame-by-frame
     ret, frame = cap.read()
-    # if frame is read correctly ret is True
     if not ret:
         print("Can't receive frame (stream end?). Exiting ...")
-        #break
-    # Our operations on the frame come here
+        cap.release()
+        exit()
+
+    # Convert frame to grayscale for display
     gray = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-    # Display the resulting frame
-    #cv.imshow('frame', gray)
-
-    #release the capture
-    cap.release()
-
-    rois = {}
-    for entry in roiNames:
-        print("please select location of "+str(entry))
-        rois[entry] = cv.selectROI('frame', gray)
-        #print(rois[entry])
     
+    # Dictionary to store ROIs
+    rois = {}
+
+    for entry in roiNames:
+        print(f"Please select location of {entry}")
+
+        # Display the current frame with already selected ROIs
+        for name, roi in rois.items():
+            x, y, w, h = roi
+            cv.rectangle(gray, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            cv.putText(gray, name, (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1, cv.LINE_AA)
+        
+        # Show the frame and select ROI
+        cv.imshow('frame', gray)
+        rois[entry] = cv.selectROI('frame', gray, fromCenter=False, showCrosshair=True)
+        
+        # Draw the selected ROI on the frame
+        x, y, w, h = rois[entry]
+        cv.rectangle(gray, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv.putText(gray, entry, (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv.LINE_AA)
+
+    # Convert the dictionary to a DataFrame
     df = pd.DataFrame(rois)
-    #print(df)
-    #print(roiNames)
-    df.index = ["xstart","ystart","xlen","ylen"]
-    df.to_csv(outputName,index=["xstart","ystart","xlen","ylen"])
-    #when all done destroy windows
+    df.index = ["xstart", "ystart", "xlen", "ylen"]
+    
+    # Save the DataFrame to a CSV file
+    df.to_csv(outputName, index=["xstart", "ystart", "xlen", "ylen"])
+    
+    # Release the capture and destroy windows
+    cap.release()
     cv.destroyAllWindows()
 
     return df
+
 
 #def draw_on_video(frame=gray,roi=(0,0,0,0)):
     #cv2.rectangle(frame, (roi[0], roi[1]), (roi[2], roi[3]), (0, 0, 0), -1)

@@ -57,10 +57,11 @@ int servoNum = 100;
 #define rewardMotorB 9
 //reward location C
 #define IRsensorC 17
-#define rewardMotorC 10
+#define rewardMotorC 7
 //reward location D
 #define IRsensorD 16
-#define rewardMotorD 11
+#define rewardMotorD 6
+
 
 
 
@@ -143,6 +144,12 @@ void loop() {
   sCmd.readSerial();     // We don't do much, just process serial commands
 } //end loop
 
+// void loop() {
+//   sCmd.readSerial();
+//   Serial.println("Looping..."); // Add this
+//   delay(800); // Add a small delay so it's not too fast
+// }
+
 ///servo callback functions -------------------------------------------------/////////////////////////////////////////////
 void gratingRoutine(int degree=90, int servoNum=0){
 
@@ -188,6 +195,58 @@ void pelletRoutine(int IRsensor=0,int servoNum=0, int rewardServoMovTimeLoc = re
   }//if
 }// end pellet routine
 
+// void pelletRoutine(int IRsensor_pin = 0 , int servoNum_motor= 0, int rewardServoMovTimeLoc = rewardServoMovTime) {
+//     Serial.print("Reward routine started for motor: ");
+//     Serial.print(servoNum_motor);
+//     Serial.print(", IR sensor: ");
+//     Serial.println(IRsensor_pin);
+
+//     int pelletDropped = 0;
+//     unsigned long startTime;
+
+//     while (pelletDropped == 0) {
+//         Serial.println("Attempting pellet drop..."); // New print
+//         // Try position 1
+//         pwm.setPWM(servoNum_motor, 0, rewPulseLen1);
+//         startTime = millis();
+//         Serial.println("Moving servo to position 1...");
+
+//         while (millis() - startTime < rewardServoMovTimeLoc) {
+//             IRvalue = digitalRead(IRsensor_pin);
+//             Serial.print("IR value: "); // Keep this for detailed observation
+//             Serial.println(IRvalue);    // Keep this for detailed observation
+//             if (IRvalue == 0) {
+//                 pelletDropped = 1;
+//                 Serial.println("Pellet detected! Exiting current attempt."); // New print
+//                 break;
+//             }
+//         }
+
+//         if (pelletDropped == 0) {
+//             // If not dropped, try position 2
+//             pwm.setPWM(servoNum_motor, 0, rewPulseLen2);
+//             startTime = millis();
+//             Serial.println("Moving servo to position 2...");
+
+//             while (millis() - startTime < rewardServoMovTimeLoc) {
+//                 IRvalue = digitalRead(IRsensor_pin);
+//                 Serial.print("IR value: "); // Keep this for detailed observation
+//                 Serial.println(IRvalue);    // Keep this for detailed observation
+//                 if (IRvalue == 0) {
+//                     pelletDropped = 1;
+//                     Serial.println("Pellet detected! Exiting current attempt."); // New print
+//                     break;
+//                 }
+//             }
+//         }
+//         if (pelletDropped == 0) {
+//              Serial.println("Pellet not detected after 2 attempts. Retrying..."); // New print
+//         }
+//         // Add a small delay here if you want to avoid flooding the serial and give the mechanism time
+//         // delay(100);
+//     }
+//     Serial.println("Reward routine finished and exited."); // New print
+// }
 
 void gratingL(){
 
@@ -287,7 +346,7 @@ void gratingLLL(){
   if (arg != NULL) {
      degree = atoi(arg);
   
-gratingRoutine(degree=degree, servoNum=gratingRRnum);
+gratingRoutine(degree=degree, servoNum=gratingLLLnum);
   }//if
   else {
     Serial.println("No arguments");
@@ -302,7 +361,7 @@ void gratingLRR(){
   if (arg != NULL) {
      degree = atoi(arg);
   
-gratingRoutine(degree=degree, servoNum=gratingRRnum);
+gratingRoutine(degree=degree, servoNum=gratingLRRnum);
   }//if
   else {
     Serial.println("No arguments");
@@ -317,7 +376,7 @@ void gratingRLL(){
   if (arg != NULL) {
      degree = atoi(arg);
   
-gratingRoutine(degree=degree, servoNum=gratingRRnum);
+gratingRoutine(degree=degree, servoNum=gratingRLLnum);
   }//if
   else {
     Serial.println("No arguments");
@@ -332,7 +391,7 @@ void gratingRRR(){
   if (arg != NULL) {
      degree = atoi(arg);
   
-gratingRoutine(degree=degree, servoNum=gratingRRnum);
+gratingRoutine(degree=degree, servoNum=gratingRRRnum);
   }//if
   else {
     Serial.println("No arguments");
