@@ -86,18 +86,17 @@ def make_FFT(sound, SAMPLE_RATE):
 def find_channel(sound1, sound2, sound3):
     #this function runs through 50 channels to find the ones connected to the soundcard. 
     #50 is an arbitrary number, to find the precise number of channels, run 'python -m sounddevice' or 'python3 -m sounddevice' in the terminal
-    for i in range(19):
+    for i in range(30):
         sd.default.device=i
         try: 
-            print(f"using device {i}")
             play_sound(sound1)
-            print(f"playing sound1")
+            print(f"using device {i}, playing sound1")
             time.sleep(5)
             play_sound(sound2)
-            print(f"playing sound2")
+            print(f"using device {i}, playing sound2")
             time.sleep(5)
             play_sound(sound3)
-            print(f"playing sound3")
+            print(f"using device {i}, playing sound3")
             time.sleep(5)
         except:
             print(f"unable to play with device {i}")
