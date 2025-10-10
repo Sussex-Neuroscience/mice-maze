@@ -539,7 +539,7 @@ for trial in unique_trials:
         trial_time_accum_ms += int((time.time() - last_entry_ts) * 1000)
         last_entry_ts = None
 
-    trials.loc[trials["trial_ID"] == trial, "trial_time_in_maze_ms"] = trial_time_accum_ms
+    trials.loc[trials["trial_ID"] == trial, "time_in_maze_ms"] = trial_time_accum_ms
 
     # Save the updated trials DataFrame to CSV after each trial
     print(f"Saving trials data for trial {trial} to CSV")
