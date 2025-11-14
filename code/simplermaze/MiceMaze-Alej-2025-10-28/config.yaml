@@ -1,0 +1,236 @@
+# Project definitions (do not edit)
+Task: MiceMaze
+scorer: Alej
+date: Oct28
+multianimalproject: false
+identity:
+
+
+# Project path (change when moving around)
+project_path: 
+  C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28
+
+
+# Default DeepLabCut engine to use for shuffle creation (either pytorch or tensorflow)
+engine: pytorch
+
+
+# Annotation data set configuration (and individual video cropping parameters)
+video_sets:
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_000.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_002.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_003.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_005.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_006.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_007.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_008.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_009.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_010.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_011.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_012.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_013.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_014.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_015.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_016.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_017.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_018.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_019.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_020.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_021.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_022.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_024.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_025.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_026.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_028.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_029.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_030.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_031.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_032.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_033.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_034.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_035.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_036.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_037.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_038.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_039.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_040.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_041.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_042.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_043.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_044.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_045.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_046.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_047.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_048.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_049.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_050.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_051.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_052.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_053.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_054.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_055.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_056.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_057.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_058.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_059.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_060.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_061.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_062.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_063.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_064.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_065.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_066.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_067.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_068.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_069.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_070.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_071.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_072.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_073.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_074.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_075.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_076.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_077.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_078.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_079.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_081.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_082.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_083.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_084.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_085.mp4
+  : crop: 0, 640, 0, 480
+  ? C:\Users\shahd\OneDrive\Documents\GitHub\mice-maze\code\simplermaze\MiceMaze-Alej-2025-10-28\videos\6357_2024-08-28_11_58_14s3.6_trial_086.mp4
+  : crop: 0, 640, 0, 480
+bodyparts:
+- nose
+- midback
+- base_tail
+
+
+
+# Fraction of video to start/stop when extracting frames for labeling/refinement
+start: 0
+stop: 1
+numframes2pick: 20
+
+
+# Plotting configuration
+skeleton: []
+
+skeleton_color: black
+pcutoff: 0.6
+dotsize: 12
+alphavalue: 0.5
+colormap: rainbow
+
+
+# Training,Evaluation and Analysis configuration
+TrainingFraction:
+- 0.95
+iteration: 0
+default_net_type: resnet_50
+default_augmenter: imgaug
+snapshotindex: -1
+detector_snapshotindex: -1
+batch_size: 8
+detector_batch_size: 1
+
+
+# Cropping Parameters (for analysis and outlier frame detection)
+cropping: false
+#if cropping is true for analysis, then set the values here:
+x1: 0
+x2: 640
+y1: 277
+y2: 624
+
+
+# Refinement configuration (parameters from annotation dataset configuration also relevant in this stage)
+corner2move2:
+- 50
+- 50
+move2corner: true
+
+
+# Conversion tables to fine-tune SuperAnimal weights
+SuperAnimalConversionTables:
