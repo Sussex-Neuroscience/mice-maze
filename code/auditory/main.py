@@ -21,6 +21,8 @@ sd.default.device = 3
 
 
 # Variables
+
+# set to True for shorter time intervals to test that the sounds work fine
 testing= False
 #testing with longer silence in the middle of the sequence
 longer_silence= False
@@ -33,21 +35,28 @@ rois_number = 8
 #set to true to create/modify ROIs .csv file
 drawRois =False
 
+
 #set to true to make individual sine sounds
 make_simple_smooth_sounds = False
-# set to true to make sequences of tones
-make_sequences = False
 #set true to make individual complex sounds. This contains 2 intervals, 1 vocalisation and one pure tone
 make_Simple_intervals= False
 
 # set to true if you want to perform experiments testing the effects of temporal envelope modulation on sound preference
+# w1_d1
 make_temporal_envelope_modulation = False
+
+#w1_d2-d4
 # set to true to perform experiments where the ROIS can be controls / frequencies of different AM/ intervals 
 make_complex_intervals =  True
 w1day2= False
 w1day3= False
 w1day4= True
 
+#w2_d1
+# set to true to make sequences of tones
+make_sequences = False
+
+#w2_d2
 just_vocalisations = False
 
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
@@ -62,6 +71,7 @@ date_time = sf.get_current_time_formatted()
 date_time= f"time_{date_time}"
 animal_ID, = sf.get_user_inputs()
 animal_ID= f"mouse{animal_ID}"
+
 #create new directory
 base_path = os.path.join(os.path.expanduser('~'), 'Desktop/auditory_maze_experiments/maze_recordings', 'maze_recordings_sequences')
 sf.ensure_directory_exists(base_path)
@@ -81,6 +91,8 @@ roiNames= entrance_rois + rois_list
 #set base_name for trials list and sound array to be saved as 
 base_name = f"trials_{date_time}"
 
+
+
 #make just sounds
 if make_simple_smooth_sounds and not (make_sequences or make_Simple_intervals or make_temporal_envelope_modulation or make_complex_intervals):
     # frequency= sf.ask_music_info_simple_sounds(rois_number)
@@ -91,6 +103,8 @@ if make_simple_smooth_sounds and not (make_sequences or make_Simple_intervals or
 
 # Make sequences of smooth sounds
 elif make_sequences and not (make_simple_smooth_sounds or make_Simple_intervals or make_temporal_envelope_modulation or make_complex_intervals):
+
+    experimental_session = "sequences"
     frequency, patterns= sf.ask_music_info_sequences(rois_number)
     path_to_vocal = "C:/Users/labuser/Downloads/vocalisationzzzzzz/trimmed_vocalisations/run3_day2_male_w_female_oestrus.wav"
     trials, sound_array = sf.create_trials_for_sequences(rois_list, frequency, patterns, path_to_voc= path_to_vocal)
@@ -115,6 +129,8 @@ elif make_Simple_intervals and not (make_sequences or make_simple_smooth_sounds 
 
 
 elif make_temporal_envelope_modulation and not (make_sequences or make_simple_smooth_sounds or make_Simple_intervals or make_complex_intervals):
+
+    experimental_session = "temporal_envelope_modulation"
     # okay, so, this adds another layer of control. You user can choose which frequencies will be smooth, which with constant AM, and which with variable AM 
     # you do you, depends on what level of control freak you are. No judgement, I understand. There there
     smooth_freqs = [10000, 20000]
@@ -149,9 +165,10 @@ elif make_temporal_envelope_modulation and not (make_sequences or make_simple_sm
 elif make_complex_intervals and not (make_sequences or make_simple_smooth_sounds or make_Simple_intervals or make_temporal_envelope_modulation):
 
     
-
+    
 
     if w1day2 and not (w1day3 or w1day4):
+        experimental_session = "intervals_pt1"
         tonal_centre = 15000
         smooth_freq= True
         rough_freq = True
@@ -161,6 +178,7 @@ elif make_complex_intervals and not (make_sequences or make_simple_smooth_sounds
         controls = ["vocalisation", "silent"] #"vocalisation", "silent"
     
     elif w1day3 and not (w1day2 or w1day4):
+        experimental_session = "intervals_pt2"
         tonal_centre = 15000
         smooth_freq= True
         rough_freq = True
@@ -170,6 +188,7 @@ elif make_complex_intervals and not (make_sequences or make_simple_smooth_sounds
         controls = ["vocalisation", "silent"] #"vocalisation", "silent"
 
     elif w1day4 and not (w1day3 or w1day2):
+        experimental_session = "pure_intervals"
 
         tonal_centre = 15000
         smooth_freq= False
@@ -198,6 +217,8 @@ elif just_vocalisations and not (make_complex_intervals or make_sequences or mak
     #define if there is a silent arm as control or not
     silent_arm = True
 
+    experimental_session = "vocalisations"
+
     path_to_vocalisations_folder="C:/Users/labuser/Downloads/vocalisationzzzzzz/trimmed_vocalisations/"
     file_names = os.listdir(path_to_vocalisations_folder)
 
@@ -215,7 +236,12 @@ elif just_vocalisations and not (make_complex_intervals or make_sequences or mak
 
 else: 
     print("go back and make sure you only choose one experiment type")
-                                                                                                
+
+# initialise the visit log
+visit_log_name = f"{animal_ID}_{experimental_session}"
+visit_log_path = sf.initialise_visit_log(new_dir_path, visit_log_name)
+
+#save the data as npy to load the sounds quicker (more quickly?) and the trials df to csv                                                                                        
 np.save(os.path.join(new_dir_path, f"{base_name}.npy"), np.array(sound_array, dtype=object))
 trials.to_csv(os.path.join(new_dir_path, f"{base_name}.csv")) 
 
@@ -324,6 +350,7 @@ for trial in unique_trials:
     trialOngoing = True
     trial_time_accum_ms = 0 #this will be the total time-in-maze for this trial
     last_entry_ts = None #timestamp when the mouse last entered
+    visit_start_times = {roi: None for roi in rois_list} # dictionary to track when a visit started
     enteredMaze = False
     hasLeft1 = False
     hasLeft2 = False
@@ -388,31 +415,48 @@ for trial in unique_trials:
             #rois_list = ['ROI1', 'ROI2', 'ROI3', 'ROI4', "ROI5", "ROI6", "ROI7", "ROI8"]
 
             
+# --- CHECK FOR ENTRY (Start of Visit) ---
             if mousePresent[item]:
-                # print(f"mouse in {item}")
-                duration = time_frame - time_old_frame #
                 
-            
-
-                if item in rois_list:
+                # If this is a fresh entry (timer is None and we start the time)
+                if visit_start_times[item] is None:
+                    visit_start_times[item] = time.time() # Start the stopwatch
                     
+                    # get the total visitation counts 
                     condition = (trials['trial_ID'] == trial) & (trials['ROIs'] == item)
-
                     if not hasVisited[item]: 
-                        visitation_count[item]+= 1
+                        visitation_count[item] += 1
                         print(f'visitation count for {item} : {visitation_count[item]}')
                         hasVisited[item] = True
                         trials.loc[condition, 'visitation_count'] = visitation_count[item]
-                        
 
-                    #trials.loc[condition, 'visitation count'] = visitation_count[item]
+                # get the cumulative time spent
+                duration_frame = time_frame - time_old_frame
+                condition = (trials['trial_ID'] == trial) & (trials['ROIs'] == item)
+                if pd.isna(trials.loc[condition, 'time_spent']).all():
+                    trials.loc[condition, 'time_spent'] = duration_frame
+                else:
+                    trials.loc[condition, 'time_spent'] += duration_frame       
 
-                    if pd.isna(trials.loc[condition, 'time_spent']).all():
-                        trials.loc[condition, 'time_spent'] = duration
-                    else:
-                        trials.loc[condition, 'time_spent'] += duration       
+            # when the mouse leaves
             else:
-                hasVisited[item]= False            
+                # If the mouse was previously in the ROI (timer is already running running)
+                if visit_start_times[item] is not None:
+                    end_time = time.time()
+                    duration_seconds = end_time - visit_start_times[item]
+                    
+                    # Get the stimulus info string
+                    stim_info = sf.get_stimulus_string(trials, trial, item)
+                    
+                    # Save to a row in the new CSV
+                    sf.log_individual_visit(visit_log_path, trial, item, stim_info, duration_seconds)
+                    
+                    print(f"Logged visit: {item} | Time: {duration_seconds:.2f}s | {stim_info}")
+                    
+                    # Reset the timer
+                    visit_start_times[item] = None
+
+                hasVisited[item] = False         
 
 
                     

@@ -46,6 +46,60 @@ def save_metadata_to_csv(data, new_dir_path, file_name):
     df.to_csv(csv_path, index=False)
     print(f"Metadata saved to: {csv_path}")
 
+def initialise_visit_log(directory, base_name):
+    # create the csv file that is going to contain the visitation log (sequence of visitations)
+    filename = f"{base_name}_detailed_visits.csv"
+    full_path = os.path.join(directory, filename)
+    
+    headers = ["trial_ID", "ROI_visited", "stimulus", "time_spent_seconds"]
+    
+    with open(full_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(headers)
+        
+    return full_path
+
+def get_stimulus_string(trials_df, trial_id, roi):
+
+    # Extract relevant stimulus info for a specific Trial/ROI combination 
+    # and combine them into a single descriptive string. 
+
+    #this is essentially going to contain the info about the sound from all the columns that contain this sort of info in the trials.csv
+
+    # Filter the dataframe for the specific trial and ROI
+    condition = (trials_df['trial_ID'] == trial_id) & (trials_df['ROIs'] == roi)
+    row = trials_df.loc[condition]
+    
+    if row.empty:
+        return "Unknown_Stimulus"
+
+    # List of potential columns to look for (based on your different experiment types)
+    cols_to_check = [
+        'frequency', 
+        'sound_type', 
+        'interval_type', 
+        'interval_ratio', 
+        'interval_name', 
+        'pattern', 
+        'temporal_modulation'
+    ]
+    
+    details = []
+    
+    for col in cols_to_check:
+        if col in row.columns:
+            val = row[col].values[0]
+            # Only add if it's not None/NaN and not just a generic "0" (unless 0 means silence)
+            if pd.notna(val):
+                details.append(f"{col}:{val}")
+                
+    return " | ".join(details)
+
+def log_individual_visit(csv_path, trial_id, roi, stimulus_str, duration):
+    #Appends to the log csv a single visit event
+    with open(csv_path, 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([trial_id, roi, stimulus_str, duration])
 
 def setup_directories(base_path, date_time, animal_ID):
     new_directory = f"{date_time}{animal_ID}"
@@ -933,7 +987,7 @@ def create_simple_trials(rois, frequency,
     # Create a list of ROIs repeated total_repetitions times
     rois_repeated = rois * total_repetitions
 
-    # Initialize lists to store the shuffled frequency, volume, and waveform
+    # Initialise lists to store the shuffled frequency, volume, and waveform
     frequency_final = []
     # volume_final = []
     # waveform_final = []
@@ -1014,7 +1068,7 @@ def create_trials_for_sequences(rois, frequency, patterns, volume=100, waveform=
     # Create a list of ROIs repeated total_repetitions times
     rois_repeated = rois * total_repetitions
 
-    # Initialize lists to store the shuffled frequency, volume, and waveform
+    # Initialise lists to store the shuffled frequency, volume, and waveform
     frequency_final = []
     wave_arrays = []
     repetition_numbers = []
@@ -1121,7 +1175,7 @@ def create_trials_for_intervals(rois, frequency, intervals, intervals_names,
     # Create a list of ROIs repeated total_repetitions times
     rois_repeated = rois * total_repetitions
 
-    # Initialize lists to store the shuffled frequency, volume, and waveform
+    # Initialise lists to store the shuffled frequency, volume, and waveform
     frequency_final = []
     intervals_final = []
     intervals_names_final = []
@@ -1353,7 +1407,7 @@ def create_temporally_modulated_trials(rois, frequency, temporal_modulation, sou
         "wave_arrays": wave_arrays
     })
 
-    # Add extra columns for tracking mouse behavior
+    # Add extra columns for tracking mouse behaviour
     df["time_spent"] = [None] * len(df)
     df["visitation_count"] = [None] * len(df)
     df["time_in_maze_ms"] = [0] * len(df)
@@ -1469,7 +1523,7 @@ def create_complex_intervals_trials(rois, frequency,interval_numerical_list, int
         "wave_arrays": wave_arrays
     })
 
-    # Add extra columns for tracking mouse behavior
+    # Add extra columns for tracking mouse behaviour
     df["time_spent"] = [None] * len(df)
     df["visitation_count"] = [None] * len(df)
     df["time_in_maze_ms"] = [0] * len(df)
