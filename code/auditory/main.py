@@ -11,9 +11,11 @@ import sounddevice as sd
 import soundfile as sf1
 from tkinter import filedialog as fd
 from tkinter import *
+import serial
 
 #set the default sample rate and channel for the sound card
-sd.default.samplerate = 192000
+samplerate = 192000
+sd.default.samplerate = samplerate
 #python -m sounddevice
 sd.default.device = 3
 
@@ -26,6 +28,9 @@ sd.default.device = 3
 testing= False
 #testing with longer silence in the middle of the sequence
 longer_silence= False
+
+# if this is the sort of situation where we require an arduino, either for ttls or reward delivery, set to true
+microcontroller = True
 
 pause_between_frames = False
 
@@ -65,6 +70,25 @@ videoInput = 0
 #"C:/Users/labadmin/Desktop/auditory_maze_experiments/maze_recordings/maze_recordings_sequences/time_2024-09-25_11_47_12mouse6705/mouse6705_time_2024-09-25_11_47_12.mp4"
 #"C:/Users/aleja/OneDrive/Desktop/maze_experiments/maze_recordings/2024-08-15_16_12_305872/5872_2024-08-15_16_12_30.mp4"
 #"C:/Users/aleja/Downloads/maze_test.mp4"
+
+
+# setup arduino 
+if microcontroller:
+    try:
+        # check if port is "com3" or "com5" and also in the arduino IDE, check that the baud rate is correct
+        arduino = serial.Serial('COM3', 115200, timeout=0.1)
+        time.sleep(2) # Wait for reboot
+        print("Arduino Connected (State Machine Mode)")
+    except Exception as e:
+        print(f"Arduino Failed: {e}")
+        arduino = None
+    
+# State Machine Variables
+ttl_is_active = False
+ttl_scheduled_off_time = 0
+
+
+
 
 # Setup -- ask users for mouse info
 date_time = sf.get_current_time_formatted()
@@ -367,6 +391,13 @@ for trial in unique_trials:
         if pause_between_frames:
             time.sleep(0.01)
 
+
+        if ttl_is_active and time.time() >= ttl_scheduled_off_time:
+            if arduino:
+                arduino.write(b'L') # Turn OFF
+            ttl_is_active = False
+
+
         #read the video 
         valid, grayOriginal = cap.read()
         ret, gray = cv.threshold(grayOriginal, 160,255, cv.THRESH_BINARY)
@@ -449,7 +480,7 @@ for trial in unique_trials:
                     stim_info = sf.get_stimulus_string(trials, trial, item)
                     
                     # Save to a row in the new CSV
-                    sf.log_individual_visit(visit_log_path, trial, item, stim_info, duration_seconds)
+                    sf.log_individual_visit(visit_log_path, trial, item, stim_info, visit_start_times[item], end_time ,duration_seconds)
                     
                     print(f"Logged visit: {item} | Time: {duration_seconds:.2f}s | {stim_info}")
                     
@@ -530,6 +561,11 @@ for trial in unique_trials:
                     reset_play = True
                     sd.stop()
 
+                    # force stop the TTL
+                    if arduino and ttl_is_active:
+                        arduino.write(b'L')
+                        ttl_is_active = False
+
                 # Check if the item belongs to the dynamically created ROIs
                 if item in rois_list:
                     if mousePresent[item]:
@@ -548,6 +584,22 @@ for trial in unique_trials:
 
                             # find your preloaded sound for this ROI
                             sound_for_this_roi = sounds[item] 
+
+                            duration_sec = 0
+
+                            if isinstance(sound_for_this_roi, (list, tuple)):
+                                # Use length of the first array in the tuple
+                                duration_sec = len(sound_for_this_roi[0]) / samplerate
+                            else:
+                                duration_sec = len(sound_for_this_roi) / samplerate
+                                
+                            # Trigger Arduino ON
+                            if arduino:
+                                arduino.write(b'H')
+                                
+                            # Set State Variables
+                            ttl_is_active = True
+                            ttl_scheduled_off_time = time.time() + duration_sec
 
                             # now dispatch based on what kind of sound it is
                             if make_Simple_intervals:

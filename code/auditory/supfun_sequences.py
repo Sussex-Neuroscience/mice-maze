@@ -51,7 +51,7 @@ def initialise_visit_log(directory, base_name):
     filename = f"{base_name}_detailed_visits.csv"
     full_path = os.path.join(directory, filename)
     
-    headers = ["trial_ID", "ROI_visited", "stimulus", "time_spent_seconds"]
+    headers = ["trial_ID", "ROI_visited", "stimulus","sound_on_time" , "sound_off_time","time_spent_seconds"]
     
     with open(full_path, 'w', newline='') as f:
         writer = csv.writer(f)
@@ -95,11 +95,11 @@ def get_stimulus_string(trials_df, trial_id, roi):
                 
     return " | ".join(details)
 
-def log_individual_visit(csv_path, trial_id, roi, stimulus_str, duration):
+def log_individual_visit(csv_path, trial_id, roi, stimulus_str, sound_onset, sound_offset, duration):
     #Appends to the log csv a single visit event
     with open(csv_path, 'a', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow([trial_id, roi, stimulus_str, duration])
+        writer.writerow([trial_id, roi, stimulus_str, sound_onset, sound_offset, duration])
 
 def setup_directories(base_path, date_time, animal_ID):
     new_directory = f"{date_time}{animal_ID}"
