@@ -17,7 +17,7 @@ Features:
 
 Example Usage:
 ----------------
-python batch_plot_3d_trajectories.py ^
+python make_3d_dlc_plot_trajectories.py ^
     --dlc "C:/Users/shahd/mouse6357_DLC.csv" ^
     --segments "C:/Users/shahd/mouse6357_segments.csv" ^
     --keypoint "nose" ^
@@ -25,6 +25,9 @@ python batch_plot_3d_trajectories.py ^
     --output-dir "./3d_trajectory_plots" ^
     --min-likelihood 0.9 ^
     --fps 30
+
+
+python make_3d_dlc_plot_trajectories.py --dlc "C:/Users/shahd/OneDrive - University of Sussex/DLC_MOSEQ/mouse6357/mouse6357-shahd-2025-09-08/videos/6357_2024-08-28_11_58_14s3.6DLC_Resnet50_mouse6357Sep8shuffle1_snapshot_200.csv" --segments "C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/2024-08-28_11_58_146357session3.6/segments/6357_2024-08-28_11_58_14s3.6_segments_manifest.csv" --keypoint nose --output-dir "./trajectories_maze_video_nose --min-likelihood 0.8 --fps 30"
 """
 
 import argparse
