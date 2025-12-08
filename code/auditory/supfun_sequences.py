@@ -60,40 +60,62 @@ def initialise_visit_log(directory, base_name):
     return full_path
 
 def get_stimulus_string(trials_df, trial_id, roi):
-
-    # Extract relevant stimulus info for a specific Trial/ROI combination 
-    # and combine them into a single descriptive string. 
-
-    #this is essentially going to contain the info about the sound from all the columns that contain this sort of info in the trials.csv
+    """
+    Extract relevant stimulus info for a specific Trial/ROI combination
+    and combine them into a single descriptive string.
+    """
 
     # Filter the dataframe for the specific trial and ROI
     condition = (trials_df['trial_ID'] == trial_id) & (trials_df['ROIs'] == roi)
     row = trials_df.loc[condition]
-    
+
     if row.empty:
         return "Unknown_Stimulus"
 
     # List of potential columns to look for (based on your different experiment types)
     cols_to_check = [
-        'frequency', 
-        'sound_type', 
-        'interval_type', 
-        'interval_ratio', 
-        'interval_name', 
-        'pattern', 
+        'frequency',
+        'sound_type',
+        'interval_type',
+        'interval_ratio',
+        'interval_name',
+        'pattern',
         'temporal_modulation'
     ]
-    
+
     details = []
-    
+
     for col in cols_to_check:
         if col in row.columns:
             val = row[col].values[0]
-            # Only add if it's not None/NaN and not just a generic "0" (unless 0 means silence)
-            if pd.notna(val):
-                details.append(f"{col}:{val}")
-                
-    return " | ".join(details)
+
+            # --- handle arrays/lists vs scalars safely ---
+
+            # Case 1: numpy array or Python list
+            if isinstance(val, (np.ndarray, list)):
+                arr = np.array(val)
+
+                # skip if completely empty or all NaN
+                if arr.size == 0 or np.all(pd.isna(arr)):
+                    continue
+
+                # make a compact string representation
+                flat = arr.flatten()
+                if flat.size > 5:
+                    val_str = "[" + ", ".join(map(str, flat[:5])) + ", ...]"
+                else:
+                    val_str = "[" + ", ".join(map(str, flat)) + "]"
+
+            else:
+                # Case 2: scalar-like value
+                # only treat as missing if pandas thinks so
+                if pd.isna(val):
+                    continue
+                val_str = str(val)
+
+            details.append(f"{col}:{val_str}")
+
+    return " | ".join(details) if details else "No_Stimulus_Info"
 
 def log_individual_visit(csv_path, trial_id, roi, stimulus_str, sound_onset, sound_offset, duration):
     #Appends to the log csv a single visit event
@@ -933,10 +955,11 @@ def info_temporal_modulation_hc(rois_number,
     else: 
         for i in controls:
             if i == "silent":
+                sound_data = generate_sound_data(0)
                 frequencies.append("silent_arm")
                 temporal_modulation.append("no_stimulus")
                 sound_type.append("control")
-                sounds_arrays.append(0)
+                sounds_arrays.append(sound_data)
             else: 
                 frequencies.append("vocalisation")
                 temporal_modulation.append("vocalisation")

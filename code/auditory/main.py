@@ -38,8 +38,7 @@ pause_between_frames = False
 rois_number = 8
 
 #set to true to create/modify ROIs .csv file
-drawRois =False
-
+drawRois = False
 
 #set to true to make individual sine sounds
 make_simple_smooth_sounds = False
@@ -47,7 +46,7 @@ make_simple_smooth_sounds = False
 make_Simple_intervals= False
 
 # set to true if you want to perform experiments testing the effects of temporal envelope modulation on sound preference
-# w1_d1
+# w1_d1c
 make_temporal_envelope_modulation = False
 
 #w1_d2-d4
@@ -55,7 +54,8 @@ make_temporal_envelope_modulation = False
 make_complex_intervals =  True
 w1day2= False
 w1day3= False
-w1day4= True
+w1day4= False
+another_day = True
 
 #w2_d1
 # set to true to make sequences of tones
@@ -76,7 +76,7 @@ videoInput = 0
 if microcontroller:
     try:
         # check if port is "com3" or "com5" and also in the arduino IDE, check that the baud rate is correct
-        arduino = serial.Serial('COM3', 115200, timeout=0.1)
+        arduino = serial.Serial('COM4', 115200, timeout=0.1)
         time.sleep(2) # Wait for reboot
         print("Arduino Connected (State Machine Mode)")
     except Exception as e:
@@ -222,6 +222,17 @@ elif make_complex_intervals and not (make_sequences or make_simple_smooth_sounds
         dissonant_intervals = ["min_7",  "maj_2", "tritone", "maj_7"] # "min_2", "maj_2",  "tritone", "min_7", "maj_7"
         controls = [] #"vocalisation", "silent"
 
+    elif another_day: 
+        experimental_session = "intervals"
+
+        tonal_centre = 15000
+        smooth_freq= False
+        rough_freq = False
+            
+        consonant_intervals = ["maj_3", "perf_4", "perf_5"] #"min_3", "maj_3", "perf_4", "perf_5", "min_6", "maj_6", "octave"
+        dissonant_intervals = ["min_7",  "maj_2", "tritone"] # "min_2", "maj_2",  "tritone", "min_7", "maj_7"
+        controls = ["vocalisation", "silent"] #"vocalisation", "silent"
+
     
     #insert your path to vocalisation
     path_to_vocalisation = "c:/Users/labuser/Downloads/vocalisationzzzzzz/trimmed_vocalisations/run3_day2_male_w_female_oestrus.wav"
@@ -287,10 +298,25 @@ else:
     rois = pd.read_csv(base_path + "/" + "rois1.csv", index_col=0)
 
 # Loading the ROI info and initialising the variables per roi
+# Loading the ROI info and initialising the variables per roi
 thresholds = {item: 0 for item in rois}
 hasVisited = {item: False for item in rois}
+
+# debounced "clean" occupancy state used everywhere else
 mousePresent = {item: False for item in rois}
-visitation_count = {item: 0 for item in rois}
+
+# raw per-frame occupancy before debouncing
+rawMousePresent = {item: False for item in rois}
+present_streak   = {item: 0 for item in rois}  # consecutive frames with mouse detected
+absent_streak    = {item: 0 for item in rois}  # consecutive frames without mouse detected
+
+# how many consecutive frames to confirm entry/exit
+ENTER_FRAMES = 2  # set to 1 if you want absolutely immediate triggering
+EXIT_FRAMES  = 2  # require 2 "empty" frames to count as leaving
+
+visitation_count   = {item: 0 for item in rois}
+visit_start_times  = {item: None for item in rois}  # None = no ongoing visit
+ # dictionary to track when a visit started
 
 
 cap = sf.start_camera(videoInput=videoInput)
@@ -355,7 +381,7 @@ if testing:
 elif not testing and longer_silence:
     trial_lengths = [15, 15, 2, 15, 15, 15, 2, 15, 2]
 else:
-    trial_lengths = [15, 15, 2, 15, 2, 15, 2, 15, 2]
+    trial_lengths = [15, 10, 2, 10, 2, 10, 2, 10, 2]
 
 
 
@@ -374,7 +400,7 @@ for trial in unique_trials:
     trialOngoing = True
     trial_time_accum_ms = 0 #this will be the total time-in-maze for this trial
     last_entry_ts = None #timestamp when the mouse last entered
-    visit_start_times = {roi: None for roi in rois_list} # dictionary to track when a visit started
+   
     enteredMaze = False
     hasLeft1 = False
     hasLeft2 = False
@@ -440,10 +466,29 @@ for trial in unique_trials:
                                       xlen=rois[item]["xlen"],
                                       ylen=rois[item]["ylen"])
 
-            mousePresent[item] = np.sum(areas[item]) < thresholds[item] * 0.5
-            
-            
-            #rois_list = ['ROI1', 'ROI2', 'ROI3', 'ROI4', "ROI5", "ROI6", "ROI7", "ROI8"]
+            rawMousePresent[item] = np.sum(areas[item]) < thresholds[item] * 0.5
+
+            # --- temporal debouncing: turn noisy raw signal into stable mousePresent ---
+            if rawMousePresent[item]:
+                present_streak[item] += 1
+                absent_streak[item] = 0
+            else:
+                absent_streak[item] += 1
+                present_streak[item] = 0
+
+            previous_state = mousePresent[item]
+
+            # switch ON only after enough consecutive "inside" frames
+            if not previous_state and present_streak[item] >= ENTER_FRAMES:
+                mousePresent[item] = True
+
+            # switch OFF only after enough consecutive "outside" frames
+            elif previous_state and absent_streak[item] >= EXIT_FRAMES:
+                mousePresent[item] = False
+
+            # otherwise keep mousePresent[item] as it was
+
+            rois_list = ['ROI1', 'ROI2', 'ROI3', 'ROI4', "ROI5", "ROI6", "ROI7", "ROI8"]
 
             
 # --- CHECK FOR ENTRY (Start of Visit) ---
@@ -473,14 +518,14 @@ for trial in unique_trials:
             else:
                 # If the mouse was previously in the ROI (timer is already running running)
                 if visit_start_times[item] is not None:
-                    end_time = time.time()
-                    duration_seconds = end_time - visit_start_times[item]
+                    end_visit_time = time.time()
+                    duration_seconds = end_visit_time - visit_start_times[item]
                     
                     # Get the stimulus info string
                     stim_info = sf.get_stimulus_string(trials, trial, item)
                     
                     # Save to a row in the new CSV
-                    sf.log_individual_visit(visit_log_path, trial, item, stim_info, visit_start_times[item], end_time ,duration_seconds)
+                    sf.log_individual_visit(visit_log_path, trial, item, stim_info, visit_start_times[item], end_visit_time ,duration_seconds)
                     
                     print(f"Logged visit: {item} | Time: {duration_seconds:.2f}s | {stim_info}")
                     
@@ -587,12 +632,14 @@ for trial in unique_trials:
 
                             duration_sec = 0
 
+
+
                             if isinstance(sound_for_this_roi, (list, tuple)):
                                 # Use length of the first array in the tuple
                                 duration_sec = len(sound_for_this_roi[0]) / samplerate
                             else:
                                 duration_sec = len(sound_for_this_roi) / samplerate
-                                
+                                    
                             # Trigger Arduino ON
                             if arduino:
                                 arduino.write(b'H')
