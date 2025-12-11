@@ -1,40 +1,35 @@
-
 """
 Batch-process DeepLabCut data to generate per-trial 3D (x, y, time)
 interactive trajectory plots using Plotly.
 
-This script combines the trial-segmentation logic from 
-with the advanced 3D plotting and compartment analysis from the notebook.
+Modified to include trial type information (state sequence) and speed statistics.
 
 Features:
 - Reads a single main DLC .csv file and a segments_manifest .csv.
+- Reads an optional 'trials_types' .csv containing 'state_sequence' (1=explore, 2=exploit, etc.).
 - Loops through each trial.
 - Filters by likelihood.
 - Performs optional smoothing (median filter).
 - Calculates speed and (optional) maze compartment per frame.
-- Saves one interactive 3D .html plot for each trial.
+- Saves one interactive 3D .html plot for each trial (with state info in title/filename).
 - Saves one processed .csv data file for each trial.
+- Outputs an updated trials_types .csv with added average/max/min speed columns.
 
 Example Usage:
 ----------------
 python make_3d_dlc_plot_trajectories.py ^
-    --dlc "C:/Users/shahd/mouse6357_DLC.csv" ^
-    --segments "C:/Users/shahd/mouse6357_segments.csv" ^
+    --dlc "path/to/dlc.csv" ^
+    --segments "path/to/segments.csv" ^
+    --trials-types "path/to/mouse6357_session3.6_trial_info.csv" ^
     --keypoint "nose" ^
-    --maze-geometry "C:/Users/shahd/maze_structure.json" ^
-    --output-dir "./3d_trajectory_plots" ^
-    --min-likelihood 0.9 ^
-    --fps 30
-
-On shah's computer
-python make_3d_dlc_plot_trajectories.py --dlc "C:/Users/shahd/OneDrive - University of Sussex/DLC_MOSEQ/mouse6357/mouse6357-shahd-2025-09-08/videos/6357_2024-08-28_11_58_14s3.6DLC_Resnet50_mouse6357Sep8shuffle1_snapshot_200.csv" --segments "C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/2024-08-28_11_58_146357session3.6/segments/6357_2024-08-28_11_58_14s3.6_segments_manifest.csv" --keypoint nose --output-dir "./trajectories_maze_video_nose --min-likelihood 0.8 --fps 30"
-
-
+    --maze-geometry "path/to/maze.json" ^
+    --output-dir "./3d_trajectory_plots"
 """
 
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 from typing import List, Tuple, Optional, Dict
 
@@ -121,6 +116,32 @@ def get_compartment(x: float, y: float, maze_structure: Dict) -> str:
             return comp.get('id', 'Unknown')
     return 'Outside'  # Not in any compartment
 
+def parse_state_sequence(seq_val) -> str:
+    """
+    Parses the state_sequence column value (e.g., '1,4,1') into a readable string
+    (e.g., 'explore-groom-explore').
+    Mapping: 1=explore, 2=exploit, 3=nest, 4=groom
+    """
+    if pd.isna(seq_val) or seq_val == "":
+        return "Unknown"
+    
+    # State mapping dictionary
+    mapping = {'1': 'explore', '2': 'exploit', '3': 'nest', '4': 'groom'}
+    
+    # Convert to string and split by comma
+    parts = str(seq_val).split(',')
+    
+    labels = []
+    for p in parts:
+        p_clean = p.strip()
+        # Handle cases like '1.0' if reading as float string
+        if p_clean.endswith('.0'):
+            p_clean = p_clean[:-2]
+            
+        labels.append(mapping.get(p_clean, p_clean))
+        
+    return "-".join(labels)
+
 def process_trial_data(df_full: pd.DataFrame, frames: pd.Series, trial: pd.Series, 
                          scorer: str, keypoint: str, min_likelihood: float, 
                          fps: float, smooth_window: int, maze_structure: Optional[Dict]) -> Optional[pd.DataFrame]:
@@ -196,11 +217,10 @@ def process_trial_data(df_full: pd.DataFrame, frames: pd.Series, trial: pd.Serie
 # ----------------------------------------------------------------------------
 
 def plot_trial_3d(df_trial: pd.DataFrame, trial_id: str, 
-                    maze_structure: Optional[Dict], plot_type: str = 'time') -> go.Figure:
+                  maze_structure: Optional[Dict], plot_type: str = 'time',
+                  state_label: str = "") -> go.Figure:
     """
     Creates the interactive 3D Plotly figure for a single trial.
-    
-    plot_type can be 'time', 'speed', or 'compartment'.
     """
     
     fig = go.Figure()
@@ -232,8 +252,13 @@ def plot_trial_3d(df_trial: pd.DataFrame, trial_id: str,
                               "X: %{x:.1f}<br>Y: %{y:.1f}<br>Time: %{z:.2f}s<br><extra></extra>"
             ))
         
-        # This is a special case, so we return the fig early
-        fig.update_layout(title=f'Trial {trial_id} - 3D Trajectory by Compartment')
+        # Build Title
+        title_text = f'Trial {trial_id}'
+        if state_label:
+            title_text += f' - {state_label}'
+        title_text += ' - 3D Trajectory by Compartment'
+        
+        fig.update_layout(title=title_text)
         return fig
         
     else: # Default to 'time'
@@ -306,7 +331,13 @@ def plot_trial_3d(df_trial: pd.DataFrame, trial_id: str,
             hoverinfo='skip'
         ))
 
-    fig.update_layout(title=f'Trial {trial_id} - 3D Trajectory (Colored by {plot_type.capitalize()})')
+    # Build Title
+    title_text = f'Trial {trial_id}'
+    if state_label:
+        title_text += f' - {state_label}'
+    title_text += f' - 3D Trajectory (Colored by {plot_type.capitalize()})'
+
+    fig.update_layout(title=title_text)
     return fig
 
 def set_common_layout(fig: go.Figure) -> go.Figure:
@@ -335,6 +366,7 @@ def main():
     ap = argparse.ArgumentParser(description="Batch-process DLC data into 3D interactive plots.")
     ap.add_argument("--dlc", required=True, help="Path to DLC CSV with 3-row header.")
     ap.add_argument("--segments", required=True, help="Path to segments_manifest CSV with trial_index, start_frame, end_frame.")
+    ap.add_argument("--trials-types", default=None, help="Optional: Path to trial info CSV with 'state_sequence' for naming and stats.")
     ap.add_argument("--keypoint", required=True, help="Bodypart to plot (e.g., 'nose').")
     ap.add_argument("--output-dir", required=True, help="Directory to save HTML plots and trial CSVs.")
     ap.add_argument("--maze-geometry", default=None, help="Optional: JSON file with maze compartment definitions.")
@@ -366,6 +398,20 @@ def main():
         print(f"Fatal Error: Could not load input files. {e}")
         return
 
+    # --- 3. Load Trials Types (If provided) ---
+    df_types = None
+    if args.trials_types:
+        try:
+            df_types = pd.read_csv(args.trials_types)
+            # Initialize stat columns with NaN
+            df_types['avg_speed'] = np.nan
+            df_types['max_speed'] = np.nan
+            df_types['min_speed'] = np.nan
+            print(f"✓ Loaded trials types: {args.trials_types}")
+        except Exception as e:
+            print(f"Error loading trials types file: {e}")
+            return
+
     scorer, bodyparts = get_scorer_and_bodyparts(df_full)
     frames = extract_frame_series(df_full)
     keypoint = pick_keypoint(bodyparts, args.keypoint)
@@ -383,13 +429,28 @@ def main():
         seg_df = seg_df.head(args.limit)
         print(f"--- Limiting analysis to first {args.limit} trials ---")
 
-    # --- 3. Process Each Trial ---
+    # --- 4. Process Each Trial ---
     print(f"\nProcessing {len(seg_df)} trials...")
-    for _, trial_row in seg_df.iterrows():
+    
+    # Using enumerate to get the integer index corresponding to rows in df_types
+    for idx, trial_row in seg_df.iterrows():
+        # idx is the original index of seg_df. 
+        # We assume seg_df and df_types are aligned by row index.
+        
         trial_id = trial_row['trial_index']
         print(f"  Processing Trial {trial_id}...")
         
-        # Process the data for this trial
+        # --- Retrieve State Label ---
+        state_label = ""
+        # Check if we have valid trial types data for this index
+        if df_types is not None:
+            if idx in df_types.index:
+                raw_state = df_types.loc[idx, 'state_sequence']
+                state_label = parse_state_sequence(raw_state)
+            else:
+                state_label = "Unknown-Index"
+
+        # --- Process Data ---
         df_trial = process_trial_data(df_full, frames, trial_row, scorer, keypoint,
                                       args.min_likelihood, args.fps, 
                                       args.smoothing_window, maze)
@@ -398,8 +459,24 @@ def main():
             print(f"    ...Skipped Trial {trial_id} (no valid data).")
             continue
             
+        # --- Calculate Statistics and Update df_types ---
+        if df_types is not None and idx in df_types.index:
+            # We ignore the first value (0) for diff calculation usually, 
+            # or include it. df_trial['speed_px_per_frame'] has 0 at start.
+            # Using mean of all frames including start 0 might slightly lower avg.
+            # Let's exclude the very first 0 frame if desired, but here we take simple stats.
+            speeds = df_trial['speed_px_per_frame']
+            
+            df_types.loc[idx, 'avg_speed'] = speeds.mean()
+            df_types.loc[idx, 'max_speed'] = speeds.max()
+            df_types.loc[idx, 'min_speed'] = speeds.min()
+
         # --- Save Trial Data CSV ---
-        data_path = outdir / f"trial_{trial_id}_processed_data.csv"
+        # Filename sanity check (remove invalid chars from state_label)
+        safe_label = re.sub(r'[^\w\-]', '_', state_label) if state_label else ""
+        label_suffix = f"_{safe_label}" if safe_label else ""
+        
+        data_path = outdir / f"trial_{trial_id}{label_suffix}_processed_data.csv"
         df_trial.to_csv(data_path, index=False)
         
         # --- Generate and Save Plots ---
@@ -408,14 +485,20 @@ def main():
             plot_types.append('compartment')
             
         for plot_type in plot_types:
-            fig = plot_trial_3d(df_trial, trial_id, maze, plot_type=plot_type)
+            fig = plot_trial_3d(df_trial, trial_id, maze, plot_type=plot_type, state_label=state_label)
             fig = set_common_layout(fig)
             
             # Save plot as HTML
-            plot_path = outdir / f"trial_{trial_id}_3d_plot_{plot_type}.html"
+            plot_path = outdir / f"trial_{trial_id}{label_suffix}_3d_plot_{plot_type}.html"
             fig.write_html(str(plot_path))
             
-        print(f"    ✓ Saved data and {len(plot_types)} plots for Trial {trial_id}")
+        print(f"    ✓ Saved data and plots for Trial {trial_id} ({state_label})")
+
+    # --- 5. Save Updated Trial Info CSV ---
+    if df_types is not None:
+        stats_path = outdir / "trial_stats_with_types.csv"
+        df_types.to_csv(stats_path, index=False)
+        print(f"\n✓ Saved updated trial stats with speeds to: {stats_path}")
 
     print("\nBatch analysis complete!")
 
