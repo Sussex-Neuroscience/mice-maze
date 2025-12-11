@@ -23,7 +23,7 @@ python make_3d_dlc_plot_trajectories_v2.py ^
 
 
 
-python make_3d_dlc_plot_trajectories.py --dlc "C:/Users/shahd/OneDrive - University of Sussex/DLC_MOSEQ/mouse6357/mouse6357-shahd-2025-09-08/videos/6357_2024-08-28_11_58_14s3.6DLC_Resnet50_mouse6357Sep8shuffle1_snapshot_200.csv" --segments "C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/2024-08-28_11_58_146357session3.6/segments/6357_2024-08-28_11_58_14s3.6_segments_manifest.csv" --trials-types "C:/Path/To/mouse6357_session3.6_trial_info.csv" --keypoint nose --output-dir "./trajectories_maze_video_nose --min-likelihood 0.8 --fps 30"
+python make_3d_dlc_plot_trajectories.py --dlc "C:/Users/shahd/OneDrive - University of Sussex/DLC_MOSEQ/mouse6357/mouse6357-shahd-2025-09-08/videos/6357_2024-08-28_11_58_14s3.6DLC_Resnet50_mouse6357Sep8shuffle1_snapshot_200.csv" --segments "C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/2024-08-28_11_58_146357session3.6/segments/6357_2024-08-28_11_58_14s3.6_segments_manifest.csv" --trials-types "C:/Path/To/mouse6357_session3.6_trial_info.csv" --keypoint nose --output-dir "./trajectories_maze_video_nose" --min-likelihood 0.8 --fps 30"
 
 
 """
