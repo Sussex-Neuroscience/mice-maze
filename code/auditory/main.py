@@ -380,8 +380,10 @@ if testing:
     #inserted a longer silence trial in the middle, to check if the mice prefer the maze in silence
 elif not testing and longer_silence:
     trial_lengths = [15, 15, 2, 15, 15, 15, 2, 15, 2]
-else:
+elif not testing and microcontroller:
     trial_lengths = [15, 10, 2, 10, 2, 10, 2, 10, 2]
+elif not testing and not microcontroller and not longer_silence:
+    trial_lengths = [15, 15, 2, 15, 2, 15, 2, 15, 2]
 
 
 
@@ -468,7 +470,7 @@ for trial in unique_trials:
 
             rawMousePresent[item] = np.sum(areas[item]) < thresholds[item] * 0.5
 
-            # --- temporal debouncing: turn noisy raw signal into stable mousePresent ---
+            # --- temporal debouncing: turn noisy raw signal into stable mousePresent
             if rawMousePresent[item]:
                 present_streak[item] += 1
                 absent_streak[item] = 0
