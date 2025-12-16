@@ -30,7 +30,13 @@ testing= False
 longer_silence= False
 
 # if this is the sort of situation where we require an arduino, either for ttls or reward delivery, set to true
-microcontroller = True
+microcontroller = False
+
+# if the home cage is not connected, we are going to set this to true so that we will skip having the mouse enter the maze to start a new trial
+no_homecage = False
+
+# in case the homecage is connected but we still want the trials to start and end according to the "clock", set this to True
+forced_timing= True
 
 pause_between_frames = False
 
@@ -38,7 +44,7 @@ pause_between_frames = False
 rois_number = 8
 
 #set to true to create/modify ROIs .csv file
-drawRois = False
+drawRois = True
 
 #set to true to make individual sine sounds
 make_simple_smooth_sounds = False
@@ -51,18 +57,17 @@ make_temporal_envelope_modulation = False
 
 #w1_d2-d4
 # set to true to perform experiments where the ROIS can be controls / frequencies of different AM/ intervals 
-make_complex_intervals =  True
+make_complex_intervals =  False
 w1day2= False
 w1day3= False
 w1day4= False
-another_day = True
-
+another_day = False
 #w2_d1
 # set to true to make sequences of tones
 make_sequences = False
 
 #w2_d2
-just_vocalisations = False
+just_vocalisations = True
 
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
 recordVideo = True
@@ -115,6 +120,10 @@ roiNames= entrance_rois + rois_list
 #set base_name for trials list and sound array to be saved as 
 base_name = f"trials_{date_time}"
 
+
+#check that only one is set to true
+if no_homecage and forced_timing:
+    raise ValueError("Choose only one: no_homecage OR forced_timing.")
 
 
 #make just sounds
@@ -311,8 +320,8 @@ present_streak   = {item: 0 for item in rois}  # consecutive frames with mouse d
 absent_streak    = {item: 0 for item in rois}  # consecutive frames without mouse detected
 
 # how many consecutive frames to confirm entry/exit
-ENTER_FRAMES = 2  # set to 1 if you want absolutely immediate triggering
-EXIT_FRAMES  = 2  # require 2 "empty" frames to count as leaving
+ENTER_FRAMES = 1  # set to 1 if you want absolutely immediate triggering
+EXIT_FRAMES  = 15  # require 8 "empty" frames to count as leaving, almost 0.3 seconds
 
 visitation_count   = {item: 0 for item in rois}
 visit_start_times  = {item: None for item in rois}  # None = no ongoing visit
@@ -396,6 +405,9 @@ for trial in unique_trials:
     for item in rois:
         hasVisited[item] = False
         visitation_count[item]= 0
+        visit_start_times[item] = None
+        present_streak[item] = 0
+        absent_streak[item]  = 0
     
     trialOngoing = True
     trial_time_accum_ms = 0 #this will be the total time-in-maze for this trial
@@ -413,7 +425,53 @@ for trial in unique_trials:
     time_old_frame = 0
     start_new_time = True
 
+
+    if no_homecage:
+        start_time = time.time()
+        end_time = start_time + time_trial * 60
+        enteredMaze = True
+
+        # count the whole trial as "time in maze"
+        last_entry_ts = start_time
+
+        # Preload sounds for each ROI for this trial
+        sounds = {}
+        for roi in rois_list:
+            sound = sound_array[trials.loc[
+                (trials['trial_ID'] == trial) & (trials['ROIs'] == roi)
+            ].index[0]]
+            sounds[roi] = sound
+
+        # Record trial start/end times in the DataFrame
+        trials.loc[trials["trial_ID"] == trial, "trial_start_time"] = start_time
+        trials.loc[trials["trial_ID"] == trial, "end_trial_time"] = end_time
+
+        # We already started the trial; don't let the entrance logic restart it
+        start_new_time = False
+        print(f"Auto-starting trial {trial} for {time_trial} minutes (no_homecage mode).")
+
+    elif forced_timing and not no_homecage:
+        start_time = time.time()
+        end_time = start_time + time_trial * 60
+        sounds = {}
+
+        for roi in rois_list:
+            sound = sound_array[trials.loc[
+                (trials['trial_ID'] == trial) & (trials['ROIs'] == roi)
+            ].index[0]]
+            sounds[roi] = sound
+
+        trials.loc[trials["trial_ID"] == trial, "trial_start_time"] = start_time
+        trials.loc[trials["trial_ID"] == trial, "end_trial_time"] = end_time
+
+        start_new_time = False  # prevents entrance logic from restarting the timer
+        print(f"Auto-starting trial {trial} for {time_trial} minutes (forced_timing mode).")
+
+
     while trialOngoing:
+
+        session_elapsed_s = time.time() - sessionStartTime
+
         if pause_between_frames:
             time.sleep(0.01)
 
@@ -488,7 +546,13 @@ for trial in unique_trials:
 
             # otherwise keep mousePresent[item] as it was
 
-            rois_list = ['ROI1', 'ROI2', 'ROI3', 'ROI4', "ROI5", "ROI6", "ROI7", "ROI8"]
+            # rois_list = ['ROI1', 'ROI2', 'ROI3', 'ROI4', "ROI5", "ROI6", "ROI7", "ROI8"]
+
+            # if no_homecage and item not in rois_list:
+            # # We have already updated mousePresent[item], so
+            # # entrance1/entrance2 can still be used elsewhere,
+            # # but we skip visit counting and logging for them.
+            #     continue
 
             
 # --- CHECK FOR ENTRY (Start of Visit) ---
@@ -539,62 +603,81 @@ for trial in unique_trials:
 
         time_old_frame = time_frame
 
-        ent1History.insert(0, mousePresent["entrance1"])
-        ent1History.pop(-1)
-        ent2History.insert(0, mousePresent["entrance2"])
-        ent2History.pop(-1)
+        if not no_homecage:
+            ent1History.insert(0, mousePresent["entrance1"])
+            ent1History.pop(-1)
+            ent2History.insert(0, mousePresent["entrance2"])
+            ent2History.pop(-1)
 
-        if not ent1History[0] and ent1History[1]:
-            hasLeft1 = True
-            if hasLeft2:
-                e1Aftere2 = True
-                e2Aftere1 = False
+            if not ent1History[0] and ent1History[1]:
+                hasLeft1 = True
+                if hasLeft2:
+                    e1Aftere2 = True
+                    e2Aftere1 = False
 
-        if not ent2History[0] and ent2History[1]:
-            hasLeft2 = True
-            if hasLeft1:
-                e1Aftere2 = False
-                e2Aftere1 = True
+            if not ent2History[0] and ent2History[1]:
+                hasLeft2 = True
+                if hasLeft1:
+                    e1Aftere2 = False
+                    e2Aftere1 = True
 
-        if e2Aftere1 and not enteredMaze:
-            print(f"mouse entered the maze for trial {trial}")
-            print(f"Starting trial {trial} for {time_trial} minutes.")
-            if start_new_time:
-                start_time = time.time()
-                start_new_time = False
-                # Create a dictionary to store sounds dynamically for each ROI
-                sounds = {}
+            # Mouse goes entrance2 after entrance1: start the trial
+            if e2Aftere1 and not enteredMaze:
+                print(f"mouse entered the maze for trial {trial}")
+                
+                if (not forced_timing) and start_new_time:
+                    start_time = time.time()
+                    start_new_time = False
+                    print(f"trial {trial} for {time_trial} minutes.")
+                    # Create a dictionary to store sounds dynamically for each ROI
+                    sounds = {}
+                    for roi in rois_list:
+                        sound = sound_array[trials.loc[
+                            (trials['trial_ID'] == trial) & (trials['ROIs'] == roi)
+                        ].index[0]]
+                        sounds[roi] = sound
 
-                # Loop through the dynamically generated ROIs
-                for roi in rois_list:
-                    sound = sound_array[trials.loc[(trials['trial_ID'] == trial) & (trials['ROIs'] == roi)].index[0]]
-                    sounds[roi] = sound
+                end_time = start_time + time_trial * 60
+                remaining_total_time = end_time - time.time()
+                remaining_minutes = int(remaining_total_time / 60)
+                remaining_seconds = int(remaining_total_time % 60)
+                print(f"Remaining Time: {remaining_total_time} seconds\nApprox: {remaining_minutes}:{remaining_seconds}")
+
+                trials.loc[trials["trial_ID"] == trial, "trial_start_time"] = start_time
+                trials.loc[trials["trial_ID"] == trial, "end_trial_time"] = end_time
+                enteredMaze = True
+                if last_entry_ts is None:
+                    last_entry_ts = time.time()
+
+            # Mouse goes entrance1 after entrance2: left the maze
+            if e1Aftere2 and enteredMaze:
+                print("mouse has left the maze")
+                if time.time() >= end_time:
+                    print(time.time() >= end_time)
+                    trialOngoing = False
+
+                # accumulate time in maze    
+                if last_entry_ts is not None:
+                    trial_time_accum_ms += int((time.time() - last_entry_ts) * 1000)
+                    last_entry_ts = None
+                enteredMaze = False
 
 
-            end_time = start_time + time_trial * 60
-            remaining_total_time= end_time - time.time()
-            remaining_minutes= int((end_time - time.time())/60)
-            remaining_seconds= int((end_time - time.time())%60)
-            print(f"Remaining Time: {remaining_total_time} seconds\nApprox: {remaining_minutes}:{remaining_seconds}")
+
+        # no_homecage mode or forced timing mode: auto end
+
+        if no_homecage and enteredMaze and (time.time() >= end_time):
+            print(f"Ending trial {trial} (no_homecage mode, timer elapsed)")
+            # Do NOT touch last_entry_ts here – the final block
+            # after the while-loop will add the remaining time.
+            trialOngoing = False
+
+        elif forced_timing and (time.time() >= end_time):
+            print(f"Ending trial {trial} (forced_timing mode, timer elapsed)")
+            trialOngoing = False
 
 
-            #trials.loc[trials["trial_ID"] == trial, "mouse_enter_time"] = start_time #add to supfun code again if we want mouse enter time
-            trials.loc[trials["trial_ID"] == trial, "trial_start_time"] = start_time
-            trials.loc[trials["trial_ID"] == trial, "end_trial_time"] = end_time
-            enteredMaze = True
-            if last_entry_ts is None:
-                last_entry_ts = time.time()
-
-
-        if e1Aftere2 and enteredMaze:
-            print("mouse has left the maze")
-            if time.time() >= end_time:
-                print(time.time() >= end_time)
-                trialOngoing = False
-            if last_entry_ts is not None:
-                trial_time_accum_ms += int((time.time() - last_entry_ts) * 1000)
-                last_entry_ts = None
-            enteredMaze = False
+        # sound playback logic    
 
         if enteredMaze:
             #if time.time() >= end_time:
@@ -611,7 +694,7 @@ for trial in unique_trials:
                         arduino.write(b'L')
                         ttl_is_active = False
 
-                # Check if the item belongs to the dynamically created ROIs
+                # Play sound when mouse is inside an ROI
                 if item in rois_list:
                     if mousePresent[item]:
                         condition = (trials["trial_ID"] == trial) & (trials["ROIs"] == item)
@@ -686,6 +769,8 @@ for trial in unique_trials:
 
     # Save the updated trials DataFrame to CSV after each trial
     print(f"Saving trials data for trial {trial} to CSV")
+    session_duration_s = time.time() - sessionStartTime
+    print (f"remaining time in the session: {session_duration_s/60} minutes")
     trials.to_csv(os.path.join(new_dir_path, f"{base_name}.csv"), index=False)
 
 cap.release()

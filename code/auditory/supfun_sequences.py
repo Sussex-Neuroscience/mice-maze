@@ -226,16 +226,25 @@ def define_rois(videoInput=0,
         print("Cannot open camera")
         exit()
 
-    # Capture frame-by-frame
+    # Capture one frame to know image size
     ret, frame = cap.read()
     if not ret:
         print("Can't receive frame (stream end?). Exiting ...")
         cap.release()
         exit()
 
-    # Convert frame to grayscale for display
+    # Convert frame for display
     gray = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
-    
+
+    # --- NEW: make the ROI window resizable ---
+    cv.namedWindow('frame', cv.WINDOW_NORMAL)
+
+    # Optionally: set an initial size (e.g. 1.2x original, or clamp to something)
+    h, w = gray.shape[:2]
+    scale = 1.2  # change this if you want it bigger/smaller by default
+    cv.resizeWindow('frame', int(w * scale), int(h * scale))
+    # ------------------------------------------
+
     # Dictionary to store ROIs
     rois = {}
 
@@ -244,18 +253,22 @@ def define_rois(videoInput=0,
 
         # Display the current frame with already selected ROIs
         for name, roi in rois.items():
-            x, y, w, h = roi
-            cv.rectangle(gray, (x, y), (x + w, y + h), (255, 0, 0), 2)
-            cv.putText(gray, name, (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1, cv.LINE_AA)
+            x, y, rw, rh = roi
+            cv.rectangle(gray, (x, y), (x + rw, y + rh), (255, 0, 0), 2)
+            cv.putText(gray, name, (x, y - 10),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1, cv.LINE_AA)
         
         # Show the frame and select ROI
         cv.imshow('frame', gray)
-        rois[entry] = cv.selectROI('frame', gray, fromCenter=False, showCrosshair=True)
-        
+        rois[entry] = cv.selectROI('frame', gray,
+                                   fromCenter=False, showCrosshair=True)
+
         # Draw the selected ROI on the frame
-        x, y, w, h = rois[entry]
-        cv.rectangle(gray, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        cv.putText(gray, entry, (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv.LINE_AA)
+        x, y, rw, rh = rois[entry]
+        cv.rectangle(gray, (x, y), (x + rw, y + rh), (0, 255, 0), 2)
+        cv.putText(gray, entry, (x, y - 10),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv.LINE_AA)
+
 
     # Convert the dictionary to a DataFrame
     df = pd.DataFrame(rois)
