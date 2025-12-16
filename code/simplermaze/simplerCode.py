@@ -134,10 +134,11 @@ if recordVideo:
 #grab one frame:
 valid,gray = cap.read()
 #quick and dirty method to grab more frames from the camera to see if there are any issues with
-#stabilization in the beginning:
-for i in range(5):
-    valid,gray = cap.read()
-    time.sleep(0.1)
+#stabilisation in the beginning:
+# for i in range(5):
+#     valid,gray = cap.read()
+#     time.sleep(0.1)
+valid,gray = cap.read()
 ret,gray = cv.threshold(gray,160,255,cv.THRESH_BINARY)
 
 #run a loop to catch each area and sum the pixel values on that area of the frame over 10 frames
@@ -168,11 +169,11 @@ sf.write_data(file_name=os.path.join(new_dir_path,f"session_data_{date_time}.csv
               mode="w",
               data=data.head(n=0))
 
-back_sub = cv.createBackgroundSubtractorMOG2()
+# back_sub = cv.createBackgroundSubtractorMOG2()
 #create two windows to show the animal movement while in maze:
 cv.namedWindow('binary maze plus ROIs', cv.WINDOW_NORMAL)
 cv.namedWindow('original image', cv.WINDOW_NORMAL)
-cv.namedWindow('frame_diff', cv.WINDOW_NORMAL)
+# cv.namedWindow('frame_diff', cv.WINDOW_NORMAL)
 absolute_time_start = sf.time_in_millis()
  
  

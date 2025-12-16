@@ -112,6 +112,24 @@ def record_video(cap, recordFile, frame_width, frame_height, fps):
     #videoFile.release()
 
 
+# def create_trial_video_writer(new_dir_path, animal_ID, session_ID, trial_num, frame_width, frame_eight, base_path, fps= 30):
+#     # we are going to save not only the full video, but create a subfoldert for the specific trial segments
+#     # so we are creating a videowriter for the specific trial segments
+#     #and saving to new_dir_path/segments/
+    
+#     segments_directory = os.path.join(new_dir_path, "segments")
+#     # Create if it doesn't exist
+#     if not os.path.exists(segments_directory):
+#         os.makedirs(segments_directory)
+
+#     #names of the recordings
+#     file_name = file
+
+#     pass
+
+    
+
+
 def grab_n_convert_frame(cameraHandle):
     #capture a frame
     ret, frame = cameraHandle.read()
