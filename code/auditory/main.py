@@ -25,12 +25,13 @@ sd.default.device = 3
 # Variables
 
 # set to True for shorter time intervals to test that the sounds work fine
-testing= False
+testing= True
 #testing with longer silence in the middle of the sequence
 longer_silence= False
 
 # if this is the sort of situation where we require an arduino, either for ttls or reward delivery, set to true
 microcontroller = False
+arduino = None
 
 # if the home cage is not connected, we are going to set this to true so that we will skip having the mouse enter the maze to start a new trial
 no_homecage = False
@@ -44,7 +45,7 @@ pause_between_frames = False
 rois_number = 8
 
 #set to true to create/modify ROIs .csv file
-drawRois = True
+drawRois = False
 
 #set to true to make individual sine sounds
 make_simple_smooth_sounds = False
@@ -53,7 +54,7 @@ make_Simple_intervals= False
 
 # set to true if you want to perform experiments testing the effects of temporal envelope modulation on sound preference
 # w1_d1c
-make_temporal_envelope_modulation = False
+make_temporal_envelope_modulation = True
 
 #w1_d2-d4
 # set to true to perform experiments where the ROIS can be controls / frequencies of different AM/ intervals 
@@ -67,7 +68,7 @@ another_day = False
 make_sequences = False
 
 #w2_d2
-just_vocalisations = True
+just_vocalisations = False
 
 #If we are recording a video, this needs to be true and videoInput needs to be set to 0 (or 1, depending on the camera)
 recordVideo = True
@@ -139,7 +140,7 @@ elif make_sequences and not (make_simple_smooth_sounds or make_Simple_intervals 
 
     experimental_session = "sequences"
     frequency, patterns= sf.ask_music_info_sequences(rois_number)
-    path_to_vocal = "C:/Users/labuser/Downloads/vocalisationzzzzzz/trimmed_vocalisations/run3_day2_male_w_female_oestrus.wav"
+    path_to_vocal = "C:/Users/labuser/Downloads/vocalisationzzzzzz/trimmed_vocalisations/run3_day2-2_male_w_female_oestrus.wav"
     trials, sound_array = sf.create_trials_for_sequences(rois_list, frequency, patterns, path_to_voc= path_to_vocal)
     #make all arrays the same size because otherwise it won't save sound arrays
     min_length = min(len(arr) for arr in sound_array)
@@ -179,7 +180,7 @@ elif make_temporal_envelope_modulation and not (make_sequences or make_simple_sm
 
     
     #insert your path to vocalisation
-    path_to_vocalisation = "c:/Users/labuser/Downloads/vocalisationzzzzzz/zenodo5771669_run1_day2_male_w_female_oestrus.WAV"
+    path_to_vocalisation = "C:/Users/labuser/Downloads/vocalisationzzzzzz/trimmed_vocalisations/run3_day2-2_male_w_female_oestrus.wav"
 
    # look this next function could be easier but you bear with me, here is where we sort everything out
 
@@ -244,7 +245,7 @@ elif make_complex_intervals and not (make_sequences or make_simple_smooth_sounds
 
     
     #insert your path to vocalisation
-    path_to_vocalisation = "c:/Users/labuser/Downloads/vocalisationzzzzzz/trimmed_vocalisations/run3_day2_male_w_female_oestrus.wav"
+    path_to_vocalisation = "C:/Users/labuser/Downloads/vocalisationzzzzzz/trimmed_vocalisations/run3_day2-2_male_w_female_oestrus.wav"
 
     frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays = sf.info_complex_intervals_hc (rois_number, 
                                                                                                                            controls, 
@@ -692,9 +693,10 @@ for trial in unique_trials:
                     sd.stop()
 
                     # force stop the TTL
-                    if arduino and ttl_is_active:
-                        arduino.write(b'L')
-                        ttl_is_active = False
+                    if ttl_is_active:
+                        if arduino:
+                            arduino.write(b'L')
+                            ttl_is_active = False
 
                 # Play sound when mouse is inside an ROI
                 if item in rois_list:
@@ -729,9 +731,9 @@ for trial in unique_trials:
                             if arduino:
                                 arduino.write(b'H')
                                 
-                            # Set State Variables
-                            ttl_is_active = True
-                            ttl_scheduled_off_time = time.time() + duration_sec
+                                # Set State Variables
+                                ttl_is_active = True
+                                ttl_scheduled_off_time = time.time() + duration_sec
 
                             # now dispatch based on what kind of sound it is
                             if make_Simple_intervals:
@@ -772,7 +774,7 @@ for trial in unique_trials:
     # Save the updated trials DataFrame to CSV after each trial
     print(f"Saving trials data for trial {trial} to CSV")
     session_duration_s = time.time() - sessionStartTime
-    print (f"remaining time in the session: {session_duration_s/60} minutes")
+    print (f"remaining time in the session: {round(session_duration_s/60,2)} minutes")
     trials.to_csv(os.path.join(new_dir_path, f"{base_name}.csv"), index=False)
 
 cap.release()
