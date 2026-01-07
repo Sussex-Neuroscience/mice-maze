@@ -26,6 +26,11 @@ def define_rois(video_input: int, output_csv_path: str, roiNames: List[str] = ["
     display_frame = frame.copy()
     rois= {}
 
+    #create resizable window otherwise it's too small and selecting the rois is a challenge
+    window_name = "Define ROIs"
+    cv.namedWindow(window_name, cv.WINDOW_NORMAL)
+    cv.resizeWindow(window_name, 1280, 720) # set an arbitrary defaiult size
+
     #prompt the user 
     print("\n--- ROI SELECTION MODE ---")
     print("1. Click and drag to draw a box.")
