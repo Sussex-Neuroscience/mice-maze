@@ -7,11 +7,16 @@ from typing import List, Optional
 
 class ExperimentConfig: 
 
-    
 
     # Audio settings 
-    samplerate: int = 192000
-    channel_id: int= 3
+    samplerate: int = 192000 
+    channel_id: int= 3 
+
+    #sound settings, for specific changes, (eg, you want some sounds to be longer or shorter than others) you can change these values when you call the functions in main.py
+    default_sound_duration: float = 10.0
+    default_waveform: str = "sine"
+    default_volume: float = 1.0
+    default_ramp_length_s = 0.02
 
     # Arduino settings
     arduino_port: str = "COM4"
@@ -23,6 +28,8 @@ class ExperimentConfig:
     record_video: bool = True
     draw_rois: bool = False # set to true if you want to redraw the rois
     pause_between_frames: bool = False
+    show_binary_view: bool = True # option to show a the binary black and white view (this is more of a sanity check and troubleshoooting)
+
 
     #if testing/ need shorter or different times to check that the sounds and trials logic work. Check get_trial_lengths() below if you want to change trial lengths
     testing: bool = False
