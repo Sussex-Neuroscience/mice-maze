@@ -5,30 +5,27 @@ import sounddevice as sd
 import soundfile as sf
 import pandas as pd
 import numpy as np
+from config import ExperimentConfig
 from scipy.signal import resample_poly
 from scipy.interpolate import resample_poly
 from scipy.interpolate import interp1d
 from typing import List, Dict, Optional, Union, Tuple
 
 class Audio:
-    def __init__(self, samplerate: int = 192000, 
-                 device_id: int = 3, 
-                 calibration_gain_path: Optional[str] = r"C:/Users/labuser/Documents/GitHub/mice-maze/code/auditory/speaker calibration scripts/frequency_response_speaker.csv",
-                 default_waveform:str= "sine",
-                 default_duration: float = 10.0,
-                 default_volume:float = 1,
-                 default_ramp:float = 0.02):
+    def __init__(self, cfg: ExperimentConfig, 
+                 calibration_gain_path: Optional[str] = r"C:/Users/labuser/Documents/GitHub/mice-maze/code/auditory/speaker calibration scripts/frequency_response_speaker.csv"):
         
         #initialise
-        self.fs = samplerate
-        self.default_duration = default_duration
-        self.default_volume = default_volume
-        self.default_ramp = default_ramp
-        self.default_waveform = default_waveform
+        self.fs = cfg.samplerate
+        self.device_id = cfg.channel_id
+        self.default_duration = cfg.default_sound_duration
+        self.default_volume = cfg.default_volume
+        self.default_ramp = cfg.default_ramp_length_s
+        self.default_waveform = cfg.default_waveform
         
         #Setup Sound Card 
         sd.default.samplerate = self.fs
-        sd.default.device = device_id
+        sd.default.device = self.device_id
 
         #interpolation function from the frequency response data extrapolated from the graph on the speaker's website
         self.gain_curve = None
@@ -155,6 +152,7 @@ class Audio:
     
 
     def load_wav(self, path: str) -> np.ndarray:
+        # load a wav and resample to the system samplerate
         if not os.path.exists(path):
             return np.zeros(int(self.fs * 1.0))
         data, fs_original = sf.read(path)

@@ -3,22 +3,25 @@ import time
 import cv2 as cv
 import sounddevice as sd
 from typing import Optional, Tuple
+from config import ExperimentConfig
 
 #Class Arduino, define the commands for the TTL as functions (serial.write "H" to determine the onset of the TTL, serial.write "L" to determine the offset of the TTL)
 
 class ArduinoController: 
 
-    def __init__(self, port: str, baud_rate:int  = 115200, active: bool= True):
+    def __init__(self, cfg: ExperimentConfig, active: bool= True):
         self.ser: Optional[serial.Serial] = None # stores the serial connection with Arduino 
         self.active = active
+        self.port = cfg.arduino_port
+        self.baud_rate = cfg.arduino_baud
 
         if self.active: 
             try:
-                self.ser = serial.Serial(port, baud_rate, timeout= 0.1)
+                self.ser = serial.Serial(self.port, self.baud_rate, timeout= 0.1)
                 time.sleep(2)
-                print(f"Arduino connected (State Machine Mode) on {port}")
+                print(f"Arduino connected (State Machine Mode) on {self.port}")
             except Exception as e:
-                raise RuntimeError(f"Critical error, Arduino connection on port {port} failed.\nDetails{e}")
+                raise RuntimeError(f"Critical error, Arduino connection on port {self.port} failed.\nDetails{e}")
             
     def trigger_on(self):
         # signal the TTL onset

@@ -41,7 +41,8 @@ class ExperimentConfig:
     # -  "temporal_modulation" (stimuli with different amounts of temporal envelope modulation + one silent arm + 1 vocalisation control),
     # -  "complex_intervals" (similar to temporal_modulation, but with different intervals), 
     # - "sequences" (stimuli are sequences + controls), 
-    # - "vocalisations" (all the stimuli are vocalisations)
+    # - "vocalisations" (all the stimuli are vocalisations, insert path in path_to_vocalisation_folder below )
+    # - "semantic_predictive_complexity" 
 
     experiment_mode: str = "complex_intervals"
 
@@ -52,11 +53,15 @@ class ExperimentConfig:
 
     # Trial Settings 
     rois_number:int  = 8 # here we put the number of ROIs. If you are changing the rois number from one experiment to the other, remember to set draw_rois = True
-    entrance_rois: List[str]= field(default_factory= lambda:["entrance1", "entrance2"]) # cannot just put this as a list,this way it creates a new list for 
+    entrance_rois: List[str]= field(default_factory= lambda:["entrance1", "entrance2"]) # cannot just put this as a list, this way it creates a new list for 
     
 
     # PATHS
     base_output_path: str = r"C:/Users/labadmin/Desktop/auditory_maze_experiments/maze_recordings"
+
+    # path to controls
+    path_to_vocalisation_folder = r"c:/Users/labuser/Downloads/vocalisationzzzzzz" 
+    path_to_vocalisation_control = r"c:/Users/labuser/Downloads/vocalisationzzzzzz/zenodo5771669_run1_day2_male_w_female_oestrus.WAV"
 
 
     def get_trial_lengths(self) -> List[float]:
