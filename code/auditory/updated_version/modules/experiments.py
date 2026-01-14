@@ -61,11 +61,11 @@ class ExperimentFactory:
         rois_number = cfg.rois_number
         
         if manual: # if manual =True, prompt the user for the intervals
-            frequency, intervals, intervals_names = ExperimentFactory._ask_info_intervals(rois_number)
+            frequency, intervals, intervals_names = ExperimentFactory._ask_info_intervals(rois)
         else: 
             tonal_centre = 10000 #Hz
             intervals_list = ["perf_5", "perf_4", "maj_6", "tritone", "min_2", "maj_7"]
-            frequency, intervals, intervals_names = ExperimentFactory._get_info_intervals_hard_coded(rois_number, tonal_centre, intervals_list)
+            frequency, intervals, intervals_names = ExperimentFactory._get_info_intervals_hard_coded(rois, tonal_centre, intervals_list)
 
             return ExperimentFactory._create_intervals_trials_logic(rois, frequency, intervals, intervals_names, audio)
         
@@ -88,7 +88,7 @@ class ExperimentFactory:
 
         path_to_vocalisation = cfg.path_to_vocalisation_control
 
-        frequencies, temporal_modulation, sound_type, sound_arrays = ExperimentFactory._get_info_tem_hard_coded(rois_number,
+        frequencies, temporal_modulation, sound_type, sound_arrays = ExperimentFactory._get_info_tem_hard_coded(rois,
                                                                                                 controls, 
                                                                                                 smooth_freqs, 
                                                                                                 constant_rough_freqs, 
@@ -132,7 +132,17 @@ class ExperimentFactory:
             consonant_intervals = ["maj_3", "perf_4", "perf_5"] #"min_3", "maj_3", "perf_4", "perf_5", "min_6", "maj_6", "octave"
             dissonant_intervals = ["min_7",  "maj_2", "tritone"] # "min_2", "maj_2",  "tritone", "min_7", "maj_7"
 
-        return ExperimentFactory._create_complex_intervals_trials_logic()
+        frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays = ExperimentFactory._get_info_complex_intervals_hard_coded(len(rois), 
+                                                                                                                           controls, 
+                                                                                                                           tonal_centre, 
+                                                                                                                           smooth_freq, 
+                                                                                                                           rough_freq, 
+                                                                                                                           consonant_intervals, 
+                                                                                                                           dissonant_intervals, 
+                                                                                                                           path_to_voc= path_to_voc)
+    
+
+        return ExperimentFactory._create_complex_intervals_trials_logic(rois, frequencies, interval_numerical_list, interval_string_names, sound_type, sounds_arrays, audio)
 
 
 
@@ -346,7 +356,9 @@ class ExperimentFactory:
     @staticmethod
     def _get_info_complex_intervals_hard_coded(rois_number, controls, tonal_centre, smooth_freq, rough_freq, consonant_intervals, dissonant_intervals, audio = Audio, cfg = ExperimentConfig):
 
+        path_to_voc = cfg.path_to_vocalisation_control
         all_intervals = consonant_intervals + dissonant_intervals
+        
         
         #the frequencies list will contain lists containing the 2 frequencies that make up the interval. 
         frequencies =[]; interval_numerical_list = []; interval_string_names = []; sound_type = []; sounds_arrays = []
@@ -359,11 +371,11 @@ class ExperimentFactory:
             if i == "silent":
                 frequencies.append(0)
                 # 10 s of silence at 192 kHz
-                z = np.zeros(int(192000 * 10))
+                z = np.zeros(int(audio.fs* audio.default_duration))
                 sounds_arrays.append([z, z])
             else: 
                 frequencies.append(i)
-                voc = generate_voc_array(path_to_voc, 192000)
+                voc = Audio.load_wav(path_to_voc, audio.fs)
                 silence = np.zeros_like(voc)
                 sounds_arrays.append([voc, silence])
 
@@ -372,29 +384,23 @@ class ExperimentFactory:
             frequencies.append([tonal_centre, int(tonal_centre*tonal_centre_interval)])
             interval_numerical_list.append(tonal_centre_string)
             interval_string_names.append("unison")
-            sound_data_1= generate_sound_data(tonal_centre)
-            sound_data_2= generate_sound_data(int(tonal_centre*tonal_centre_interval))
-
+            s = audio.generate_sound_data(tonal_centre)
+            sounds_arrays.append([s, s])
             sound_type.append("smooth")
-            sounds_arrays.append([sound_data_1, sound_data_2])
+
 
         if rough_freq:
 
-            tonal_centre_interval, tonal_centre_string = get_interval("unison")
-
-            t_1, sound_data_1 = generate_sound_data(tonal_centre, give_t = True)
-            t_2, sound_data_2 = generate_sound_data(int(tonal_centre*tonal_centre_interval), give_t = True)
-            
+            tonal_centre_interval, tonal_centre_string = ExperimentFactory._get_interval("unison")
             frequencies.append([tonal_centre, int(tonal_centre*tonal_centre_interval)])
             interval_numerical_list.append(tonal_centre_string)
             interval_string_names.append("unison")
             sound_type.append("rough")
-            modulated_wave_1 = apply_constant_sinusoidal_envelope(t_1, sound_data_1)
-            modulated_wave_2 = apply_constant_sinusoidal_envelope(t_2, sound_data_2)
-            sounds_arrays.append([modulated_wave_1, modulated_wave_2])
+            modulated_wave= Audio.generate_simple_tem_sound_data(tonal_centre)
+            sounds_arrays.append([modulated_wave, modulated_wave])
 
         for i in all_intervals: 
-            interval, interval_string = get_interval(i)
+            interval, interval_string = ExperimentFactory._get_interval(i)
             freq_1 = tonal_centre
             freq_2 = tonal_centre*interval
 
@@ -402,8 +408,8 @@ class ExperimentFactory:
             interval_numerical_list.append(interval_string)
             interval_string_names.append(i)
 
-            sound_1= generate_sound_data(tonal_centre)
-            sound_2 = generate_sound_data(freq_2)
+            sound_1= audio.generate_sound_data(tonal_centre)
+            sound_2 = audio.generate_sound_data(freq_2)
             
             sounds_arrays.append([sound_1, sound_2])
 

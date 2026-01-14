@@ -154,7 +154,9 @@ class Audio:
     def load_wav(self, path: str) -> np.ndarray:
         # load a wav and resample to the system samplerate
         if not os.path.exists(path):
+            print(f"path {path} not found, no sound played")
             return np.zeros(int(self.fs * 1.0))
+
         data, fs_original = sf.read(path)
         if data.ndim > 1: data = np.mean(data, axis=1)
         if fs_original != self.fs:
