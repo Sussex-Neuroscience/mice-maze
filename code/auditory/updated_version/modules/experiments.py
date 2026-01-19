@@ -34,9 +34,9 @@ class ExperimentFactory:
         elif experiment_type == "temporal_envelope_modulation":
             return ExperimentFactory._make_temporal_envelope_modulation(generic_rois, cfg, audio)
         elif experiment_type == "complex_intervals":
-            return 
+            return ExperimentFactory._make_complex_intervals(generic_rois, cfg, audio)
         elif experiment_type == "sequences":
-            return 
+            return ExperimentFactory._make_sequences(generic_rois, cfg, audio)
         elif experiment_type == "vocalisation":
             return 
         elif experiment_type == "semantic_predictive_complexity":
@@ -146,6 +146,93 @@ class ExperimentFactory:
 
 
 
+    def _make_sequences(rois: List[str], cfg: ExperimentConfig, audio: Audio) -> TrialData: 
+        # Interactive Setup (Ported from ask_music_info_sequences)
+        intervals_vs_custom = input("Would you like to add CUSTOM values or generate sequences based on INTERVSLS? (c / i): ").lower().strip()
+        
+        sequence_of_frequencies = []
+        pattern_list = []
+        
+        # if intervals_vs_custom == "i":
+        #     print("ℹ️ Intervals mode not fully implemented in legacy code. Defaulting to custom.")
+        #     intervals_vs_custom = "custom"
+
+        if intervals_vs_custom == "custom":
+            ask_input = input("Make new patterns? (y=insert manually, n=use defaults): ").lower().strip()
+            
+            if ask_input == 'y':
+                # Manual Entry
+                for i in range(len(rois)):
+                    p = input(f"Insert pattern #{i+1} (e.g. AoAo, ABAB, random): ").strip()
+                    # Standardize names
+                    if p.lower() in ["random", "silence", "vocalisation"]:
+                        p = p.lower()
+                    elif p in ["AoAo", "aoao", "AOAO"]:
+                        p = "AoAo"
+                    else:
+                        p = p.upper()
+                    pattern_list.append(p)
+            else:
+                # Hardcoded defaults
+                defaults = ['AAAAA','AoAo','ABAB','ABCABC', 'BABA', 'ABBA', "silence", "vocalisation"]
+                # Adjust to ROI count
+                if len(rois) > len(defaults):
+                    defaults = (defaults * 2)
+                pattern_list = defaults[:len(rois)]
+
+            # Map characters to frequencies
+            # Exclude special keywords
+        
+            #to determine the individual events, exclude random and silence
+            patterns_nonpatterns = ["silence", "vocalisation", "random"]
+            
+            #get the sorted individual events in the sequences and map them to frequencies
+            events = []
+            freqs = []
+            for i in sorted(pattern_list):
+                if i not in patterns_nonpatterns: 
+                    for j in i:
+                        if j not in events:
+                            events.append(j)
+                            #ask the user the frequency for the event
+                            if j !='o':
+                                freq = int(input(f"Insert frequency for sound {j}:\n"))
+                                freqs.append(freq)
+                            else:
+                                freqs.append(0)
+
+            #map frequency to event in a dictionary
+            sound_dict = dict(zip(events,freqs))
+
+            # Generate Sequences (Lists of frequencies)
+            repetitions = 50 
+            for item in pattern_list:
+                if item == "random":
+                    # Random selection from defined events
+                    keys = list(sound_dict.keys())
+                    if not keys: keys = [10000] # Fallback
+                    seq = [random.choice(keys) for _ in range(200)]
+                    sequence_of_frequencies.append([sound_dict.get(k, 0) for k in seq])
+                    
+                elif item == "vocalisation":
+                    sequence_of_frequencies.append("vocalisation")
+                    
+                elif item == "silence":
+                    sequence_of_frequencies.append([0] * 200)
+                    
+                else:
+                    # Standard pattern (e.g. ABAB)
+                    full_str = (item * repetitions)[:200] # Cap length
+                    seq_freqs = []
+                    for char in full_str:
+                        seq_freqs.append(sound_dict.get(char, 0))
+                    sequence_of_frequencies.append(seq_freqs)
+
+        # Path to vocalisation (Hardcoded or Config)
+        # Using a raw string for Windows path safety
+        path_to_voc = cfg.path_to_vocalisation_control
+        
+        return ExperimentFactory._create_sequence_trials_logic(rois, sequence_of_frequencies, pattern_list, audio, path_to_voc)
 
 
 
@@ -179,8 +266,7 @@ class ExperimentFactory:
 
 
 
-    
-
+    ### helper functions to get the info needed
 
 
 
@@ -358,6 +444,11 @@ class ExperimentFactory:
 
         path_to_voc = cfg.path_to_vocalisation_control
         all_intervals = consonant_intervals + dissonant_intervals
+
+        all_stimuli = controls + smooth_freq, rough_freq, consonant_intervals, dissonant_intervals
+
+        if len(all_stimuli) < rois_number: 
+           raise ValueError(f"you have {len(all_stimuli)} and {rois_number} rois. Please double check the hard coded stimuli")
         
         
         #the frequencies list will contain lists containing the 2 frequencies that make up the interval. 
