@@ -2,163 +2,265 @@ import pandas as pd
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
-import seaborn as sns
+from matplotlib.path import Path
+from matplotlib.colors import LogNorm
 from scipy.stats import entropy
+from scipy.signal import savgol_filter
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
 import os
 
-# ==========================================
+
 # CONFIGURATION
-# ==========================================
-TRIAL_INFO_PATH = "C:/Users/aleja/Box/Awake Project/Maze data/simplermaze/mouse 6357/2024-08-28_11_58_146357session3.6/trials_corrected_final_frames.csv"
 
-DLC_DATA_PATH = "C:/Users/aleja/Box/Awake Project/Maze data/simplermaze/mouse 6357/deeplabcut/mouse6357/mouse6357-shahd-2025-09-08/videos/6357_2024-08-28_11_58_14s3.6DLC_Resnet50_mouse6357Sep8shuffle1_snapshot_200.csv"
+base_path = r"C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/"
 
-VIDEO_PATH = 'C:/Users/aleja/Box/Awake Project/Maze data/simplermaze/mouse 6357/2024-08-28_11_58_146357session3.6/6357_2024-08-28_11_58_14s3.6.mp4' # Replace with your full video path
+TRIAL_INFO_PATH = base_path + r"2024-08-28_11_58_146357session3.6/trials_corrected_final_frames.csv"
+
+DLC_DATA_PATH = base_path + r"deeplabcut/mouse6357/mouse6357-shahd-2025-09-08/videos/6357_2024-08-28_11_58_14s3.6DLC_Resnet50_mouse6357Sep8shuffle1_snapshot_200.csv"
+
+VIDEO_PATH = base_path + r'2024-08-28_11_58_146357session3.6/6357_2024-08-28_11_58_14s3.6.mp4' # Replace with your full video path
 FPS = 30  # Adjust to your video's frame rate
 BODYPART = 'mid'  # Bodypart used for tracking
-DRAW_ROI = True   # Set to True to draw ROIs manually
-GRID_SIZE = 20    # For Spatial Entropy
-OUTPUT_DIR = 'C:/Users/aleja/Box/Awake Project/Maze data/simplermaze/mouse 6357/2024-08-28_11_58_146357session3.6/trial_analysis_plots'
+DRAW_ROIS = True   # Set to True to draw ROIs manually
+DRAW_BOUNDARIES = True
+# GRID_SIZE = 20    # For Spatial Entropy
+LIKELIHOOD_THRESH = 0.8
+OUTPUT_DIR = base_path + r'2024-08-28_11_58_146357session3.6/trial_analysis_plots'
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
 # ==========================================
-# ROI DEFINITION LOGIC (from your supFun.py)
+# UI HELPERS (OPENCV)
 # ==========================================
-def define_rois_from_video(video_path, roi_names):
+def resize_for_display(img, max_height=800):
+    h, w = img.shape[:2]
+    if h > max_height:
+        scale = max_height / h
+        return cv.resize(img, (int(w*scale), int(h*scale))), scale
+    return img.copy(), 1.0
+
+def select_maze_boundary(video_path):
     cap = cv.VideoCapture(video_path)
     ret, frame = cap.read()
-    if not ret:
-        print("Could not read video for ROI selection.")
-        return None
+    cap.release()
+    if not ret: return []
+
+    display_frame, scale = resize_for_display(frame)
+    points = []
     
+    def click(event, x, y, flags, param):
+        if event == cv.EVENT_LBUTTONDOWN:
+            points.append((x, y))
+            cv.circle(display_frame, (x, y), 4, (0, 0, 255), -1)
+            if len(points) > 1:
+                cv.line(display_frame, points[-2], points[-1], (0, 255, 0), 2)
+            cv.imshow("Draw Boundary", display_frame)
+
+    cv.namedWindow("Draw Boundary", cv.WINDOW_NORMAL)
+    cv.imshow("Draw Boundary", display_frame)
+    cv.setMouseCallback("Draw Boundary", click)
+    
+    print("Draw Boundary: Click corners -> 'c' to close -> Space to confirm")
+    while True:
+        k = cv.waitKey(1) & 0xFF
+        if k == ord('c') and len(points) > 2:
+            cv.line(display_frame, points[-1], points[0], (0, 255, 0), 2)
+            cv.imshow("Draw Boundary", display_frame)
+        if k == 32 or k == 13: break
+            
+    cv.destroyAllWindows()
+    # Scale back
+    return [(int(p[0]/scale), int(p[1]/scale)) for p in points]
+
+def define_rois(video_path, roi_names):
+    cap = cv.VideoCapture(video_path)
+    _, frame = cap.read()
+    cap.release()
+    
+    display_frame, scale = resize_for_display(frame)
+    cv.namedWindow("Select ROIs", cv.WINDOW_NORMAL)
     rois = {}
-    temp_display = frame.copy()
     
+    print("Draw ROIs: Select box -> Space to confirm")
     for name in roi_names:
-        print(f"Select ROI for: {name}. Press SPACE or ENTER to confirm.")
-        roi = cv.selectROI("Select ROIs", temp_display, fromCenter=False, showCrosshair=True)
-        rois[name] = roi # (x, y, w, h)
-        # Draw on temp display to show progress
-        x, y, w, h = roi
-        cv.rectangle(temp_display, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        cv.putText(temp_display, name, (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        print(f"Select: {name}")
+        r = cv.selectROI("Select ROIs", display_frame, fromCenter=False)
+        # Scale back
+        real_r = (int(r[0]/scale), int(r[1]/scale), int(r[2]/scale), int(r[3]/scale))
+        rois[name] = real_r
+        
+        cv.rectangle(display_frame, (r[0], r[1]), (r[0]+r[2], r[1]+r[3]), (0,255,0), 2)
+        cv.putText(display_frame, name, (r[0], r[1]-5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
+        cv.imshow("Select ROIs", display_frame)
         
     cv.destroyAllWindows()
-    cap.release()
     return rois
 
-def is_in_roi(x, y, roi_coords):
-    """Checks if point x,y is inside ROI (x_start, y_start, width, height)"""
-    rx, ry, rw, rh = roi_coords
-    return rx <= x <= (rx + rw) and ry <= y <= (ry + rh)
+# ==========================================
+# PROCESSING HELPERS
+# ==========================================
+def filter_by_boundary(df, boundary_points):
+    poly = Path(boundary_points)
+    scorer = df.columns[0][0]
+    bp = df.columns[0][1]
+    coords = df[scorer][bp][['x', 'y']].fillna(-100).values
+    is_inside = poly.contains_points(coords)
+    df.loc[~is_inside, (scorer, bp, 'x')] = np.nan
+    df.loc[~is_inside, (scorer, bp, 'y')] = np.nan
+    return df
+
+def process_kinematics(df, fps):
+    # Savitzky-Golay Smoothing
+    df['x_smooth'] = savgol_filter(df['x'], 15, 3)
+    df['y_smooth'] = savgol_filter(df['y'], 15, 3)
+    
+    # Speed (px/s)
+    dist = np.sqrt(df['x_smooth'].diff()**2 + df['y_smooth'].diff()**2)
+    df['speed'] = dist * fps
+    return df
+
+def get_entropy(x, y, grid_size=20):
+    if len(x) < 2: return 0
+    hist, _, _ = np.histogram2d(x, y, bins=grid_size, density=True)
+    return entropy(hist.flatten()[hist.flatten() > 0])
 
 # ==========================================
-# CALCULATION HELPERS
+# MAIN EXECUTION
 # ==========================================
-def calculate_spatial_entropy(x, y, bins=GRID_SIZE):
-    if len(x) == 0: return 0
-    hist, _, _ = np.histogram2d(x, y, bins=bins)
-    probs = hist.flatten() / np.sum(hist)
-    probs = probs[probs > 0]
-    return entropy(probs)
-
-# ==========================================
-# MAIN PIPELINE
-# ==========================================
-
-# 1. Load Data
+print("Loading Data...")
 df_trials = pd.read_csv(TRIAL_INFO_PATH)
-# DLC has 3 header rows
 df_dlc = pd.read_csv(DLC_DATA_PATH, header=[0, 1, 2], index_col=0)
 scorer = df_dlc.columns[0][0]
 tracking = df_dlc[scorer][BODYPART].copy()
 
-# 2. Draw ROIs if flag is set
-roi_list = ["entrance1", "entrance2", "rewA", "rewB", "rewC", "rewD"]
-if DRAW_ROI:
-    rois = define_rois_from_video(VIDEO_PATH, roi_list)
+# 1. Likelihood Filter
+mask = tracking['likelihood'] < LIKELIHOOD_THRESH
+tracking.loc[mask, ['x', 'y']] = np.nan
+tracking = tracking.interpolate().ffill().bfill()
+
+# 2. Boundary Filter
+if DRAW_BOUNDARIES:
+    boundary_pts = select_maze_boundary(VIDEO_PATH)
+    pd.DataFrame(boundary_pts).to_csv('maze_boundary.csv', index=False)
+elif os.path.exists('maze_boundary.csv'):
+    boundary_pts = pd.read_csv('maze_boundary.csv').values.tolist()
 else:
-    # Logic to load from existing rois1.csv if needed
-    rois_df = pd.read_csv("rois1.csv", index_col=0)
-    rois = {col: (rois_df[col]['xstart'], rois_df[col]['ystart'], rois_df[col]['xlen'], rois_df[col]['ylen']) for col in rois_df.columns}
+    print("Set DRAW_BOUNDARIES=True"); exit()
 
-# 3. Process Trials
-all_results = []
+temp_df = pd.DataFrame({(scorer, BODYPART, 'x'): tracking['x'], (scorer, BODYPART, 'y'): tracking['y']})
+temp_df = filter_by_boundary(temp_df, boundary_pts)
+tracking['x'] = temp_df[(scorer, BODYPART, 'x')]
+tracking['y'] = temp_df[(scorer, BODYPART, 'y')]
 
+# 3. Kinematics
+tracking = process_kinematics(tracking, FPS)
+
+# 4. ROIs
+roi_names = ["entrance1", "entrance2", "rewA", "rewB", "rewC", "rewD"]
+if DRAW_ROIS:
+    rois = define_rois(VIDEO_PATH, roi_names)
+    pd.DataFrame(rois).T.to_csv('defined_rois.csv')
+elif os.path.exists('defined_rois.csv'):
+    df_r = pd.read_csv('defined_rois.csv', index_col=0)
+    rois = {name: tuple(row) for name, row in df_r.iterrows()}
+else:
+    print("Set DRAW_ROIS=True"); exit()
+
+# --- ANALYSIS LOOP ---
+results = []
+p1_traces = [] # Store data for Plotly Summary
+p2_traces = []
+
+print("Processing Trials...")
 for idx, row in df_trials.iterrows():
-    # Identify key timepoints (ms to frames)
-    # Note: Using absolute time mapping. Adjust if your CSV uses relative offsets.
-    start_frame = int(row['mouse_enter_time'] * FPS / 1000)
-    end_frame = int(row['end_trial_time'] * FPS / 1000)
-    first_roi_name = row['first_reward_area_visited']
+    try:
+        f_start, f_end = int(row['start_frame']), int(row['end_frame'])
+        target = row['first_reward_area_visited']
+    except: continue
+        
+    if f_start >= f_end or target not in rois: continue
     
-    if first_roi_name not in rois:
-        print(f"Skipping trial {idx}: first ROI '{first_roi_name}' not defined.")
-        continue
+    try: trial_data = tracking.iloc[f_start:f_end].copy()
+    except: continue
+    if len(trial_data) < 10: continue
 
-    trial_track = tracking.iloc[start_frame:end_frame].copy()
-    
-    # Find exact frame of first ROI entry
-    first_roi_coords = rois[first_roi_name]
-    entry_idx = None
-    for i, (f_idx, pos) in enumerate(trial_track.iterrows()):
-        if is_in_roi(pos['x'], pos['y'], first_roi_coords):
-            entry_idx = f_idx
+    # Identify Phase Split
+    rx, ry, rw, rh = rois[target]
+    split_idx = -1
+    for i, (f, pos) in enumerate(trial_data.iterrows()):
+        if (rx <= pos['x_smooth'] <= rx+rw) and (ry <= pos['y_smooth'] <= ry+rh):
+            split_idx = i
             break
-    
-    if entry_idx is None:
-        print(f"Warning: Mouse never detected in {first_roi_name} for trial {idx} (using mid-point split)")
-        entry_idx = start_frame + (end_frame - start_frame) // 2
-
-    # Split phases
-    phase1 = tracking.iloc[start_frame:entry_idx].copy()
-    phase2 = tracking.iloc[entry_idx:end_frame].copy()
-
-    trial_metrics = {'trial': idx, 'first_roi': first_roi_name}
-
-    # Calculate metrics for both phases
-    for p_name, p_data in [('P1_EntryToROI', phase1), ('P2_ROIToExit', phase2)]:
-        if len(p_data) < 2:
-            continue
             
-        # Kinematics
-        dist = np.sqrt(p_data['x'].diff()**2 + p_data['y'].diff()**2)
-        speed = dist * FPS
-        accel = speed.diff() * FPS
-        
-        trial_metrics[f'{p_name}_time'] = len(p_data) / FPS
-        trial_metrics[f'{p_name}_avg_speed'] = speed.mean()
-        trial_metrics[f'{p_name}_avg_accel'] = accel.mean()
-        trial_metrics[f'{p_name}_entropy'] = calculate_spatial_entropy(p_data['x'], p_data['y'])
-        
-        # Plot Speed Over Time for this trial
-        plt.figure(figsize=(10, 4))
-        plt.plot(np.linspace(0, len(p_data)/FPS, len(p_data)), speed, label=p_name)
-        plt.title(f"Trial {idx} - Speed Over Time")
-        plt.xlabel("Time (s)")
-        plt.ylabel("Speed (px/s)")
-        plt.legend()
-        plt.savefig(f"{OUTPUT_DIR}/trial_{idx}_{p_name}_speed.png")
-        plt.close()
+    if split_idx == -1: continue
 
-    all_results.append(trial_metrics)
+    p1 = trial_data.iloc[:split_idx]
+    p2 = trial_data.iloc[split_idx:]
+    
+    ent1 = get_entropy(p1['x_smooth'], p1['y_smooth'])
+    ent2 = get_entropy(p2['x_smooth'], p2['y_smooth'])
+    
+    results.append({
+        'trial': idx, 'target': target,
+        'P1_speed': p1['speed'].mean(), 'P1_entropy': ent1,
+        'P2_speed': p2['speed'].mean(), 'P2_entropy': ent2
+    })
+    
+    # --- STORE DATA FOR PLOTLY SUMMARY ---
+    # We store the time series (Time vs Speed) and Trial ID
+    if len(p1) > 0:
+        time_p1 = np.arange(len(p1)) / FPS
+        p1_traces.append(pd.DataFrame({'Time': time_p1, 'Speed': p1['speed'].values, 'Trial': f"Trial {idx}"}))
+    if len(p2) > 0:
+        time_p2 = np.arange(len(p2)) / FPS
+        p2_traces.append(pd.DataFrame({'Time': time_p2, 'Speed': p2['speed'].values, 'Trial': f"Trial {idx}"}))
 
-# 4. Create Final Dataframe
-results_df = pd.DataFrame(all_results)
-results_df.to_csv("comprehensive_trial_analysis.csv", index=False)
+    # --- SAVE STATIC HEATMAP (MATPLOTLIB) ---
+    # Heatmaps are best saved as static images for browsing
+    plt.figure(figsize=(6, 6))
+    plt.hist2d(trial_data['x_smooth'], trial_data['y_smooth'], bins=30, cmap='inferno', norm=LogNorm())
+    
+    # Overlay Boundary
+    px, py = zip(*boundary_pts); px = list(px)+[px[0]]; py = list(py)+[py[0]]
+    plt.plot(px, py, 'w-', lw=2)
+    
+    plt.gca().invert_yaxis()
+    plt.axis('equal')
+    plt.title(f"Trial {idx} Heatmap")
+    plt.colorbar(label='Density')
+    plt.savefig(f"{OUTPUT_DIR}/trial_{idx}_heatmap.png")
+    plt.close()
 
-# 5. Summary Visualizations
-plt.figure(figsize=(12, 6))
-sns.boxplot(data=results_df, x='first_roi', y='P1_EntryToROI_avg_speed')
-plt.title("Average Speed to First ROI by Target Location")
-plt.savefig("summary_speed_by_roi.png")
+# --- SAVE RESULTS ---
+pd.DataFrame(results).to_csv(f"{OUTPUT_DIR}/results.csv", index=False)
 
-plt.figure(figsize=(8, 6))
-sns.violinplot(data=results_df.melt(value_vars=['P1_EntryToROI_entropy', 'P2_ROIToExit_entropy']), 
-               x='variable', y='value')
-plt.title("Spatial Entropy Comparison Between Phases")
-plt.savefig("summary_entropy_comparison.png")
+# ==========================================
+# PLOTLY SUMMARY PLOTS
+# ==========================================
+print("Generating Plotly Summaries...")
 
-print("Analysis complete. Results saved to comprehensive_trial_analysis.csv")
+def plot_summary_plotly(trace_data, title, filename):
+    if not trace_data: return
+    
+    # Combine all traces into one DataFrame
+    df_plot = pd.concat(trace_data)
+    
+    # Create interactive line plot
+    fig = px.line(df_plot, x='Time', y='Speed', color='Trial', 
+                  title=title, labels={'Time': 'Time (s)', 'Speed': 'Speed (px/s)'})
+    
+    # Improve styling
+    fig.update_layout(hovermode="x unified", template="plotly_white")
+    fig.write_html(f"{OUTPUT_DIR}/{filename}")
+
+plot_summary_plotly(p1_traces, "Phase 1 Speed (Entry -> First ROI)", "summary_speed_P1.html")
+plot_summary_plotly(p2_traces, "Phase 2 Speed (First ROI -> Exit)", "summary_speed_P2.html")
+
+print(f"Analysis Complete! Open {OUTPUT_DIR} to see:")
+print("1. summary_speed_P1.html (Interactive)")
+print("2. summary_speed_P2.html (Interactive)")
+print("3. Individual trial_XX_heatmap.png files")
+print("4. results.csv")

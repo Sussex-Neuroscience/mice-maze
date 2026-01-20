@@ -1,30 +1,23 @@
-'''
+"""
 This script uses OpenCV to open the video, grabs a random frame, and lets you click two points to measure the distance.
 
-click once on one end of the maze wall, once again for the opposite wall, 
-a green line will appear connecting the dots and the pixel count will appear on the page
-in the terminal, insert the real world distance in cm and press enter
+1. Edit the VIDEO_PATH variable in the USER CONFIGURATION section below.
+2. Run the script.
+3. Click once on one end of the maze wall, once again for the opposite wall.
+4. A green line will appear connecting the dots.
+5. In the terminal, insert the real world distance in cm and press enter.
 
-it will print the number of px/cm
-
-this number will then be used in make_3d_dlc_plot_trajectories.py
-
-measure_pixel_per_cm.py is ran as :
-
-python measure_pixel_per_cm.py --video "C:/Path/To/Your/Video.mp4"
-
-
-
-'''
-
-
-
+It will print the number of px/cm.
+"""
 
 import cv2
 import numpy as np
-import argparse
 import random
 import math
+
+# insert path for video to get how many px there are in a cm in your setup
+
+VIDEO_PATH = r"C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/2024-08-28_11_58_146357session3.6/segments/6357_2024-08-28_11_58_14s3.6_trial_003.mp4"
 
 
 
@@ -76,7 +69,7 @@ def mouse_callback(event, x, y, flags, param):
                     if real_dist > 0:
                         ratio = dist_px / real_dist
                         print(f"  > RESULT: {ratio:.4f} px/cm")
-                        print(f"    (Use '--px-per-cm {ratio:.4f}' in your plotting script)")
+                        print(f"    (Use value {ratio:.4f} in your plotting script)")
                     else:
                         print("  > skipped calculation.")
                 except ValueError:
@@ -102,26 +95,25 @@ def get_random_frame(cap):
 def main():
     global image, clone, ref_points
 
-    parser = argparse.ArgumentParser(description="Measure pixels in a video frame to calculate px/cm.")
-    parser.add_argument("--video", required=True, help="Path to the video file.")
-    args = parser.parse_args()
-
-    # Open Video
-    cap = cv2.VideoCapture(args.video)
+    # Open Video using the Hardcoded Path
+    print(f"Opening video: {VIDEO_PATH}")
+    cap = cv2.VideoCapture(VIDEO_PATH)
+    
     if not cap.isOpened():
         print("Error: Could not open video.")
+        print("Please check the VIDEO_PATH ")
         return
 
     # Create a named window and attach the mouse callback
     cv2.namedWindow("Frame")
     cv2.setMouseCallback("Frame", mouse_callback)
 
-    print("Fetching random frame...")
+    print("Fetching random frame")
     image = get_random_frame(cap)
     if image is None: return
     clone = image.copy()
 
-    print("\n--- INSTRUCTIONS ---")
+    print("\n INSTRUCTIONS ")
     print("1. Click two points on the image to measure distance.")
     print("2. Look at the terminal to input the real-world CM distance.")
     print("3. Press 'r' to reset the points on the current frame.")
@@ -140,7 +132,7 @@ def main():
 
         # New Random Frame ('n')
         elif key == ord("n"):
-            print("[INFO] Loading new random frame...")
+            print("[INFO] Loading new random frame")
             new_frame = get_random_frame(cap)
             if new_frame is not None:
                 image = new_frame
