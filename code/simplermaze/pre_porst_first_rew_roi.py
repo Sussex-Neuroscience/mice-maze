@@ -14,27 +14,30 @@ import os
 
 # CONFIGURATION
 
+
 base_path = r"C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/"
 
-TRIAL_INFO_PATH = base_path + r"2024-08-28_11_58_146357session3.6/trials_corrected_final_frames.csv"
+session_path = base_path+ r"2024-08-28_11_58_146357session3.6/"
+
+TRIAL_INFO_PATH = session_path + r"trials_corrected_final_frames.csv"
 
 DLC_DATA_PATH = base_path + r"deeplabcut/mouse6357/mouse6357-shahd-2025-09-08/videos/6357_2024-08-28_11_58_14s3.6DLC_Resnet50_mouse6357Sep8shuffle1_snapshot_200.csv"
 
-VIDEO_PATH = base_path + r'2024-08-28_11_58_146357session3.6/6357_2024-08-28_11_58_14s3.6.mp4' # Replace with your full video path
+VIDEO_PATH = session_path + r'6357_2024-08-28_11_58_14s3.6.mp4' # Replace with your full video path
 FPS = 30  # Adjust to your video's frame rate
 BODYPART = 'mid'  # Bodypart used for tracking
-DRAW_ROIS = True   # Set to True to draw ROIs manually
-DRAW_BOUNDARIES = True
+DRAW_ROIS = False  # Set to True to draw ROIs manually
+DRAW_BOUNDARIES = False
 # GRID_SIZE = 20    # For Spatial Entropy
-LIKELIHOOD_THRESH = 0.8
-OUTPUT_DIR = base_path + r'2024-08-28_11_58_146357session3.6/trial_analysis_plots'
+LIKELIHOOD_THRESH = 0.5
+OUTPUT_DIR = session_path + r"trial_analysis_plots"
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
-# ==========================================
+
 # UI HELPERS (OPENCV)
-# ==========================================
+
 def resize_for_display(img, max_height=800):
     h, w = img.shape[:2]
     if h > max_height:
@@ -99,9 +102,9 @@ def define_rois(video_path, roi_names):
     cv.destroyAllWindows()
     return rois
 
-# ==========================================
+
 # PROCESSING HELPERS
-# ==========================================
+
 def filter_by_boundary(df, boundary_points):
     poly = Path(boundary_points)
     scorer = df.columns[0][0]
@@ -123,13 +126,23 @@ def process_kinematics(df, fps):
     return df
 
 def get_entropy(x, y, grid_size=20):
-    if len(x) < 2: return 0
-    hist, _, _ = np.histogram2d(x, y, bins=grid_size, density=True)
-    return entropy(hist.flatten()[hist.flatten() > 0])
+    # Filter out NaNs (e.g., points outside the maze boundary)
+    valid_mask = ~np.isnan(x) & ~np.isnan(y)
+    x_valid = x[valid_mask]
+    y_valid = y[valid_mask]
+    
+    # If we have less than 2 valid points, we can't calculate entropy
+    if len(x_valid) < 2: 
+        return 0
+        
+    hist, _, _ = np.histogram2d(x_valid, y_valid, bins=grid_size, density=True)
+    # Calculate entropy only on non-zero bins to avoid errors
+    probs = hist.flatten()
+    return entropy(probs[probs > 0])
 
-# ==========================================
+
 # MAIN EXECUTION
-# ==========================================
+
 print("Loading Data...")
 df_trials = pd.read_csv(TRIAL_INFO_PATH)
 df_dlc = pd.read_csv(DLC_DATA_PATH, header=[0, 1, 2], index_col=0)
@@ -144,9 +157,9 @@ tracking = tracking.interpolate().ffill().bfill()
 # 2. Boundary Filter
 if DRAW_BOUNDARIES:
     boundary_pts = select_maze_boundary(VIDEO_PATH)
-    pd.DataFrame(boundary_pts).to_csv('maze_boundary.csv', index=False)
-elif os.path.exists('maze_boundary.csv'):
-    boundary_pts = pd.read_csv('maze_boundary.csv').values.tolist()
+    pd.DataFrame(boundary_pts).to_csv(session_path+ 'maze_boundary.csv', index=False)
+elif os.path.exists(session_path+'maze_boundary.csv'):
+    boundary_pts = pd.read_csv(session_path+'maze_boundary.csv').values.tolist()
 else:
     print("Set DRAW_BOUNDARIES=True"); exit()
 
@@ -162,16 +175,17 @@ tracking = process_kinematics(tracking, FPS)
 roi_names = ["entrance1", "entrance2", "rewA", "rewB", "rewC", "rewD"]
 if DRAW_ROIS:
     rois = define_rois(VIDEO_PATH, roi_names)
-    pd.DataFrame(rois).T.to_csv('defined_rois.csv')
-elif os.path.exists('defined_rois.csv'):
-    df_r = pd.read_csv('defined_rois.csv', index_col=0)
+    pd.DataFrame(rois).T.to_csv(session_path+"rois1.csv")
+elif os.path.exists(session_path+"rois1.csv"):
+    df_r = pd.read_csv(session_path+"rois1.csv", index_col=0)
     rois = {name: tuple(row) for name, row in df_r.iterrows()}
 else:
     print("Set DRAW_ROIS=True"); exit()
 
-# --- ANALYSIS LOOP ---
+#  ANALYSIS LOOP 
+
 results = []
-p1_traces = [] # Store data for Plotly Summary
+p1_traces = [] 
 p2_traces = []
 
 print("Processing Trials...")
@@ -183,45 +197,74 @@ for idx, row in df_trials.iterrows():
         
     if f_start >= f_end or target not in rois: continue
     
+    # Extract Trial
     try: trial_data = tracking.iloc[f_start:f_end].copy()
     except: continue
+    
+    # Skip if trial is too short
     if len(trial_data) < 10: continue
 
-    # Identify Phase Split
+    # Identify Phase Split (Entry -> First ROI)
     rx, ry, rw, rh = rois[target]
     split_idx = -1
+    
+    # We use the SMOOTHED data to find the split
+    # Handle NaNs in search: Check if point is valid AND in ROI
     for i, (f, pos) in enumerate(trial_data.iterrows()):
+        if np.isnan(pos['x_smooth']) or np.isnan(pos['y_smooth']):
+            continue
         if (rx <= pos['x_smooth'] <= rx+rw) and (ry <= pos['y_smooth'] <= ry+rh):
             split_idx = i
             break
             
-    if split_idx == -1: continue
+    if split_idx == -1: 
+        # print(f"Trial {idx}: Target {target} never reached.")
+        continue
 
     p1 = trial_data.iloc[:split_idx]
     p2 = trial_data.iloc[split_idx:]
     
+    # Calculate Entropy (using the NEW safe function)
     ent1 = get_entropy(p1['x_smooth'], p1['y_smooth'])
     ent2 = get_entropy(p2['x_smooth'], p2['y_smooth'])
     
+    # Calculate Mean Speed (ignoring NaNs automatically)
+    s1 = p1['speed'].mean() if len(p1) > 0 else 0
+    s2 = p2['speed'].mean() if len(p2) > 0 else 0
+    
     results.append({
         'trial': idx, 'target': target,
-        'P1_speed': p1['speed'].mean(), 'P1_entropy': ent1,
-        'P2_speed': p2['speed'].mean(), 'P2_entropy': ent2
+        'P1_speed': s1, 'P1_entropy': ent1,
+        'P2_speed': s2, 'P2_entropy': ent2
     })
     
     # --- STORE DATA FOR PLOTLY SUMMARY ---
-    # We store the time series (Time vs Speed) and Trial ID
+    # Only store if we have valid data (drop NaNs for plotting)
     if len(p1) > 0:
-        time_p1 = np.arange(len(p1)) / FPS
-        p1_traces.append(pd.DataFrame({'Time': time_p1, 'Speed': p1['speed'].values, 'Trial': f"Trial {idx}"}))
+        clean_p1 = p1.dropna(subset=['speed'])
+        if not clean_p1.empty:
+            time_p1 = np.arange(len(clean_p1)) / FPS
+            p1_traces.append(pd.DataFrame({'Time': time_p1, 'Speed': clean_p1['speed'].values, 'Trial': f"Trial {idx}"}))
+            
     if len(p2) > 0:
-        time_p2 = np.arange(len(p2)) / FPS
-        p2_traces.append(pd.DataFrame({'Time': time_p2, 'Speed': p2['speed'].values, 'Trial': f"Trial {idx}"}))
+        clean_p2 = p2.dropna(subset=['speed'])
+        if not clean_p2.empty:
+            time_p2 = np.arange(len(clean_p2)) / FPS
+            p2_traces.append(pd.DataFrame({'Time': time_p2, 'Speed': clean_p2['speed'].values, 'Trial': f"Trial {idx}"}))
 
-    # --- SAVE STATIC HEATMAP (MATPLOTLIB) ---
-    # Heatmaps are best saved as static images for browsing
+    # --- HEATMAP GENERATION (Handle NaNs) ---
     plt.figure(figsize=(6, 6))
-    plt.hist2d(trial_data['x_smooth'], trial_data['y_smooth'], bins=30, cmap='inferno', norm=LogNorm())
+    # Filter NaNs for plotting
+    x_plot = trial_data['x_smooth'].dropna()
+    y_plot = trial_data['y_smooth'].dropna()
+    
+    if len(x_plot) > 1:
+        # Align lengths (dropping NaNs from one series might mismatch the other if not aligned)
+        valid_indices = trial_data['x_smooth'].notna() & trial_data['y_smooth'].notna()
+        x_plot = trial_data.loc[valid_indices, 'x_smooth']
+        y_plot = trial_data.loc[valid_indices, 'y_smooth']
+        
+        plt.hist2d(x_plot, y_plot, bins=30, cmap='inferno', norm=LogNorm())
     
     # Overlay Boundary
     px, py = zip(*boundary_pts); px = list(px)+[px[0]]; py = list(py)+[py[0]]
@@ -234,12 +277,12 @@ for idx, row in df_trials.iterrows():
     plt.savefig(f"{OUTPUT_DIR}/trial_{idx}_heatmap.png")
     plt.close()
 
-# --- SAVE RESULTS ---
+#  SAVE RESULTS 
 pd.DataFrame(results).to_csv(f"{OUTPUT_DIR}/results.csv", index=False)
 
-# ==========================================
+
 # PLOTLY SUMMARY PLOTS
-# ==========================================
+
 print("Generating Plotly Summaries...")
 
 def plot_summary_plotly(trace_data, title, filename):
