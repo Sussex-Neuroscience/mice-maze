@@ -295,7 +295,7 @@ def plot_summary_with_distribution(trace_data, title, filename):
     fig.update_layout(
         title=title,
         xaxis_title="Time (s)",
-        yaxis_title="Speed (px/s)",
+        yaxis_title="Speed (cm/s)",
         template="plotly_white",
         hovermode="x unified"
     )

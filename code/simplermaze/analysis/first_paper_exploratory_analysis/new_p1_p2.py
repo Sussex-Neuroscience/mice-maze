@@ -127,8 +127,8 @@ for idx, row in df_trials.iterrows():
         'target_visited': target,
         'reward_location': reward_roi_name,
         'status': status_label,
-        'P1_speed_cm': p1['speed_cm_s'].mean(), 'P1_entropy': ent1,
-        'P2_speed_cm': p2['speed_cm_s'].mean(), 'P2_entropy': ent2
+        'P1_speed_cm': p1['speed'].mean(), 'P1_entropy': ent1,
+        'P2_speed_cm': p2['speed'].mean(), 'P2_entropy': ent2
     })
     
     #  EVENT ALIGNMENT FOR PLOT 
@@ -144,7 +144,7 @@ for idx, row in df_trials.iterrows():
     # Store full trace (P1 and P2 combined)
     aligned_traces.append(pd.DataFrame({
         'Relative_Time': time_relative,
-        'Speed': trial_data['speed_cm_s'].values,
+        'Speed': trial_data['speed'].values,
         'Trial': f"Trial {idx}",
         'Status': status_label
     }))

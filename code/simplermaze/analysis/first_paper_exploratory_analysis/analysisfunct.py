@@ -23,11 +23,12 @@ def resize_for_display(img, max_height=800):
         return cv.resize(img, (int(w*scale), int(h*scale))), scale
     return img.copy(), 1.0
 
-def click(event, x, y, flags, param, display_frame, points = []):
+def click(event, x, y, flags, param, display_frame, points):
     if event == cv.EVENT_LBUTTONDOWN:
         points.append((x, y))
         cv.circle(display_frame, (x, y), 4, (0, 0, 255), -1)
-        if len(points) > 1: cv.line(display_frame, points[-2], points[-1], (0, 255, 0), 2)
+        if len(points) > 1: 
+            cv.line(display_frame, points[-2], points[-1], (0, 255, 0), 2)
         cv.imshow("Draw Boundary", display_frame)
 
 def select_maze_boundary(video_path):
@@ -41,7 +42,7 @@ def select_maze_boundary(video_path):
 
     cv.namedWindow("Draw Boundary", cv.WINDOW_NORMAL)
     cv.imshow("Draw Boundary", display_frame)
-    cv.setMouseCallback("Draw Boundary", click(display_frame = display_frame, points= points))
+    cv.setMouseCallback("Draw Boundary", lambda event, x, y, flags, param: click(event, x, y, flags, param, display_frame, points))
     print("Draw Boundary: Click corners -> 'c' to close -> Space to confirm")
     while True:
         k = cv.waitKey(1) & 0xFF
@@ -87,8 +88,8 @@ def filter_by_boundary(df, boundary_points):
 
 def process_kinematics(df, fps, px_per_cm = Paths.PX_PER_CM):
     # smooth coordinates
-    df['x_smooth'] = savgol_filter(df['x'], 15, 3)
-    df['y_smooth'] = savgol_filter(df['y'], 15, 3)
+    df['x_smooth'] = savgol_filter(df['x'], 7, 3)
+    df['y_smooth'] = savgol_filter(df['y'], 7, 3)
 
     #calculate pixel distance
     dist_px = np.sqrt(df['x_smooth'].diff()**2 + df['y_smooth'].diff()**2)
@@ -97,7 +98,7 @@ def process_kinematics(df, fps, px_per_cm = Paths.PX_PER_CM):
     # Distance (cm) = Distance (px) / px_per_cm
     # Speed (cm/s) = Distance (cm) * FPS  
 
-    df['speed_cm_s'] = (dist_px / px_per_cm) * fps
+    df['speed'] = (dist_px / px_per_cm) * fps
     return df
 
 
@@ -115,6 +116,10 @@ def get_entropy(x, y, grid_size=20):
     # Calculate entropy only on non-zero bins to avoid errors
     probs = hist.flatten()
     return entropy(probs[probs > 0])
+
+def calculate_duration(df_segment, fps):
+    """Returns duration in seconds for a given dataframe segment."""
+    return len(df_segment) / fps
 
 
 # COMBINED GAUSSIAN PLOTTING FUNCTION (SHARED Y)

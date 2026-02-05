@@ -26,8 +26,8 @@ DLC_DATA_PATH = Paths.DLC_DATA_PATH
 VIDEO_PATH = Paths.VIDEO_PATH
 FPS = Paths.FPS
 BODYPART = Paths.BODYPART
-DRAW_ROIS = True
-DRAW_BOUNDARIES = True
+DRAW_ROIS = False
+DRAW_BOUNDARIES = False
 LIKELIHOOD_THRESH = Paths.LIKELIHOOD_THRESH
 OUTPUT_DIR = session_path + r"trial_analysis_plots"
 
@@ -158,8 +158,10 @@ for idx, row in df_trials.iterrows():
         plt.hist2d(x_plot, y_plot, bins=30, cmap='inferno', norm=LogNorm())
     
     # Overlay Boundary
-    px, py = zip(*boundary_pts); px = list(px)+[px[0]]; py = list(py)+[py[0]]
-    plt.plot(px, py, 'w-', lw=2)
+    b_x, b_y = zip(*boundary_pts) 
+    b_x = list(b_x) + [b_x[0]] 
+    b_y = list(b_y) + [b_y[0]]
+    plt.plot(b_x, b_y, 'w-', lw=2)
     
     plt.gca().invert_yaxis()
     plt.axis('equal')
@@ -184,7 +186,7 @@ def plot_summary_plotly(trace_data, title, filename):
     
     # Create interactive line plot
     fig = px.line(df_plot, x='Time', y='Speed', color='Trial', 
-                  title=title, labels={'Time': 'Time (s)', 'Speed': 'Speed (px/s)'})
+                  title=title, labels={'Time': 'Time (s)', 'Speed': 'Speed (cm/s)'})
     
     # Improve styling
     fig.update_layout(hovermode="x unified", template="plotly_white")

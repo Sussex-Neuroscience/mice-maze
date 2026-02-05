@@ -27,7 +27,7 @@ import cv2
 
 class Config:
     #  File Paths 
-    # Use r"" strings to avoid errors with backslashes on Windows
+    
     DLC_FILE = r"C:/Users/shahd/OneDrive - University of Sussex/DLC_MOSEQ/mouse6357/mouse6357-shahd-2025-09-08/videos/6357_2024-08-28_11_58_14s3.6DLC_Resnet50_mouse6357Sep8shuffle1_snapshot_200.csv"
     SEGMENTS_FILE = r"C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/2024-08-28_11_58_146357session3.6/segments/6357_2024-08-28_11_58_14s3.6_segments_manifest.csv" 
     TRIALS_TYPES_FILE = r"C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/2024-08-28_11_58_146357session3.6/mouse6357_session3.6_trial_info.csv" 
@@ -37,8 +37,8 @@ class Config:
     MAZE_GEOMETRY_FILE = None  # e.g., r"C:/path/to/maze.json"
 
     #  Analysis Parameters 
-    KEYPOINT = "nose"        # Bodypart to track (nose, mid, backmid,  tailbase)
-    MIN_LIKELIHOOD = 0.9     # Drop points with confidence below this score
+    KEYPOINT = "backmid"        # Bodypart to track (nose, mid, backmid,  tailbase)
+    MIN_LIKELIHOOD = 0.8     # Drop points with confidence below this score
     FPS = 30.0               # Frame rate of the video
     SMOOTHING_WINDOW = 5     # Window size for median filter smoothing (must be odd)
     PX_PER_CM = 7.5         # Set to float to convert pixels to cm. If you don't know it, run code\simplermaze\measure_pixel_per_cm.py

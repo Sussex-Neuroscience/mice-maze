@@ -21,7 +21,7 @@ ROIS_CSV = session_path+"rois1.csv"
 
 # SETTINGS
 BODYPART = 'mid'          # Body part to check
-LIKELIHOOD_THRESH = 0.8
+LIKELIHOOD_THRESH = 0.5
 
 
 

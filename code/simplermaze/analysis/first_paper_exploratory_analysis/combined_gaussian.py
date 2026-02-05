@@ -28,6 +28,7 @@ DRAW_ROIS = False #Paths.DRAW_ROIS
 DRAW_BOUNDARIES = False #Paths.DRAW_BOUNDARIES
 LIKELIHOOD_THRESH = Paths.LIKELIHOOD_THRESH
 OUTPUT_DIR = session_path + r"trial_analysis_gaussian"
+PX_PER_CM = Paths.PX_PER_CM
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
@@ -103,9 +104,9 @@ for idx, row in df_trials.iterrows():
     p2 = trial_data.iloc[split_idx:]
     
     if len(p1) > 0:
-        data_points.append({'Phase': 'P1', 'Status': status, 'MeanSpeed': p1['speed_cm_s'].mean()})
+        data_points.append({'Phase': 'P1', 'Status': status, 'MeanSpeed': p1['speed'].mean()})
     if len(p2) > 0:
-        data_points.append({'Phase': 'P2', 'Status': status, 'MeanSpeed': p2['speed_cm_s'].mean()})
+        data_points.append({'Phase': 'P2', 'Status': status, 'MeanSpeed': p2['speed'].mean()})
 
 df_res = pd.DataFrame(data_points)
 df_res.to_csv(f"{OUTPUT_DIR}/gaussian_source_data.csv", index=False)
