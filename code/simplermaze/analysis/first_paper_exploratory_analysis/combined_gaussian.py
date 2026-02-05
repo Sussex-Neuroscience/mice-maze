@@ -9,20 +9,24 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
 import analysisfunct as af
+from analysisfunc_config import Paths 
 
 
-# FILE PATHS
-base_path = r"C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/"
-session_path = base_path + r"2024-08-28_11_58_146357session3.6/"
+# variables (change analysisfunc_config.py)
+base_path = Paths.base_path
 
-TRIAL_INFO_PATH = session_path + r"trials_corrected_final_frames.csv"
-DLC_DATA_PATH = base_path + r"deeplabcut/mouse6357/mouse6357-shahd-2025-09-08/videos/6357_2024-08-28_11_58_14s3.6DLC_Resnet50_mouse6357Sep8shuffle1_snapshot_200.csv"
-VIDEO_PATH = session_path + r'6357_2024-08-28_11_58_14s3.6.mp4'
+session_path = Paths.session_path
 
-FPS = 30
-PX_PER_CM = 7.5
-BODYPART = 'mid'
-LIKELIHOOD_THRESH = 0.5
+TRIAL_INFO_PATH = Paths.TRIAL_INFO_PATH
+
+DLC_DATA_PATH = Paths.DLC_DATA_PATH
+
+VIDEO_PATH = Paths.VIDEO_PATH
+FPS = Paths.FPS
+BODYPART = Paths.BODYPART
+DRAW_ROIS = False #Paths.DRAW_ROIS
+DRAW_BOUNDARIES = False #Paths.DRAW_BOUNDARIES
+LIKELIHOOD_THRESH = Paths.LIKELIHOOD_THRESH
 OUTPUT_DIR = session_path + r"trial_analysis_gaussian"
 
 if not os.path.exists(OUTPUT_DIR):

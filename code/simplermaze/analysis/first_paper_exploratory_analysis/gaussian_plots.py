@@ -8,99 +8,35 @@ from scipy.stats import norm
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
+import analysisfunct as af
+from analysisfunc_config import Paths 
 
-# ==========================================
-# CONFIGURATION
-# ==========================================
-# FILE PATHS
-base_path = r"C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/"
-session_path = base_path + r"2024-08-28_11_58_146357session3.6/"
 
-TRIAL_INFO_PATH = session_path + r"trials_corrected_final_frames.csv"
-DLC_DATA_PATH = base_path + r"deeplabcut/mouse6357/mouse6357-shahd-2025-09-08/videos/6357_2024-08-28_11_58_14s3.6DLC_Resnet50_mouse6357Sep8shuffle1_snapshot_200.csv"
-VIDEO_PATH = session_path + r'6357_2024-08-28_11_58_14s3.6.mp4'
+# variables (change analysisfunc_config.py)
+base_path = Paths.base_path
 
-FPS = 30
-PX_PER_CM = 7.5
-BODYPART = 'mid'
-LIKELIHOOD_THRESH = 0.5
+session_path = Paths.session_path
+
+TRIAL_INFO_PATH = Paths.TRIAL_INFO_PATH
+
+DLC_DATA_PATH = Paths.DLC_DATA_PATH
+
+VIDEO_PATH = Paths.VIDEO_PATH
+FPS = Paths.FPS
+BODYPART = Paths.BODYPART
+DRAW_ROIS = False #Paths.DRAW_ROIS
+DRAW_BOUNDARIES = False #Paths.DRAW_BOUNDARIES
+LIKELIHOOD_THRESH = Paths.LIKELIHOOD_THRESH
 OUTPUT_DIR = session_path + r"trial_analysis_gaussian"
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 
-# ==========================================
-# HELPERS
-# ==========================================
-def resize_for_display(img, max_height=800):
-    h, w = img.shape[:2]
-    if h > max_height:
-        scale = max_height / h
-        return cv.resize(img, (int(w*scale), int(h*scale))), scale
-    return img.copy(), 1.0
 
-def select_maze_boundary(video_path):
-    cap = cv.VideoCapture(video_path)
-    ret, frame = cap.read()
-    cap.release()
-    if not ret: return []
-    display_frame, scale = resize_for_display(frame)
-    points = []
-    def click(event, x, y, flags, param):
-        if event == cv.EVENT_LBUTTONDOWN:
-            points.append((x, y))
-            cv.circle(display_frame, (x, y), 4, (0, 0, 255), -1)
-            if len(points) > 1: cv.line(display_frame, points[-2], points[-1], (0, 255, 0), 2)
-            cv.imshow("Draw Boundary", display_frame)
-    cv.namedWindow("Draw Boundary", cv.WINDOW_NORMAL)
-    cv.imshow("Draw Boundary", display_frame)
-    cv.setMouseCallback("Draw Boundary", click)
-    print("Draw Boundary: Click corners -> 'c' to close -> Space to confirm")
-    while True:
-        k = cv.waitKey(1) & 0xFF
-        if k == ord('c') and len(points) > 2:
-            cv.line(display_frame, points[-1], points[0], (0, 255, 0), 2)
-            cv.imshow("Draw Boundary", display_frame)
-        if k == 32 or k == 13: break
-    cv.destroyAllWindows()
-    return [(int(p[0]/scale), int(p[1]/scale)) for p in points]
 
-def define_rois(video_path, roi_names):
-    cap = cv.VideoCapture(video_path)
-    _, frame = cap.read()
-    cap.release()
-    display_frame, scale = resize_for_display(frame)
-    cv.namedWindow("Select ROIs", cv.WINDOW_NORMAL)
-    rois = {}
-    print("Draw ROIs: Select box -> Space to confirm")
-    for name in roi_names:
-        print(f"Select: {name}")
-        r = cv.selectROI("Select ROIs", display_frame, fromCenter=False)
-        real_r = (int(r[0]/scale), int(r[1]/scale), int(r[2]/scale), int(r[3]/scale))
-        rois[name] = real_r
-    cv.destroyAllWindows()
-    return rois
 
-def filter_by_boundary(df, boundary_points):
-    poly = Path(boundary_points)
-    scorer = df.columns[0][0]
-    bp = df.columns[0][1]
-    coords = df[scorer][bp][['x', 'y']].fillna(-100).values
-    is_inside = poly.contains_points(coords)
-    df.loc[~is_inside, (scorer, bp, 'x')] = np.nan
-    df.loc[~is_inside, (scorer, bp, 'y')] = np.nan
-    return df
-
-def process_kinematics(df, fps, px_per_cm):
-    df['x_smooth'] = savgol_filter(df['x'], 15, 3)
-    df['y_smooth'] = savgol_filter(df['y'], 15, 3)
-    dist_px = np.sqrt(df['x_smooth'].diff()**2 + df['y_smooth'].diff()**2)
-    df['speed_cm_s'] = (dist_px / px_per_cm) * fps
-    return df
-
-# ==========================================
 # MAIN EXECUTION
-# ==========================================
+
 print("Loading Data...")
 df_trials = pd.read_csv(TRIAL_INFO_PATH)
 df_dlc = pd.read_csv(DLC_DATA_PATH, header=[0, 1, 2], index_col=0)
@@ -115,24 +51,24 @@ tracking = tracking.interpolate().ffill().bfill()
 # 2. Boundary
 boundary_file = session_path + 'maze_boundary.csv'
 if not os.path.exists(boundary_file):
-    boundary_pts = select_maze_boundary(VIDEO_PATH)
+    boundary_pts = af.select_maze_boundary(VIDEO_PATH)
     pd.DataFrame(boundary_pts).to_csv(boundary_file, index=False)
 else:
     boundary_pts = pd.read_csv(boundary_file).values.tolist()
 
 temp_df = pd.DataFrame({(scorer, BODYPART, 'x'): tracking['x'], (scorer, BODYPART, 'y'): tracking['y']})
-temp_df = filter_by_boundary(temp_df, boundary_pts)
+temp_df = af.filter_by_boundary(temp_df, boundary_pts)
 tracking['x'] = temp_df[(scorer, BODYPART, 'x')]
 tracking['y'] = temp_df[(scorer, BODYPART, 'y')]
 
 # 3. Kinematics
-tracking = process_kinematics(tracking, FPS, PX_PER_CM)
+tracking = af.process_kinematics(tracking, FPS, PX_PER_CM)
 
 # 4. ROIs
 rois_file = session_path + "rois1.csv"
 roi_names = ["entrance1", "entrance2", "rewA", "rewB", "rewC", "rewD"]
 if not os.path.exists(rois_file):
-    rois = define_rois(VIDEO_PATH, roi_names)
+    rois = af.define_rois(VIDEO_PATH, roi_names)
     pd.DataFrame(rois).T.to_csv(rois_file)
 else:
     df_r = pd.read_csv(rois_file, index_col=0)
@@ -177,9 +113,9 @@ for idx, row in df_trials.iterrows():
 df_res = pd.DataFrame(data_points)
 df_res.to_csv(f"{OUTPUT_DIR}/gaussian_source_data.csv", index=False)
 
-# ==========================================
+
 # COMBINED GAUSSIAN PLOTTING FUNCTION
-# ==========================================
+
 def plot_combined_gaussian(df, filename):
     if df.empty: return
 

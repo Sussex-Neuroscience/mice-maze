@@ -12,6 +12,7 @@ from scipy.signal import savgol_filter
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import os
+from analysisfunc_config import Paths
 
 
 
@@ -84,7 +85,7 @@ def filter_by_boundary(df, boundary_points):
     df.loc[~is_inside, (scorer, bp, 'y')] = np.nan
     return df
 
-def process_kinematics(df, fps, px_per_cm = 7.5):
+def process_kinematics(df, fps, px_per_cm = Paths.PX_PER_CM):
     # smooth coordinates
     df['x_smooth'] = savgol_filter(df['x'], 15, 3)
     df['y_smooth'] = savgol_filter(df['y'], 15, 3)
@@ -219,7 +220,7 @@ def despine(ax):
     ax.spines['right'].set_visible(False)
     ax.tick_params(direction='out')
 
-def add_scale_bar(ax, px_per_cm, length_cm=10, location=(0.9, 0.05)):
+def add_scale_bar(ax, px_per_cm = Paths.PX_PER_CM, length_cm=10, location=(0.9, 0.05)):
     """Draws a physical scale bar on the heatmap."""
     bar_len_px = length_cm * px_per_cm
     # Get current limits to position relatively

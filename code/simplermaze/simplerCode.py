@@ -169,6 +169,13 @@ sf.write_data(file_name=os.path.join(new_dir_path,f"session_data_{date_time}.csv
               mode="w",
               data=data.head(n=0))
 
+# Create directory for video segments
+segments_dir = os.path.join(new_dir_path, "segments")
+sf.ensure_directory_exists(segments_dir)
+
+# Initialize global frame counter (tracks frames in the full video)
+global_frame_counter = 0
+
 # back_sub = cv.createBackgroundSubtractorMOG2()
 #create two windows to show the animal movement while in maze:
 cv.namedWindow('binary maze plus ROIs', cv.WINDOW_NORMAL)
@@ -244,6 +251,10 @@ for trial in trials.index:
     
     visited_any_rew_area_flag = False
     first_rew_area = "X"
+    first_rew_timestamp = None
+
+    #Initialise segment writer for this trial
+    segment_writer = None
     
     #quick and dirty method to grab more frames from the camera to see if there are any issues with
     #stabilization in the beginning:
@@ -262,6 +273,11 @@ for trial in trials.index:
         if not valid:
             print("Failed to read frame")
             continue
+
+
+        #Increment global frame counter
+        # This aligns CSV data exactly with the full recording
+        global_frame_counter += 1
         
         ## play around with the value after grayOriginal to set the threshold for the pixels
 
@@ -280,6 +296,10 @@ for trial in trials.index:
 
         if recordVideo:
             videoFileObject.write(grayOriginal)
+
+        # Write to Segment Writer if active 
+        if segment_writer is not None:
+            segment_writer.write(grayOriginal)
 
         
         #display rois on top of the frame for user feedback
@@ -325,7 +345,13 @@ for trial in trials.index:
                 if "rew" in item and not visited_any_rew_area_flag:
                     visited_any_rew_area_flag=True
                     first_rew_area = item
-                    data.loc[trial,"first_reward_area_visited"] = first_rew_area        
+                    data.loc[trial,"first_reward_area_visited"] = first_rew_area  
+
+                    # Calculate Entry -> First Reward time
+                    enter_time = data.loc[trial, "mouse_enter_time"]
+                    first_rew_timestamp = time_frame
+                    data.loc[trial, "time_to_first_reward"] = first_rew_timestamp - enter_time                    
+
                     if trials.rewlocation[trial] not in first_rew_area:
                         data.loc[trial,"incorrect"] = 1
                         print("early mistake detection")
@@ -389,18 +415,35 @@ for trial in trials.index:
                 e2Aftere1 = True
                 
 
-            
+        # CHECK MOUSE ENTRY (Start Segment) 
         if e2Aftere1 and enteredMaze==False:
             print("mouse has entered the maze")
             print("trial starting")
             data.loc[trial,"mouse_enter_time"]=time_frame
             enteredMaze = True
+
+            # save frame info 
+            data.loc[trial, "start_frame"] = global_frame_counter
+            # Save where the file WILL be after post-processing
+            seg_name = f"{animal_ID}_{session_ID}_trial_{trial}.mp4"
+            data.loc[trial, "video_segment_path"] = os.path.join(segments_dir, seg_name)
+
+
         if e1Aftere2:
             print("mouse has left the maze")
             trialOngoing=False
             data.loc[trial,"end_trial_time"]=time_frame
             #trialDurations.append((trial,time.time()-trialStartTime))
+
+            # SAVE END FRAME
+            data.loc[trial, "end_frame"] = global_frame_counter
+
+            #Calculate First Reward -> Exit time
+            if first_rew_timestamp is not None:
+                data.loc[trial, "first_rew_to_exit"] = time_frame - first_rew_timestamp
+
             enteredMaze = False
+            
             if not rewarded:
                 if not mistake:
                     data.loc[trial,"miss"] = 1

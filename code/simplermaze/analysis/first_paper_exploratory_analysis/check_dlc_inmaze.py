@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import os
 import cv2 as cv
+from analysisfunc_config import Paths
 
 
 
@@ -11,11 +12,10 @@ import cv2 as cv
 
 # FILE PATHS
 
-base_path = r"C:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/"
+base_path = Paths.base_path
 
-session_path = base_path+ r"2024-08-28_11_58_146357session3.6/"
-DLC_DATA_PATH = base_path + r"deeplabcut/mouse6357/mouse6357-shahd-2025-09-08/videos/6357_2024-08-28_11_58_14s3.6DLC_Resnet50_mouse6357Sep8shuffle1_snapshot_200.csv"
-
+session_path = Paths.session_path
+DLC_DATA_PATH = Paths.DLC_DATA_PATH
 BOUNDARY_CSV = session_path+ 'maze_boundary.csv'
 ROIS_CSV = session_path+"rois1.csv"
 

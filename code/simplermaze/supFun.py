@@ -278,7 +278,7 @@ def empty_frame(rows=300,roi_names=["entrance1","entrance2","rewA","rewB","rewC"
     
 
     columns = ["hit","miss","incorrect","rew_location","area_rewarded","time_to_reward",
-           "trial_start_time","end_trial_time","mouse_enter_time","first_reward_area_visited"]+roi_names
+           "trial_start_time","end_trial_time","mouse_enter_time","first_reward_area_visited", "time_to_first_reward", "first_rew_to_exit", "video_segment_path", "start_frame", "end_frame"]+roi_names
     data = pd.DataFrame(None, index=range(rows), columns=columns)
     return data
     
