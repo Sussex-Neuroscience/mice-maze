@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import os
+import matplotlib.patches as patches
 
 
 # CONFIGURATION
@@ -99,6 +100,11 @@ def define_rois(video_path, roi_names):
         cv.putText(display_frame, name, (r[0], r[1]-5), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
         cv.imshow("Select ROIs", display_frame)
         
+        # Draw on display frame
+        x, y, w, h = roi
+        cv.rectangle(display_frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        cv.putText(display_frame, name, (x, y-10), cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
     cv.destroyAllWindows()
     return rois
 
