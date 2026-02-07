@@ -5,6 +5,7 @@ from matplotlib.path import Path
 import os
 import cv2 as cv
 from analysisfunc_config import Paths
+import analysisfunct as af
 
 
 
@@ -18,10 +19,33 @@ session_path = Paths.session_path
 DLC_DATA_PATH = Paths.DLC_DATA_PATH
 BOUNDARY_CSV = session_path+ 'maze_boundary.csv'
 ROIS_CSV = session_path+"rois1.csv"
+VIDEO_PATH = Paths.VIDEO_PATH
+DRAW_BOUNDARIES = False
+DRAW_ROIS = False
 
 # SETTINGS
 BODYPART = 'mid'          # Body part to check
-LIKELIHOOD_THRESH = 0.5
+LIKELIHOOD_THRESH = 0.7
+
+# 2. Boundary Filter
+if DRAW_BOUNDARIES:
+    boundary_pts = af.select_maze_boundary(VIDEO_PATH)
+    pd.DataFrame(boundary_pts).to_csv(session_path+ 'maze_boundary.csv', index=False)
+elif os.path.exists(session_path+'maze_boundary.csv'):
+    boundary_pts = pd.read_csv(session_path+'maze_boundary.csv').values.tolist()
+else:
+    print("Set DRAW_BOUNDARIES=True"); exit()
+
+# 4. ROIs
+roi_names = ["entrance1", "entrance2", "rewA", "rewB", "rewC", "rewD"]
+if DRAW_ROIS:
+    rois = af.define_rois(VIDEO_PATH, roi_names)
+    pd.DataFrame(rois).T.to_csv(session_path+"rois1.csv")
+elif os.path.exists(session_path+"rois1.csv"):
+    df_r = pd.read_csv(session_path+"rois1.csv", index_col=0)
+    rois = {name: tuple(row) for name, row in df_r.iterrows()}
+else:
+    print("Set DRAW_ROIS=True"); exit()
 
 
 
