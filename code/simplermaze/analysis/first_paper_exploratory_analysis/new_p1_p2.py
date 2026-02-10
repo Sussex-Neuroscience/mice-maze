@@ -144,7 +144,7 @@ for idx, row in df_trials.iterrows():
     # Store full trace (P1 and P2 combined)
     aligned_traces.append(pd.DataFrame({
         'Relative_Time': time_relative,
-        'Speed': trial_data['speed'].values,
+        'Speed': trial_data['speed_cm_s'].values,
         'Trial': f"Trial {idx}",
         'Status': status_label
     }))
