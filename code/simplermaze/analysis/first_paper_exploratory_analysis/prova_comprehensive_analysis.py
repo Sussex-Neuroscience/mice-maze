@@ -75,6 +75,14 @@ for idx, row in df_trials.iterrows():
         
         # 2. Precise slicing using .loc
         trial_data = tracking.loc[f_start:f_end].copy()
+
+        # Find frames where the AI actually sees the animal
+        is_visible = trial_data['likelihood'] >= Paths.LIKELIHOOD_THRESH
+        if is_visible.any():
+            first_visible_idx = is_visible.idxmax() # Gets the first 'True' index
+            trial_data = trial_data.loc[first_visible_idx:]
+
+        
         if len(trial_data) < 1: 
             continue
 
