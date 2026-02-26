@@ -1,7 +1,7 @@
 import cv2 as cv
 import pandas as pd
 from pathlib import Path
-from common import (
+from segfuncs import (
     BASE_DIR, REF_ROIS_FILE, ROI_NAMES, PYR_SCALE,
     get_video_csv_pairs, grab_first_frame, load_rois, 
     save_rois_csv, overlay_rois, auto_rois_from_reference

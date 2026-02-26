@@ -25,6 +25,7 @@ GENERATE_HEATMAPS     = True   # Save individual trial density maps
 
 # 2. SETUP & DATA PREPARATION
 
+
 print("Initializing Consolidated Master Pipeline...")
 FPS = Paths.FPS
 OUTPUT_DIR = os.path.join(Paths.session_path, "total_analysis_output")
@@ -55,14 +56,13 @@ print("Processing trials. Extracting Trial IDs from video_segment_path...")
 
 for idx, row in df_trials.iterrows():
     try:
-        # 1. Extract Trial ID from path (e.g., '...trial040.mp4' -> '040')
-        # We use str() to safely handle the path and slice the specific characters
-        path_str = str(row['video_segment_path'])
+        # 1. Extract Trial ID
+        path_str = str(row['video_path'])
         current_trial_id = path_str[-7:-4] 
         
-        f_start, f_end = int(row['start_frame']), int(row['end_frame'])
+        f_start, f_end = int(row['start_trial_frame']), int(row['end_trial_frame'])
         
-        # Type safety for targets to prevent 'float' errors
+        # Type safety for targets
         target_val = row['first_reward_area_visited']
         target = str(target_val).strip() if pd.notna(target_val) else "Unknown"
         status = "Hit" if (row['hit'] == 1) else "Miss"
@@ -81,7 +81,6 @@ for idx, row in df_trials.iterrows():
         if is_visible.any():
             first_visible_idx = is_visible.idxmax() # Gets the first 'True' index
             trial_data = trial_data.loc[first_visible_idx:]
-
         
         if len(trial_data) < 1: 
             continue
@@ -104,14 +103,53 @@ for idx, row in df_trials.iterrows():
         p1 = trial_data.iloc[:split_idx]
         p2 = trial_data.iloc[split_idx:]
         
+        # Calculate Initial P1 Metrics
+        p1_duration_s = len(p1) / FPS
+        p1_mean_speed = p1['speed'].mean() if not p1.empty else 0
+        p1_entropy = af.get_entropy(p1['x_smooth'], p1['y_smooth']) if not p1.empty else 0
+        
+        # --- MODIFICATION 1: Skip 'Miss' trials ONLY if speed is 0 ---
+        if status == "Miss" and p1_mean_speed == 0:
+            continue
+        # -------------------------------------------------------------
+
+        # --- MODIFICATION 2: Recalculate Speed using 'time_to_reward' for Hits ---
+        if status == "Hit" and p1_mean_speed == 0:
+            time_to_reward_ms = row.get('time_to_reward', pd.NA) 
+            
+            # Ensure we have a valid time value greater than 0
+            if pd.notna(time_to_reward_ms) and float(time_to_reward_ms) > 0:
+                time_s = float(time_to_reward_ms) / 1000.0  # Convert ms to seconds
+                
+                # We need at least one frame of tracking to know where the mouse started
+                if not trial_data.empty:
+                    # Get coordinates when the mouse is FIRST seen in the video
+                    start_x = trial_data.iloc[0]['x_smooth']
+                    start_y = trial_data.iloc[0]['y_smooth']
+                    
+                    # Get the center coordinates of the target ROI
+                    roi_center_x = rx + (rw / 2)
+                    roi_center_y = ry + (rh / 2)
+                    
+                    # Calculate straight-line distance in pixels
+                    dist_px = np.sqrt((roi_center_x - start_x)**2 + (roi_center_y - start_y)**2)
+                    
+                    # Convert pixels to cm using your existing config, then calculate speed
+                    dist_cm = dist_px / Paths.PX_PER_CM
+                    
+                    # Overwrite the missing p1 metrics
+                    p1_mean_speed = dist_cm / time_s
+                    p1_duration_s = time_s  
+        # -------------------------------------------------------------------------
+
         # 4. Append Results
         master_results.append({
-            'trial_id': current_trial_id, # String ID from path
+            'trial_id': current_trial_id, 
             'status': status, 
             'target': target,
-            'p1_duration_s': len(p1) / FPS, 
-            'p1_mean_speed': p1['speed'].mean() if not p1.empty else 0,
-            'p1_entropy': af.get_entropy(p1['x_smooth'], p1['y_smooth']) if not p1.empty else 0,
+            'p1_duration_s': p1_duration_s, 
+            'p1_mean_speed': p1_mean_speed,
+            'p1_entropy': p1_entropy,
             'p2_duration_s': len(p2) / FPS, 
             'p2_mean_speed': p2['speed'].mean() if not p2.empty else 0,
             'p2_entropy': af.get_entropy(p2['x_smooth'], p2['y_smooth']) if not p2.empty else 0
@@ -188,14 +226,111 @@ if GENERATE_HEATMAPS:
     print("Generating High-Resolution Heatmaps...")
     heatmap_dir = os.path.join(OUTPUT_DIR, "trial_heatmaps")
     if not os.path.exists(heatmap_dir): os.makedirs(heatmap_dir)
+    
+    # Load boundaries for clipping
     boundary_pts = pd.read_csv(os.path.join(Paths.session_path, 'maze_boundary.csv')).values.tolist()
     bx, by = zip(*boundary_pts)
+    xmin, xmax = min(bx), max(bx)
+    ymin, ymax = min(by), max(by)
 
     for idx, row in df_trials.iterrows():
         try:
-            # ... (Heatmap code logic remains exactly as your preferred version)
-            plt.savefig(os.path.join(heatmap_dir, f"trial_{idx}_heatmap.png"), bbox_inches='tight', facecolor='black', dpi=150)
+            # --- 1. PREPARE DATA ---
+            trial_data = tracking.loc[int(row["start_trial_frame"]):int(row["end_trial_frame"])].copy()
+            
+            # Re-calculate these for the label
+            target_val = row['first_reward_area_visited']
+            target = str(target_val).strip() if pd.notna(target_val) else "Unknown"
+            status_label = "Hit" if (row['hit'] == 1) else "Miss"
+            
+            # Coordinate check (CM vs Pixel fix)
+            x_plot = trial_data['x_smooth'].values
+            y_plot = trial_data['y_smooth'].values
+            
+            if len(x_plot) > 0 and x_plot.max() < (xmax / 10): 
+                x_plot *= Paths.PX_PER_CM
+                y_plot *= Paths.PX_PER_CM
+
+            # Filter NaNs
+            valid_mask = ~np.isnan(x_plot) & ~np.isnan(y_plot)
+            x_plot, y_plot = x_plot[valid_mask], y_plot[valid_mask]
+
+            if len(x_plot) < 5: 
+                print(f"Skipping heatmap {idx}: No valid tracking points.")
+                continue
+
+            # --- 2. ADVANCED PLOTTING ---
+            fig, ax = plt.subplots(figsize=(6, 6), facecolor='black')
+            ax.set_facecolor('black') 
+            
+            # A. The Clipped Heatmap
+            if len(x_plot) > 1:
+                # Create the histogram
+                counts, xedges, yedges, image = ax.hist2d(x_plot, y_plot, bins=30, cmap='inferno', norm=LogNorm())
+                
+                # Clip it to the maze shape
+                clip_patch = patches.Polygon(boundary_pts, closed=True, transform=ax.transData, facecolor='none', edgecolor='none') 
+                ax.add_patch(clip_patch)
+                image.set_clip_path(clip_patch)
+                
+                # Draw the white outline of the maze
+                draw_patch = patches.Polygon(boundary_pts, closed=True, transform=ax.transData, facecolor='none', edgecolor='white', linewidth=2)
+                ax.add_patch(draw_patch)
+                
+                # Custom Colorbar
+                cbar = plt.colorbar(image, ax=ax, label='Density')
+                cbar.ax.yaxis.set_tick_params(color='white')
+                cbar.outline.set_edgecolor('white')
+                plt.setp(plt.getp(cbar.ax.axes, 'yticklabels'), color='white')
+                plt.setp(cbar.ax.yaxis.label, color='white')
+            
+                # B. ROI Visualization
+                # Green box = Where they actually visited
+            if 'reward_area' in row and pd.notna(row['reward_area']):
+                    correct_target = str(row['reward_area']).strip()
+                    
+                    if correct_target in rois:
+                        crx, cry, crw, crh = rois[correct_target]
+                        # Draw dashed cyan box
+                        rect_correct = patches.Rectangle((crx, cry), crw, crh, linewidth=2, 
+                                                        edgecolor='cyan', facecolor='none', linestyle='--')
+                        ax.add_patch(rect_correct)
+                        # Label it
+                        ax.text(crx, cry-25, f"GOAL: {correct_target}", color='cyan', fontsize=8, fontweight='bold')
+
+                # 2. Plot the "VISITED" (Lime Solid Box)
+            if target in rois:
+                rx, ry, rw, rh = rois[target]
+                
+                # Logic: If Hit, the boxes overlap. If Miss, they are separate.
+                if status_label == "Hit":
+                    # Just emphasize the hit
+                    rect_visit = patches.Rectangle((rx, ry), rw, rh, linewidth=2, 
+                                                edgecolor='lime', facecolor='none')
+                    ax.add_patch(rect_visit)
+                    ax.text(rx, ry-10, "HIT!", color='lime', fontsize=10, fontweight='bold')
+                
+                else:
+                    # It's a Miss - Draw the error box
+                    rect_visit = patches.Rectangle((rx, ry), rw, rh, linewidth=2, 
+                                                edgecolor='red', facecolor='none') # Red for error? or Lime?
+                    ax.add_patch(rect_visit)
+                    ax.text(rx, ry-10, f"Visited: {target}", color='red', fontsize=8, fontweight='bold')
+        
+            # C. Final Polish
+            ax.set_xlim(xmin-10, xmax+10)
+            ax.set_ylim(ymin-10, ymax+10)
+            ax.invert_yaxis() # Fix upside-down issue
+            ax.set_aspect('equal')
+            ax.axis('off')
+            ax.set_title(f"Trial {idx} ({status_label})", color='white')
+
+            fig.savefig(os.path.join(heatmap_dir, f"trial_{idx}_heatmap_{status_label}.png"), bbox_inches='tight', facecolor='black', dpi=150)
+            plt.close(fig)
+
+        except Exception as e:
+            print(f"Heatmap Error at trial {idx}: {e}")
             plt.close()
-        except: continue
+            continue
 
 print(f"Analysis Complete. Results in: {OUTPUT_DIR}")

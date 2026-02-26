@@ -178,7 +178,7 @@ def main():
         print(f"Segmenting: {vp.name}")
         
         # 1. Clean old segments
-        out_dir = vp.parent / "segments"
+        out_dir = vp.parent / "segments_from_dlc"
         if out_dir.exists():
             for f in out_dir.glob(f"{vp.stem}_trial_*.mp4"):
                 try: f.unlink()

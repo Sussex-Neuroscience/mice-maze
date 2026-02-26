@@ -8,7 +8,7 @@ import os
 @dataclass
 
 class Paths: 
-    session = "3.6"
+    session = "3.8"
     base_path:str = r"c:/Users/shahd/Box/Awake Project/Maze data/simplermaze/mouse 6357/"
 
 
