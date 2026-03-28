@@ -70,6 +70,7 @@ def get_background_frame():
         print("Warning: Failed to capture the specific frame.")
         return None
 def main():
+
     print("Loading Maze Architecture...")
     
     # Load your existing structural files
@@ -84,58 +85,57 @@ def main():
     path_distances_cm = {}
 
     for roi_name, (rx, ry, rw, rh) in rois.items():
-        if roi_name is not "entrance1" or roi_name is not "entrance2":
-            fig, ax = plt.subplots(figsize=(12, 10))
+        fig, ax = plt.subplots(figsize=(12, 10))
+        
+        # --- MODIFIED: Updated instructions for keyboard users ---
+        ax.set_title(f"Draw true path for {roi_name}\n"
+                     f"Left Click: Add point | Backspace: Undo | Enter: Finish", 
+                     fontsize=12, fontweight='bold')
+        # ---------------------------------------------------------
+        
+        # 1. Plot the Video Frame as the Background
+        if bg_frame is not None:
+            ax.imshow(bg_frame)
+        else:
+            ax.set_aspect('equal')
+            ax.invert_yaxis() 
             
-            # --- MODIFIED: Updated instructions for keyboard users ---
-            ax.set_title(f"Draw true path for {roi_name}\n"
-                        f"Left Click: Add point | Backspace: Undo | Enter: Finish", 
-                        fontsize=12, fontweight='bold')
-            # ---------------------------------------------------------
-            
-            # 1. Plot the Video Frame as the Background
-            if bg_frame is not None:
-                ax.imshow(bg_frame)
-            else:
-                ax.set_aspect('equal')
-                ax.invert_yaxis() 
-                
-            # 2. Draw the Maze Boundary
-            maze_patch = Polygon(boundary_pts, closed=True, fill=False, edgecolor='cyan', linewidth=2, linestyle='--')
-            ax.add_patch(maze_patch)
-            
-            # 3. Draw all ROIs
-            for name, (x, y, w, h) in rois.items():
-                color = 'red' if name == roi_name else 'yellow'
-                rect = Rectangle((x, y), w, h, fill=False, edgecolor=color, linewidth=2)
-                ax.add_patch(rect)
-                ax.text(x, y-5, name, color=color, fontsize=12, fontweight='bold', backgroundcolor='black')
+        # 2. Draw the Maze Boundary
+        maze_patch = Polygon(boundary_pts, closed=True, fill=False, edgecolor='cyan', linewidth=2, linestyle='--')
+        ax.add_patch(maze_patch)
+        
+        # 3. Draw all ROIs
+        for name, (x, y, w, h) in rois.items():
+            color = 'red' if name == roi_name else 'yellow'
+            rect = Rectangle((x, y), w, h, fill=False, edgecolor=color, linewidth=2)
+            ax.add_patch(rect)
+            ax.text(x, y-5, name, color=color, fontsize=12, fontweight='bold', backgroundcolor='black')
 
-            plt.axis('off')
-            plt.tight_layout()
-            
-            # 4. Interactive Point Collection
-            print(f"\n--- Defining path for {roi_name} ---")
-            print("Click the entrance first, then click along the corridors, ending inside the ROI.")
-            print("Press the ENTER key when you are done.") # Updated print statement
-            
-            # ginput handles the clicking interface natively with Backspace/Enter
-            points = plt.ginput(n=-1, timeout=0, show_clicks=True) 
-            plt.close(fig)
+        plt.axis('off')
+        plt.tight_layout()
+        
+        # 4. Interactive Point Collection
+        print(f"\n--- Defining path for {roi_name} ---")
+        print("Click the entrance first, then click along the corridors, ending inside the ROI.")
+        print("Press the ENTER key when you are done.") # Updated print statement
+        
+        # ginput handles the clicking interface natively with Backspace/Enter
+        points = plt.ginput(n=-1, timeout=0, show_clicks=True) 
+        plt.close(fig)
 
-            # 5. Math & Storage
-            if len(points) > 1:
-                dist_cm = calculate_path_distance(points)
-                path_distances_cm[roi_name] = dist_cm
-                print(f"Success! True path distance for {roi_name}: {dist_cm:.2f} cm")
-            else:
-                print(f"Warning: Not enough points clicked for {roi_name}. Defaulting to 0.")
-                path_distances_cm[roi_name] = 0.0
+        # 5. Math & Storage
+        if len(points) > 1:
+            dist_cm = calculate_path_distance(points)
+            path_distances_cm[roi_name] = dist_cm
+            print(f"Success! True path distance for {roi_name}: {dist_cm:.2f} cm")
+        else:
+            print(f"Warning: Not enough points clicked for {roi_name}. Defaulting to 0.")
+            path_distances_cm[roi_name] = 0.0
 
-        # 6. Save the data to be used by the main script
-        output_file = os.path.join(SESSION_PATH, "true_path_distances.json")
-        with open(output_file, 'w') as f:
-            json.dump(path_distances_cm, f, indent=4)
+    # 6. Save the data to be used by the main script
+    output_file = os.path.join(SESSION_PATH, "true_path_distances.json")
+    with open(output_file, 'w') as f:
+        json.dump(path_distances_cm, f, indent=4)
     
     print(f"\nAll distances calibrated and saved to {output_file}!")
 if __name__ == "__main__":

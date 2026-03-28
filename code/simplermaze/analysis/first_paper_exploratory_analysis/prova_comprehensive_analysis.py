@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+import json # <-- Added to load the calibration file
 import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.patches as patches
@@ -47,6 +48,16 @@ tracking = af.process_kinematics(tracking, FPS, Paths.PX_PER_CM)
 df_r = pd.read_csv(os.path.join(Paths.session_path, "rois1.csv"), index_col=0)
 rois = {name: tuple(row) for name, row in df_r.iterrows()}
 
+# --- NEW: Load Calibrated Path Distances ---
+try:
+    path_json = os.path.join(Paths.session_path, "true_path_distances.json")
+    with open(path_json, 'r') as f:
+        true_distances_cm = json.load(f)
+    print("Successfully loaded calibrated path distances.")
+except FileNotFoundError:
+    print("WARNING: true_path_distances.json not found. Falling back to 0 for missing data.")
+    true_distances_cm = {}
+# ------------------------------------------
 
 # 3. LENIENT UNIFIED PROCESSING LOOP (STRING-SLICE TRIAL IDS)
 master_results = []
@@ -111,9 +122,9 @@ for idx, row in df_trials.iterrows():
         # --- MODIFICATION 1: Skip 'Miss' trials ONLY if speed is 0 ---
         if status == "Miss" and p1_mean_speed == 0:
             continue
-        # -------------------------------------------------------------
+        # 
 
-        # --- MODIFICATION 2: Recalculate Speed using 'time_to_reward' for Hits ---
+        # --- MODIFICATION 2: Recalculate Speed using Calibrated Distances ---
         if status == "Hit" and p1_mean_speed == 0:
             time_to_reward_ms = row.get('time_to_reward', pd.NA) 
             
@@ -121,26 +132,19 @@ for idx, row in df_trials.iterrows():
             if pd.notna(time_to_reward_ms) and float(time_to_reward_ms) > 0:
                 time_s = float(time_to_reward_ms) / 1000.0  # Convert ms to seconds
                 
-                # We need at least one frame of tracking to know where the mouse started
-                if not trial_data.empty:
-                    # Get coordinates when the mouse is FIRST seen in the video
-                    start_x = trial_data.iloc[0]['x_smooth']
-                    start_y = trial_data.iloc[0]['y_smooth']
-                    
-                    # Get the center coordinates of the target ROI
-                    roi_center_x = rx + (rw / 2)
-                    roi_center_y = ry + (rh / 2)
-                    
-                    # Calculate straight-line distance in pixels
-                    dist_px = np.sqrt((roi_center_x - start_x)**2 + (roi_center_y - start_y)**2)
-                    
-                    # Convert pixels to cm using your existing config, then calculate speed
-                    dist_cm = dist_px / Paths.PX_PER_CM
-                    
+                # Fetch the exact physical distance you drew for this specific target
+                dist_cm = true_distances_cm.get(target, 0)
+                
+                if dist_cm > 0:
                     # Overwrite the missing p1 metrics
                     p1_mean_speed = dist_cm / time_s
                     p1_duration_s = time_s  
-        # -------------------------------------------------------------------------
+
+                    # set entropy to NaN so that it doesn't bias the results
+                    p1_entropy = np.nan
+                else:
+                    print(f"  Warning: No true distance found for {target} in trial {current_trial_id}")
+        # -------
 
         # 4. Append Results
         master_results.append({

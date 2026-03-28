@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.stats import norm, mannwhitneyu
 from analysisfunc_config import Paths
+import statsmodels.formula.api as smf
 
 #  1. CONFIGURATION 
 MOUSE_BASE_PATH = Paths.base_path 
@@ -117,10 +118,10 @@ if RUN_GAUSSIAN_DURATION:
     plot_pooled_gaussians(df_total, 'duration_s', 'Duration', 's', 'global_duration_gaussians.html')
 
 #  4. STATISTICAL TESTS 
+#  4. STATISTICAL TESTS (Dual Test with Fixed Indexing)
 if RUN_STATISTICAL_TESTS:
-    print("Running Global Statistics including Speed...")
+    print("Running Global Dual-Stats Analysis...")
     
-    # These names must match the Unified names in the rename_map above
     metrics = ['p1_duration_s', 'p1_mean_speed', 'p1_entropy', 
                'p2_duration_s', 'p2_mean_speed', 'p2_entropy']
     
@@ -130,31 +131,50 @@ if RUN_STATISTICAL_TESTS:
     
     for i, m in enumerate(metrics):
         if m not in df_total.columns: 
-            print(f"Warning: Metric '{m}' not in data.")
             continue
         
-        # Plotting distributions with jittered raw points
-        sns.boxplot(data=df_total, x='status', y=m, ax=axes[i], 
-                    palette={'Hit': 'green', 'Miss': 'red'}, hue='status', legend=False)
+        # --- FIX: Subset the data to remove NaNs for this specific metric ---
+        # This ensures the 'groups' and 'data' are perfectly aligned for the LMM
+        clean_df = df_total[['status', 'session_id', m]].dropna()
+        
+        # 1. VISUALIZATION
+        sns.violinplot(data=df_total, x='status', y=m, ax=axes[i], 
+                       palette={'Hit': 'green', 'Miss': 'red'}, hue='status', 
+                       inner="quart", split=True, alpha=0.4)
         sns.stripplot(data=df_total, x='status', y=m, ax=axes[i], color='black', alpha=0.3)
         
-        # Statistical Comparison (Mann-Whitney U)
-        h = df_total[df_total['status'] == 'Hit'][m].dropna()
-        ms = df_total[df_total['status'] == 'Miss'][m].dropna()
-        
+        # 2. TEST A: Mann-Whitney U
+        h = clean_df[clean_df['status'] == 'Hit'][m]
+        ms = clean_df[clean_df['status'] == 'Miss'][m]
+        p_mwu = np.nan
         if not h.empty and not ms.empty:
-            stat, p = mannwhitneyu(h, ms)
-            # Define significance level stars
-            sig = "NS" if p >= 0.05 else ("*" if p < 0.05 else "**" if p < 0.01 else "***")
-            if p < 0.001: sig = "***"
-            
-            axes[i].set_title(f"{m}\np={p:.4f} ({sig})")
-            stats_summary.append({'Metric': m, 'p-value': p, 'significance': sig})
+            _, p_mwu = mannwhitneyu(h, ms)
+
+        # 3. TEST B: Linear Mixed-Effects Model (LMM)
+        p_lmm = np.nan
+        if len(clean_df['session_id'].unique()) > 1: # Model needs >1 session to run
+            try:
+                # Use clean_df to ensure indexing matches size
+                model = smf.mixedlm(f"{m} ~ status", clean_df, groups=clean_df["session_id"])
+                result = model.fit()
+                p_lmm = result.pvalues["status[T.Miss]"]
+            except Exception as e:
+                print(f"  LMM failed for {m}: {e}")
+        else:
+            print(f"  Skipping LMM for {m}: Not enough sessions with valid data.")
+
+        # 4. ANNOTATION
+        sig_mwu = "*" if p_mwu < 0.05 else "NS"
+        sig_lmm = "*" if p_lmm < 0.05 else "NS"
+        
+        axes[i].set_title(f"{m}\nMWU p={p_mwu:.3f} ({sig_mwu})\nLMM p={p_lmm:.3f} ({sig_lmm})", fontsize=10)
+        
+        stats_summary.append({
+            'Metric': m, 'MWU_p': p_mwu, 'LMM_p': p_lmm, 'LMM_Significant': sig_lmm
+        })
 
     plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, "global_pooled_stats.png"))
-    
-    # Save a specific report for the p-values
+    plt.savefig(os.path.join(OUTPUT_DIR, "global_pooled_dual_stats.png"))
     pd.DataFrame(stats_summary).to_csv(os.path.join(OUTPUT_DIR, "global_stats_report.csv"), index=False)
 
 print(f"Done! All pooled files saved in: {OUTPUT_DIR}")
