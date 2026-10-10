@@ -148,6 +148,36 @@ def aligned(z, fs, t_entry, visit_s, pre, post_max):
 
 # -- statistics --------------------------------------------------------
 
+def preference_indices(v, say):
+    """The thesis preference index for these mice, and visit length by class.
+
+    Per session, from the sound-block visits: vocalisation and synthetic sound
+    each against the silent arm, and vocalisation against synthetic directly,
+    which needs both in the same blocks (every day but the vocalisation day).
+    """
+    def pi(a, b):
+        return (a - b) / (a + b) if np.isfinite(a) and np.isfinite(b) else np.nan
+
+    sb = v[v["trial_ID"] % 2 == 0]
+    rows = []
+    for (day, mouse), g in sb.groupby(["day", "mouse"]):
+        m = g.groupby("cls")["visit_s"].mean()
+        voc, syn, sil = (m.get(c, np.nan) for c in
+                         ("vocalisation", "synthetic sound", "silent arm"))
+        rows.append({"session": f"{mouse} {day}", "voc_vs_silent": pi(voc, sil),
+                     "synth_vs_silent": pi(syn, sil), "voc_vs_synth": pi(voc, syn)})
+    say("\n--- preference indices (mean visit length, (a - b) / (a + b)), per session")
+    say(pd.DataFrame(rows).round(3).to_string(index=False))
+
+    both = sb[(sb["day"] != "vocalisations") & sb["cls"].isin(["vocalisation", "synthetic sound"])]
+    both = both.assign(log2_len=np.log2(both["visit_s"]))
+    m = smf.mixedlm("log2_len ~ C(cls, Treatment('synthetic sound'))", both,
+                    groups=both["session"]).fit()
+    say("\n--- visit length, vocalisation against synthetic sound in the same blocks "
+        "(days other than the vocalisation day): log2(length) ~ class + (1 | session)")
+    say(m.summary().tables[1].to_string())
+
+
 def run_stats(v, out_path):
     lines = []
 
@@ -190,6 +220,14 @@ def run_stats(v, out_path):
             p = wilcoxon(g["during"], g["before"]).pvalue
             say(f"  {s:42s} n={len(g):3d}  before {g['before'].mean():+.3f}  "
                 f"during {g['during'].mean():+.3f}  p={p:.3f}")
+
+    say("\n--- the same entry change with synthetic sound as the reference: vocalisation "
+        "against synthetic directly")
+    m = smf.mixedlm("entry_change ~ C(cls, Treatment('synthetic sound')) + log2_len",
+                    ok, groups=ok["session"]).fit(reml=True)
+    say(m.summary().tables[1].to_string())
+
+    preference_indices(v, say)
 
     lv = v.dropna(subset=["first_2s", "last_2s"]) if "first_2s" in v else pd.DataFrame()
     if len(lv):
