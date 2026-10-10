@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+"""Two measures of how complex a stimulus is, beyond sound against silence.
+
+Spectral complexity: how widely the sound's energy is spread across frequency.
+    The spectral entropy of its power spectrum over everything the sound card
+    can produce, 0 to 96 kHz, normalised so that 0 is all the energy in one
+    frequency bin and 1 is energy spread evenly over every bin. A pure tone is
+    low, about 0.10 whatever its frequency (the floor set by the analysis
+    window); two tones sit higher; a vocalisation or noise much higher. The
+    band is the whole spectrum rather than the range mice hear because a band
+    edge cuts a tone near it in half: a 1 kHz tone measured from 1 kHz reads
+    0.03 instead of 0.10. It says nothing about order in time: ABAB and a
+    random sequence of the same tones have nearly the same spectrum.
+
+Temporal complexity: how long the sound runs before it repeats, counted in
+    its own elementary units and given in bits (log2 of that count). It is
+    how much of the sound must be held in memory to predict the rest of it
+    exactly.
+
+        pure tone             repeats every cycle                  0 bits
+        interval p/q          repeats every q cycles of the        log2 q
+                              lower tone (relative periodicity,
+                              Stolzenburg 2015)
+        sequence              repeats every pattern length,        log2 of the
+                              counted in slots                     period
+        random sequence       does not repeat within the stimulus  log2 of its
+                                                                   length
+
+    For intervals this is the periodicity account of consonance: the simple
+    ratios that sound consonant repeat quickly (a fifth, 3/2, every 2 cycles)
+    and the dissonant ones slowly (a tritone, 64/45, every 45).
+
+The spectral measure is computed from the waveform, synthesised here with
+equal amplitudes for every tone, which is the sound at the animal's ear if the
+speaker correction did its job. The temporal measure is exact, from the
+stimulus's definition.
+
+    python analysis/auditory/stimulus_complexity.py     prints a worked table
+"""
+
+from __future__ import annotations
+
+import math
+from fractions import Fraction
+from typing import Dict, List, Optional, Sequence
+
+import numpy as np
+from scipy.signal import welch
+
+FS = 192000
+BAND_HZ = (0.0, FS / 2)
+RAMP_S = 0.004
+
+# The intervals as they were played (just intonation). The tritone was played
+# as 64/45 although the code labelled it 45/32.
+RATIOS: Dict[str, Fraction] = {
+    "unison": Fraction(1, 1), "min_2": Fraction(16, 15), "maj_2": Fraction(9, 8),
+    "min_3": Fraction(6, 5), "maj_3": Fraction(5, 4), "perf_4": Fraction(4, 3),
+    "tritone": Fraction(64, 45), "perf_5": Fraction(3, 2), "min_6": Fraction(8, 5),
+    "maj_6": Fraction(5, 3), "min_7": Fraction(16, 9), "maj_7": Fraction(15, 8),
+    "octave": Fraction(2, 1),
+}
+CONSONANT = {"unison", "min_3", "maj_3", "perf_4", "perf_5", "min_6", "maj_6", "octave"}
+DISSONANT = {"min_2", "maj_2", "tritone", "min_7", "maj_7"}
+
+
+# -- synthesis ----------------------------------------------------------------
+def _ramped(n: int) -> np.ndarray:
+    env = np.ones(n)
+    r = min(int(RAMP_S * FS), n // 2)
+    if r:
+        ramp = np.sin(0.5 * np.pi * np.linspace(0, 1, r)) ** 2
+        env[:r] = ramp
+        env[-r:] = ramp[::-1]
+    return env
+
+
+def tones(freqs_hz: Sequence[float], duration_s: float = 1.0) -> np.ndarray:
+    """Equal-amplitude sines sounding together, with onset and offset ramps."""
+    t = np.arange(int(duration_s * FS)) / FS
+    w = sum(np.sin(2 * np.pi * f * t) for f in freqs_hz if f > 0)
+    if np.isscalar(w):
+        return np.zeros_like(t)
+    return w * _ramped(len(t)) / max(1, len([f for f in freqs_hz if f > 0]))
+
+
+def sequence_wave(symbols: str, tone_of: Dict[str, float], slot_s: float = 0.04) -> np.ndarray:
+    """A sequence of slots, each a ramped tone, or silence for 'o'."""
+    pieces = [tones([tone_of[s]], slot_s) if s in tone_of else np.zeros(int(slot_s * FS))
+              for s in symbols]
+    return np.concatenate(pieces)
+
+
+# -- spectral complexity ------------------------------------------------------------
+def spectral_entropy(wave: np.ndarray, band=BAND_HZ) -> float:
+    """Normalised spectral entropy, 0 (one frequency) to 1 (flat), over band."""
+    if not np.any(wave):
+        return float("nan")
+    f, p = welch(wave, fs=FS, nperseg=8192)
+    keep = (f >= band[0]) & (f <= band[1])
+    p = p[keep]
+    total = p.sum()
+    if total <= 0:
+        return float("nan")
+    p = p / total
+    nz = p[p > 0]
+    return float(-(nz * np.log2(nz)).sum() / np.log2(len(p)))
+
+
+# -- temporal complexity --------------------------------------------------------------
+def interval_periodicity_bits(name: str) -> float:
+    """log2 of the cycles of the lower tone before a dyad repeats."""
+    return math.log2(RATIOS[name].denominator)
+
+
+def pattern_period(symbols: str) -> Optional[int]:
+    """The shortest unit a symbol string repeats, or None if it never does."""
+    n = len(symbols)
+    for k in range(1, n // 2 + 1):
+        if all(symbols[i] == symbols[i % k] for i in range(n)):
+            return k
+    return None
+
+
+def sequence_periodicity_bits(pattern: str, length_slots: int = 200) -> float:
+    """log2 of the slots before a sequence repeats; its length if it never does."""
+    if pattern == "random":
+        return math.log2(length_slots)
+    period = pattern_period((pattern * (length_slots // len(pattern) + 1))[:length_slots])
+    return math.log2(period if period else length_slots)
+
+
+# -- one row per stimulus -------------------------------------------------------------
+def describe(kind: str, label: str, *, centre_hz: float = 10000.0,
+             tone_hz: Optional[float] = None, seq_tones: Optional[Dict[str, float]] = None,
+             seq_length: int = 200, seed: int = 0) -> Dict[str, object]:
+    """Both complexities for one stimulus, plus what kind of stimulus it is."""
+    if label == "silent":
+        return {"kind": kind, "stimulus": label, "spectral": float("nan"),
+                "temporal_bits": float("nan"), "family": "silence"}
+    if kind == "intervals":
+        ratio = RATIOS[label]
+        wave = tones([centre_hz, centre_hz * float(ratio)])
+        family = ("unison" if label == "unison" else
+                  "consonant" if label in CONSONANT else "dissonant")
+        return {"kind": kind, "stimulus": label, "ratio": str(ratio),
+                "spectral": spectral_entropy(wave),
+                "temporal_bits": interval_periodicity_bits(label), "family": family}
+    if kind == "pure tones":
+        f = tone_hz if tone_hz is not None else float(label.split()[0]) * 1000
+        return {"kind": kind, "stimulus": label, "spectral": spectral_entropy(tones([f])),
+                "temporal_bits": 0.0, "family": "tone"}
+    if kind == "sequences":
+        tone_of = seq_tones or {"A": 10000.0, "B": 14000.0, "C": 16000.0}
+        if label == "random":
+            rng = np.random.default_rng(seed)
+            symbols = "".join(rng.choice(list("ABCo"), size=seq_length))
+        else:
+            unit = label[: len(label) // 2] if len(label) % 2 == 0 else label
+            symbols = (unit * (seq_length // len(unit) + 1))[:seq_length]
+        return {"kind": kind, "stimulus": label,
+                "spectral": spectral_entropy(sequence_wave(symbols, tone_of)),
+                "temporal_bits": sequence_periodicity_bits(label, seq_length),
+                "family": "sequence"}
+    raise ValueError(f"unknown kind {kind!r}")
+
+
+if __name__ == "__main__":
+    rows = [describe("pure tones", "10 kHz")]
+    rows += [describe("intervals", n) for n in
+             ("unison", "perf_5", "perf_4", "maj_6", "maj_3", "maj_2", "maj_7",
+              "min_2", "tritone")]
+    rows += [describe("sequences", p) for p in ("AAAA", "AoAo", "ABAB", "ABCABC", "random")]
+    print(f"{'kind':<11} {'stimulus':<9} {'ratio':<6} {'spectral':>9} {'temporal (bits)':>16}")
+    for r in rows:
+        print(f"{r['kind']:<11} {r['stimulus']:<9} {r.get('ratio', ''):<6} "
+              f"{r['spectral']:>9.3f} {r['temporal_bits']:>16.2f}")
