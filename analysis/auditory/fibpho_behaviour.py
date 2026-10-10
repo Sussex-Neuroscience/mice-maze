@@ -38,6 +38,12 @@ Outputs (FIBPHO_ANALYSIS/behaviour/):
     fig_block_course.png/.pdf         behaviour and dopamine through the
                                       sound blocks, in 2-minute bins
     states.csv, exposures.csv, block_course.csv
+    exposure_stats.txt                do stimuli differ, does the response
+                                      change with exposure, is it above
+                                      exploring
+
+    With --thesis-figures DIR, the exposure figure is also written to DIR
+    as fig_fp_exposures, in the thesis style.
 """
 
 import argparse
@@ -61,6 +67,7 @@ TRANSIENT_Z = 3.0          # prominence of a transient, in block SDs
 EXPOSURE_WIN_S = 5.0       # window after an entry for its peak
 N_REFERENCE = 2000         # random outside moments for the reference
 COURSE_BIN_MIN = 2.0       # bins through a sound block
+MIN_EXPOSURES = 3          # a stimulus needs this many exposures to enter a test
 PLOT_DS = 10               # plot every 10th sample of the ~100 Hz trace
 
 OUTSIDE, ENTRANCE = "outside", "entrance"
@@ -361,6 +368,163 @@ def fig_exposures(expo, refs, mice, out):
     save(fig, os.path.join(out, "fig_exposures"))
 
 
+VOC_SHORT = {"dyadic_social_interaction": "dyadic", "male_male_interaction": "M+M",
+             "male_w_female_oestrus": "M+F", "run1_day2_male_w_female_oestrus": "M+F r1",
+             "run3_day2_male_w_female_oestrus": "M+F r3",
+             "run3_day2-2_male_w_female_oestrus": "M+F r3b",
+             "mousetube3BB89473_socialcomparison": "mouseTube"}
+INTERVAL_SHORT = {"perf_5": "5th", "perf_4": "4th", "maj_3": "maj 3rd", "maj_2": "maj 2nd",
+                  "min_7": "min 7th", "tritone": "tritone"}
+
+
+def thesis_label(label):
+    """A short name for a stimulus, for the thesis figure."""
+    if label in VOC_SHORT:
+        return VOC_SHORT[label]
+    if label in INTERVAL_SHORT:
+        return INTERVAL_SHORT[label]
+    if label.endswith(" kHz"):                      # 'rough_complex 20 kHz' -> 'complex 20'
+        kind, freq = label[:-4].rsplit(" ", 1)
+        return f"{kind.replace('rough_complex', 'complex')} {freq}"
+    return {"silent arm": "silent", "vocalisation": "voc"}.get(label, label)
+
+
+def exposure_class(label, day):
+    if label == "silent arm":
+        return label
+    if label == "vocalisation" or day == "vocalisations":
+        return "vocalisation"
+    return "synthetic sound"
+
+
+def exposure_table(expo, refs):
+    """Every exposure, its peak measured from the median while exploring."""
+    e = pd.concat([x.assign(day=d, mouse=m, session=f"{m} {d}") for (d, m), x in expo.items()])
+    e = e.dropna(subset=["peak_z"]).reset_index(drop=True)
+    med = {k: np.median(v) for k, v in refs.items()}
+    e["rel"] = [p - med[(d, m)] for p, d, m in zip(e["peak_z"], e["day"], e["mouse"])]
+    e["cls"] = [exposure_class(s, d) for s, d in zip(e["stimulus"], e["day"])]
+    e["log2_exposure"] = np.log2(e["exposure"])
+    return e
+
+
+def exposure_stats(e, out_path):
+    """Do stimuli differ, does the response change with exposure, and is it above exploring?"""
+    import statsmodels.api as sm
+    import statsmodels.formula.api as smf
+    from scipy.stats import wilcoxon
+    lines = []
+
+    def say(s=""):
+        lines.append(s)
+        print(s)
+
+    say("Response: peak z in the 5 s after entering an arm, minus the median of the "
+        "same measure at random moments outside the arms in the same session.")
+    say(f"{len(e)} exposures, {e['session'].nunique()} sessions.\n")
+
+    say("1. Do the stimuli differ? Per day, response ~ C(stimulus) + C(mouse), "
+        f"stimuli with at least {MIN_EXPOSURES} exposures, type II ANOVA")
+    for day in DAYS:
+        d = e[e["day"] == day]
+        keep = d.groupby("stimulus")["rel"].transform("size") >= MIN_EXPOSURES
+        d = d[keep]
+        if d["stimulus"].nunique() < 2:
+            continue
+        fit = smf.ols("rel ~ C(stimulus) + C(mouse)", d).fit()
+        a = sm.stats.anova_lm(fit, typ=2)
+        f, p = a.loc["C(stimulus)", "F"], a.loc["C(stimulus)", "PR(>F)"]
+        df1, df2 = int(a.loc["C(stimulus)", "df"]), int(a.loc["Residual", "df"])
+        say(f"  {DAY_TITLE[day]:20s} {d['stimulus'].nunique()} stimuli, {len(d)} exposures: "
+            f"F({df1}, {df2}) = {f:.2f}, p = {p:.3f}")
+        means = (d.groupby("stimulus")["rel"].agg(["mean", "sem", "size"])
+                  .sort_values("mean", ascending=False))
+        say("    " + means.round(3).to_string().replace("\n", "\n    "))
+
+    say("\n2. Does the response change with exposure?")
+    # session as a fixed effect: a random intercept for it is estimated at zero
+    # here, and that singular fit gives no usable intercept
+    m = smf.ols("rel ~ log2_exposure + C(cls, Treatment('silent arm')) + C(session)", e).fit()
+    say("  OLS, response ~ log2(exposure number) + class + session:")
+    say(m.summary2().tables[1].loc[["log2_exposure",
+                                    "C(cls, Treatment('silent arm'))[T.synthetic sound]",
+                                    "C(cls, Treatment('silent arm'))[T.vocalisation]"]]
+        .round(3).to_string())
+    pairs = []
+    for (s, st), g in e.groupby(["session", "stimulus"]):
+        if len(g) >= 2:
+            g = g.sort_values("exposure")
+            pairs.append({"session": s, "stimulus": st, "first": g["rel"].iloc[0],
+                          "last": g["rel"].iloc[-1], "mean": g["rel"].mean()})
+    pairs = pd.DataFrame(pairs)
+    w = wilcoxon(pairs["first"], pairs["last"])
+    say(f"  first against last exposure, {len(pairs)} stimuli across sessions: "
+        f"first {pairs['first'].mean():+.3f}, last {pairs['last'].mean():+.3f}, "
+        f"mean of all {pairs['mean'].mean():+.3f}; Wilcoxon W = {w.statistic:.0f}, "
+        f"p = {w.pvalue:.3f}")
+
+    say("\n3. Is the response above or below exploring? response ~ 0 + class + (1 | session)")
+    m = smf.mixedlm("rel ~ 0 + C(cls)", e, groups=e["session"]).fit()
+    say(m.summary().tables[1].to_string())
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    return pairs
+
+
+def fig_exposures_thesis(e, refs, mice, path):
+    """First, mean and last exposure per stimulus, measured from exploring."""
+    fig, axes = plt.subplots(len(mice), len(DAYS), figsize=(6.3, 2.0 * len(mice) + 0.4),
+                             squeeze=False, sharey=True)
+    for c, day in enumerate(DAYS):
+        axes[0, c].set_title(f"({'abcdefgh'[c]}) {DAY_TITLE[day].lower()}", loc="left")
+        for r in range(1, len(mice)):
+            axes[r, c].set_title(f"({'abcdefgh'[c + 4 * r]})", loc="left")
+    for (day, mouse), _ in refs.items():
+        ax = axes[mice.index(mouse), DAYS.index(day)]
+        ref = refs[(day, mouse)] - np.median(refs[(day, mouse)])
+        lo, hi = np.percentile(ref, [25, 75])
+        ax.axhspan(lo, hi, color="#D6D6D6", lw=0)
+        ax.axhline(0, color="#9E9E9E", lw=0.6)
+        d = e[(e["day"] == day) & (e["mouse"] == mouse)]
+        order = state_order(set(d["stimulus"]))
+        # colours from every stimulus of the day, so a stimulus keeps its colour
+        # in both mice even when one of them never entered some arm
+        colours = fa.label_colours(state_order(set(e.loc[e["day"] == day, "stimulus"])))
+        for i, st in enumerate(order):
+            g = d[d["stimulus"] == st].sort_values("exposure")
+            first, last = g["rel"].iloc[0], g["rel"].iloc[-1]
+            mean = g["rel"].mean()
+            sem = g["rel"].std() / np.sqrt(len(g)) if len(g) > 1 else 0
+            col = colours[st]
+            ax.plot([i - 0.25, i, i + 0.25], [first, mean, last], color=col, lw=0.6)
+            ax.scatter([i - 0.25], [first], marker="o", s=9, color=col, zorder=3, lw=0)
+            ax.errorbar([i], [mean], yerr=[sem], fmt="D", ms=3, mfc="white", mec=col,
+                        ecolor=col, elinewidth=0.6, capsize=1.2, zorder=3)
+            ax.scatter([i + 0.25], [last], marker="s", s=8, color=col, zorder=3, lw=0)
+            ax.annotate(str(len(g)), (i, 0), xycoords=("data", "axes fraction"),
+                        xytext=(0, 1.5), textcoords="offset points", ha="center",
+                        fontsize=4.5, color="#616161")
+        ax.set_xticks(range(len(order)))
+        ax.set_xticklabels([thesis_label(o) for o in order], rotation=60, ha="right",
+                           fontsize=5.5)
+        ax.tick_params(axis="y", labelsize=5.5)
+        ax.set_xlim(-0.6, len(order) - 0.4)
+    for r, mouse in enumerate(mice):
+        axes[r, 0].set_ylabel(f"{mouse.replace('_', '.')}\nPeak dopamine after entry\n"
+                              "(z, from exploring)", fontsize=6)
+    handles = [plt.Line2D([], [], marker="o", ls="", color="#616161", ms=3,
+                          label="first exposure"),
+               plt.Line2D([], [], marker="D", ls="", mfc="white", mec="#616161", ms=3,
+                          label="mean of all, ± SEM"),
+               plt.Line2D([], [], marker="s", ls="", color="#616161", ms=3,
+                          label="last exposure"),
+               mpatches.Patch(color="#D6D6D6", label="exploring, quartiles")]
+    fig.legend(handles=handles, loc="lower center", ncol=4, fontsize=6, frameon=False,
+               bbox_to_anchor=(0.5, -0.02))
+    fig.tight_layout(rect=(0, 0.04, 1, 1))
+    save(fig, path)
+
+
 def fig_course(course, mice, out):
     measures = [("pct_time_in_arms", "Time in arms (%)"),
                 ("entries_per_min", "Arm entries per minute"),
@@ -397,6 +561,9 @@ def main():
     parser.add_argument("root", nargs="?",
                         default=os.path.join(fa.DEFAULT_ROOT, "FIBPHO_ANALYSIS"),
                         help="the folder fibpho_alignment.py wrote")
+    parser.add_argument("--thesis-figures", metavar="DIR",
+                        help="also write the thesis version of the exposure figure "
+                             "as fig_fp_exposures")
     args = parser.parse_args()
     out = os.path.join(args.root, "behaviour")
     os.makedirs(os.path.join(out, "timelines"), exist_ok=True)
@@ -437,12 +604,17 @@ def main():
     pd.set_option("display.width", 200)
     print("\nsound blocks: where the time went and where the transients were")
     print(p.round(1).to_string())
-    e = pd.concat([e.assign(day=d, mouse=m) for (d, m), e in expo.items()]).dropna(subset=["peak_z"])
-    ref_med = {k: np.median(v) for k, v in refs.items()}
-    e["above_outside"] = [pz - ref_med[(d, m)] for pz, d, m in zip(e["peak_z"], e["day"], e["mouse"])]
+    e = exposure_table(expo, refs)
     print("\npeak z after entry minus the outside median, first exposures against the rest:")
-    print(e.assign(first=e["exposure"] == 1).groupby("first")["above_outside"]
+    print(e.assign(first=e["exposure"] == 1).groupby("first")["rel"]
           .agg(["mean", "median", "size"]).round(3).to_string())
+    print()
+    exposure_stats(e, os.path.join(out, "exposure_stats.txt"))
+    if args.thesis_figures:
+        with plt.rc_context({"font.family": "serif", "font.size": 7, "axes.titlesize": 7,
+                             "axes.labelsize": 7, "pdf.fonttype": 42}):
+            fig_exposures_thesis(e, refs, mice,
+                                 os.path.join(args.thesis_figures, "fig_fp_exposures"))
     print(f"\nAll outputs saved to:\n  {out}")
 
 
