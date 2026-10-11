@@ -165,6 +165,94 @@ def describe(kind: str, label: str, *, centre_hz: float = 10000.0,
     raise ValueError(f"unknown kind {kind!r}")
 
 
+# -- one temporal scale for every periodic stimulus ---------------------------
+# The measures above count in each family's own unit: cycles of the lower tone
+# for an interval, slots for a sequence. To set stimuli of different families
+# on one axis, temporal complexity is counted in one unit for all of them: the
+# cycles of the sound's lowest frequency in one repetition of the waveform,
+#
+#     bits = log2(period x lowest frequency)
+#
+# For two tones at p/q this is log2 q, the measure above. A pure tone repeats
+# every cycle (0 bits); a carrier amplitude-modulated at m Hz repeats every
+# 1/m s; a sequence repeats with its pattern of slots. A recording that never
+# repeats has no value on this scale.
+
+def cycles_bits(period_s: float, lowest_hz: float) -> float:
+    """log2 of the cycles of the lowest frequency in one period."""
+    return math.log2(max(1.0, round(period_s * lowest_hz)))
+
+
+def am_wave(carrier_hz: float, rates_hz: Sequence[float], depth: float = 0.5,
+            segment_s: float = 0.2, duration_s: float = 1.2) -> np.ndarray:
+    """A carrier whose envelope is modulated at each rate in turn, as Experiment 1 did.
+
+    One rate gives a steady modulation; several are cycled through in
+    segments of segment_s, with the envelope's phase restarting in each.
+    """
+    t = np.arange(int(duration_s * FS)) / FS
+    seg = int(segment_s * FS)
+    env = np.empty_like(t)
+    for k in range(int(np.ceil(len(t) / seg))):
+        rate = rates_hz[k % len(rates_hz)]
+        local = t[k * seg:(k + 1) * seg] - t[k * seg]
+        env[k * seg:(k + 1) * seg] = 1 + depth * np.sin(2 * np.pi * rate * local)
+    return np.sin(2 * np.pi * carrier_hz * t) * env * _ramped(len(t))
+
+
+EXP1_INTERVAL_BASE_HZ = 15000.0     # every interval and unison of Experiment 1
+EXP1_SEQUENCE_TONES = {"A": 10000.0, "B": 15000.0, "C": 20000.0}
+EXP1_SLOT_S = 0.04
+EXP1_TEM_RATES = {"smooth": [], "rough": [50.0], "rough_complex": [30.0, 50.0, 70.0]}
+
+
+def describe_exp1(name: str, family: str) -> Dict[str, object]:
+    """Both complexities of an Experiment 1 stimulus, on the common temporal scale.
+
+    name and family as exp1_stimulus_pi.py labels them: 'rough 10 kHz' with
+    family 'rough', 'perf_5' with family 'consonant', 'AM unison', 'ABAB', and
+    so on. Vocalisations return NaN.
+    """
+    if family in ("vocalisation", "silent"):
+        return {"stimulus": name, "family": family, "spectral": float("nan"),
+                "temporal_bits": float("nan")}
+    if family in EXP1_TEM_RATES:                             # temporal envelope modulation
+        carrier = float(name.split()[-2]) * 1000
+        rates = EXP1_TEM_RATES[family]
+        if not rates:
+            wave, bits = tones([carrier]), 0.0
+        else:
+            wave = am_wave(carrier, rates)
+            period = len(rates) * 0.2 if len(rates) > 1 else 1 / rates[0]
+            bits = cycles_bits(period, carrier - max(rates))
+        return {"stimulus": name, "family": family, "spectral": spectral_entropy(wave),
+                "temporal_bits": bits}
+    if family == "unison":
+        base = EXP1_INTERVAL_BASE_HZ
+        if name == "AM unison":
+            return {"stimulus": name, "family": family,
+                    "spectral": spectral_entropy(am_wave(base, [50.0])),
+                    "temporal_bits": cycles_bits(1 / 50.0, base - 50.0)}
+        return {"stimulus": name, "family": family, "spectral": spectral_entropy(tones([base])),
+                "temporal_bits": 0.0}
+    if family in ("consonant", "dissonant"):
+        base = EXP1_INTERVAL_BASE_HZ
+        return {"stimulus": name, "family": family,
+                "spectral": spectral_entropy(tones([base, base * float(RATIOS[name])])),
+                "temporal_bits": interval_periodicity_bits(name)}
+    if family == "sequence":
+        # the shortest unit the pattern repeats: 'A' for AAAAA, 'AB' for ABAB,
+        # but the whole of ABBA
+        unit = name[: pattern_period(name * 4) or len(name)]
+        symbols = (unit * (200 // len(unit) + 1))[:200]
+        lowest = min(EXP1_SEQUENCE_TONES[c] for c in set(unit) if c in EXP1_SEQUENCE_TONES)
+        return {"stimulus": name, "family": family,
+                "spectral": spectral_entropy(sequence_wave(symbols, EXP1_SEQUENCE_TONES,
+                                                           EXP1_SLOT_S)),
+                "temporal_bits": cycles_bits(len(unit) * EXP1_SLOT_S, lowest)}
+    raise ValueError(f"unknown family {family!r} for {name!r}")
+
+
 if __name__ == "__main__":
     rows = [describe("pure tones", "10 kHz")]
     rows += [describe("intervals", n) for n in

@@ -27,10 +27,15 @@ both arms taken from the same blocks and every visit uncapped:
 
 A mouse that ran a set twice contributes the mean of its two indices.
 
-Usage:
-    python exp1_stimulus_pi.py [DATA_DIR] [--thesis-figures DIR]
+The first sound block of a session always opened on the same layout, each
+stimulus in the arm its place in the list gave it, and only blocks 2 to 4 were
+reshuffled. With --shuffled-only the first block is left out, and the outputs
+go to stimulus_pi_shuffled/.
 
-Outputs (DATA_DIR/BATCH_ANALYSIS/stimulus_pi/):
+Usage:
+    python exp1_stimulus_pi.py [DATA_DIR] [--thesis-figures DIR] [--shuffled-only]
+
+Outputs (DATA_DIR/BATCH_ANALYSIS/stimulus_pi/ or stimulus_pi_shuffled/):
     stimulus_pi.csv, contrasts.csv, stats.txt
     fig_stimulus_pi.png/.pdf, fig_contrasts.png/.pdf
     and with --thesis-figures, fig_exp1_stimulus_pi and fig_exp1_contrasts
@@ -54,6 +59,7 @@ sys.path.insert(0, HERE)
 import stimulus_complexity as sc
 
 SOUND_TRIALS = {2, 4, 6, 8}
+SHUFFLED_TRIALS = {4, 6, 8}                  # the sound blocks after the first
 ROIS = {f"ROI{i}" for i in range(1, 9)}
 SETS = {"w1_d1": "TEM", "w1_d2": "Intervals 1", "w1_d3": "Intervals 2",
         "w1_d4": "Intervals 3", "w2_sequences": "Sequences",
@@ -123,8 +129,8 @@ def label(name):
 
 # -- per session -------------------------------------------------------
 
-def session_table(df, day, classify, modes):
-    s = df[df["trial_ID"].isin(SOUND_TRIALS) & df["ROIs"].isin(ROIS)].copy()
+def session_table(df, day, classify, modes, trials=SOUND_TRIALS):
+    s = df[df["trial_ID"].isin(trials) & df["ROIs"].isin(ROIS)].copy()
     named = [stimulus(r, day, classify, modes) for _, r in s.iterrows()]
     s["stimulus"] = [n for n, _ in named]
     s["family"] = [f for _, f in named]
@@ -301,10 +307,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("data_dir", nargs="?", default=cfg.BASE_PATH)
     parser.add_argument("--thesis-figures", metavar="DIR")
+    parser.add_argument("--shuffled-only", action="store_true",
+                        help="leave out the first sound block, whose layout was fixed")
     args = parser.parse_args()
     cfg.BASE_PATH = args.data_dir
     cfg.INDIVIDUAL_VISIT_CLIP_MS = 0              # uncapped: see exp1_vocalisation_pi.py
-    out = os.path.join(args.data_dir, "BATCH_ANALYSIS", "stimulus_pi")
+    trials = SHUFFLED_TRIALS if args.shuffled_only else SOUND_TRIALS
+    suffix = "_shuffled" if args.shuffled_only else ""
+    out = os.path.join(args.data_dir, "BATCH_ANALYSIS", "stimulus_pi" + suffix)
     os.makedirs(out, exist_ok=True)
     modes = {d: cfg.EXPERIMENT_DAYS[d]["mode"] for d in cfg.EXPERIMENT_DAYS}
 
@@ -313,7 +323,7 @@ def main():
         df, _ = cfg.load_session_visits(sess)
         if df is None:
             continue
-        s = session_table(df, sess.day, classify_stimulus, modes)
+        s = session_table(df, sess.day, classify_stimulus, modes, trials)
         stim, contrasts = per_session(s)
         for r in stim:
             stim_rows.append({"mouse": sess.mouse_id, "set": SETS[sess.day], **r})
@@ -345,8 +355,8 @@ def main():
         with plt.rc_context({"font.family": "serif", "font.size": 7, "axes.titlesize": 7,
                              "axes.labelsize": 7, "xtick.labelsize": 6, "ytick.labelsize": 6,
                              "pdf.fonttype": 42}):
-            fig_stimuli(st, os.path.join(args.thesis_figures, "fig_exp1_stimulus_pi"), True)
-            fig_contrasts(ct, os.path.join(args.thesis_figures, "fig_exp1_contrasts"), True)
+            fig_stimuli(st, os.path.join(args.thesis_figures, f"fig_exp1_stimulus_pi{suffix}"), True)
+            fig_contrasts(ct, os.path.join(args.thesis_figures, f"fig_exp1_contrasts{suffix}"), True)
     print(f"\nAll outputs saved to:\n  {out}")
 
 
