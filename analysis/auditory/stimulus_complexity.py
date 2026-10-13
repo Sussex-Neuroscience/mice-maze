@@ -107,6 +107,42 @@ def spectral_entropy(wave: np.ndarray, band=BAND_HZ) -> float:
     return float(-(nz * np.log2(nz)).sum() / np.log2(len(p)))
 
 
+TEMPORAL_FRAME_S = 0.005
+
+
+def temporal_entropy(wave: np.ndarray, low_hz: float = 0.0,
+                     frame_s: float = TEMPORAL_FRAME_S) -> float:
+    """Normalised temporal entropy, 0 (all the energy in one frame) to 1 (steady).
+
+    The counterpart in time of spectral_entropy: how evenly a sound's energy
+    is spread over its duration, after Sueur et al. (2008), on energy rather
+    than amplitude, as the spectral measure is. The sound is high-passed at
+    low_hz, cut into frames of frame_s (5 ms resolves a call of 10 to 100 ms),
+    and the share of the total energy in each frame taken as a distribution.
+    A single call in silence is low, continuous calling or steady noise high.
+    It is meant for recordings, which never repeat. The synthetic stimuli of
+    Experiment 1 are steady or regular at this grain and sit between 0.89
+    (AoAo, half its slots silent) and 1 (a pure tone).
+    """
+    if not np.any(wave):
+        return float("nan")
+    x = np.asarray(wave, dtype=float)
+    if low_hz > 0:
+        from scipy.signal import butter, sosfiltfilt
+        x = sosfiltfilt(butter(8, low_hz, btype="highpass", fs=FS, output="sos"), x)
+    n = int(round(frame_s * FS))
+    k = len(x) // n
+    if k < 2:
+        return float("nan")
+    e = (x[:k * n] ** 2).reshape(k, n).sum(axis=1)
+    total = e.sum()
+    if total <= 0:
+        return float("nan")
+    p = e / total
+    nz = p[p > 0]
+    return float(-(nz * np.log2(nz)).sum() / np.log2(k))
+
+
 # -- temporal complexity --------------------------------------------------------------
 def interval_periodicity_bits(name: str) -> float:
     """log2 of the cycles of the lower tone before a dyad repeats."""

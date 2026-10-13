@@ -167,6 +167,59 @@ def fig_model(mv, path):
     plt.close(fig)
 
 
+def fig_stimuli(root, path):
+    """The two grammars and one delivered melody of each at each level."""
+    import sys
+    from matplotlib.gridspec import GridSpec
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from amazeing.auditory.grammar_stimuli import config as gcfg
+    from model_validation.data_loading import load_arm_blocks
+    arms = load_arm_blocks(root).arm_blocks
+    examples = {}
+    for (grammar, tier), sub in arms[arms["arm_type"] == "grammar"].groupby(["grammar", "tier"]):
+        mels = [m for ms in sub["melodies"] for m in ms]
+        if mels:
+            examples[(grammar, tier)] = mels[0]
+    sym = gcfg.TONE_SYMBOLS
+    khz = [gcfg.TONES[s] / 1000 for s in sym]
+    colour = {"A": "#00695C", "B": "#6A1B9A"}
+
+    fig = plt.figure(figsize=(6.3, 5.2))
+    gs = GridSpec(3, 6, figure=fig, height_ratios=[1.35, 1, 1], hspace=0.75, wspace=0.9)
+    for k, g in enumerate(("A", "B")):
+        ax = fig.add_subplot(gs[0, 3 * k:3 * k + 3])
+        M = gcfg.GRAMMARS[g]
+        ax.imshow(M, cmap="Greys", vmin=0, vmax=0.75)
+        for i in range(6):
+            for j in range(6):
+                ax.text(j, i, f"{M[i, j]:.2f}", ha="center", va="center", fontsize=5.5,
+                        color="white" if M[i, j] > 0.4 else "black")
+        ax.set_xticks(range(6)); ax.set_xticklabels(sym)
+        ax.set_yticks(range(6)); ax.set_yticklabels(sym)
+        ax.set_xlabel("next tone"); ax.set_ylabel("current tone")
+        name = "ascending cycle" if g == "A" else "alternation three steps apart"
+        ax.set_title(f"({'ab'[k]}) grammar {g}, {name}", loc="left")
+    letters = iter("cdefgh")
+    for row, g in enumerate(("A", "B"), start=1):
+        for col, tier in enumerate(("dominant", "secondary", "rare")):
+            ax = fig.add_subplot(gs[row, 2 * col:2 * col + 2])
+            mel = examples.get((g, tier), "")
+            for i, s in enumerate(mel):
+                y = sym.index(s)
+                ax.barh(y, 0.15, left=i * 0.2, height=0.6, color=colour[g])
+            ax.set_xlim(0, 2.4); ax.set_ylim(-0.6, 5.6)
+            ax.set_yticks(range(6))
+            ax.set_yticklabels([f"{s} {f:.1f}" for s, f in zip(sym, khz)] if col == 0 else [])
+            if row == 2:
+                ax.set_xlabel("Time (s)")
+            ax.set_title(f"({next(letters)}) {g}, {tier}", loc="left")
+            ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
+    fig.text(0.02, 0.36, "Tone (kHz)", rotation=90, va="center", fontsize=7)
+    for ext in ("png", "pdf"):
+        fig.savefig(f"{path}.{ext}", dpi=200, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("root", nargs="?", default="D:/AuditoryExperiments/grammar")
@@ -177,6 +230,7 @@ def main():
     with plt.rc_context({"font.family": "serif", "font.size": 7, "axes.titlesize": 7,
                          "axes.labelsize": 7, "xtick.labelsize": 6, "ytick.labelsize": 6,
                          "pdf.fonttype": 42}):
+        fig_stimuli(args.root, os.path.join(args.thesis_figures, "fig_exp2_stimuli"))
         fig_session(d, os.path.join(args.thesis_figures, "fig_exp2_session"))
         fig_model(os.path.join(args.root, "model_validation_output"),
                   os.path.join(args.thesis_figures, "fig_exp2_model"))

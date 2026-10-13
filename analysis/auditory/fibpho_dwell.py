@@ -57,6 +57,7 @@ from scipy.stats import wilcoxon
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fibpho_alignment as fa
+from fibpho_behaviour import thesis_label
 
 WINDOW_S = 5.0             # before and after
 LONG_S = 10.0              # a long visit
@@ -71,6 +72,9 @@ CLASS_COLOURS = {"vocalisation": "#2E7D32", "synthetic sound": "#1565C0",
 DAY_TITLE = {"temporal_envelope_modulation": "envelope modulation",
              "intervals": "intervals", "sequences": "sequences",
              "vocalisations": "vocalisations"}
+# the day each stimulus set was played, as the thesis names it
+THESIS_DAY = {"temporal_envelope_modulation": "envelope day", "intervals": "interval day",
+              "sequences": "sequence day", "vocalisations": "vocalisation day"}
 
 plt.rcParams.update({"font.size": 8, "axes.titlesize": 9,
                      "axes.spines.top": False, "axes.spines.right": False})
@@ -291,7 +295,7 @@ def fig_long(v, long_traces, path, thesis=False):
         return
     cols = 4
     rows = int(np.ceil(n / cols))
-    size = (6.3, 1.45 * rows) if thesis else (3.6 * cols, 2.3 * rows)
+    size = (6.3, 1.6 * rows) if thesis else (3.6 * cols, 2.3 * rows)
     fig, axes = plt.subplots(rows, cols, figsize=size, squeeze=False, sharey=True)
     for ax in axes.ravel()[n:]:
         ax.set_visible(False)
@@ -305,7 +309,9 @@ def fig_long(v, long_traces, path, thesis=False):
         name = r["stimulus"].replace("_", " ")
         if thesis:
             letter = "abcdefghijklmnop"[list(lv.index).index(i)]
-            ax.set_title(f"({letter}) {r['mouse'].replace('_', '.')}, {r['visit_s']:.1f} s",
+            # what the arm played, and on which day
+            ax.set_title(f"({letter}) {r['mouse'].replace('_', '.')}, {r['visit_s']:.1f} s\n"
+                         f"{thesis_label(r['stimulus'])}, {THESIS_DAY[r['day']]}",
                          fontsize=6.5, loc="left")
             ax.tick_params(labelsize=5.5)
         else:

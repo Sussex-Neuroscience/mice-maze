@@ -71,9 +71,9 @@ PRETTY = {"perf_5": "5th", "perf_4": "4th", "maj_6": "maj 6th", "min_6": "min 6t
           "min_2": "min 2nd", "maj_7": "maj 7th", "min_7": "min 7th", "tritone": "tritone",
           "unison": "unison", "AM unison": "AM unison", "vocalisation": "voc",
           "dyadic_social_interaction": "dyadic", "male_male_interaction": "M+M",
-          "male_w_female_oestrus": "M+F", "run1_day2_male_w_female_oestrus": "M+F r1",
-          "run3_day2_male_w_female_oestrus": "M+F r3",
-          "run3_day2-2_male_w_female_oestrus": "M+F r3b",
+          "male_w_female_oestrus": "M+F", "run1_day2_male_w_female_oestrus": "urine r1",
+          "run3_day2_male_w_female_oestrus": "urine r3",
+          "run3_day2-2_male_w_female_oestrus": "urine r3b",
           "mousetube3BB89473_socialcomparison": "mouseTube"}
 COLOURS = {"consonant": "#1565C0", "dissonant": "#E65100", "unison": "#9E9E9E",
            "vocalisation": "#2E7D32", "smooth": "#00838F", "rough": "#6A1B9A",

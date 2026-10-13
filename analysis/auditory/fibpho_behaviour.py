@@ -369,9 +369,9 @@ def fig_exposures(expo, refs, mice, out):
 
 
 VOC_SHORT = {"dyadic_social_interaction": "dyadic", "male_male_interaction": "M+M",
-             "male_w_female_oestrus": "M+F", "run1_day2_male_w_female_oestrus": "M+F r1",
-             "run3_day2_male_w_female_oestrus": "M+F r3",
-             "run3_day2-2_male_w_female_oestrus": "M+F r3b",
+             "male_w_female_oestrus": "M+F", "run1_day2_male_w_female_oestrus": "urine r1",
+             "run3_day2_male_w_female_oestrus": "urine r3",
+             "run3_day2-2_male_w_female_oestrus": "urine r3b",
              "mousetube3BB89473_socialcomparison": "mouseTube"}
 INTERVAL_SHORT = {"perf_5": "5th", "perf_4": "4th", "maj_3": "maj 3rd", "maj_2": "maj 2nd",
                   "min_7": "min 7th", "tritone": "tritone"}
