@@ -54,7 +54,7 @@ PI = (mean visit with a - mean visit with b) / (mean visit with a + mean visit w
 
 from -1 (only b) to +1 (only a). Visits are not capped. The earlier pipeline capped every visit at 10 s to absorb a logging fault, which also shortened genuine long stays; `exp1_vocalisation_pi.py` computes both, so the effect of the cap can be seen.
 
-**The first sound block was not shuffled.** In every session the first sound block placed each stimulus in the arm its place in the list gave it, and only the later blocks were reshuffled. In block 1, then, a stimulus and a place go together. The Experiment 1 scripts that compare stimuli take `--shuffled-only`, which refits everything on blocks 2 to 4 and writes to `<name>_shuffled/`. The Experiment 2 scripts report blocks 2 to 4, all four blocks and block 1 alone.
+**The first sound block keeps the listed order.** By design, the first sound block of every session places each stimulus in the arm its place in the list gives it, and only the later blocks are reshuffled. In block 1, then, a stimulus and a place go together. The Experiment 1 scripts that compare stimuli take `--shuffled-only`, which refits everything on blocks 2 to 4 and writes to `<name>_shuffled/`. The Experiment 2 scripts report blocks 2 to 4, all four blocks and block 1 alone.
 
 **Exclusions are printed when a script runs**, with the reason for each.
 
