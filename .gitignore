@@ -140,7 +140,7 @@ dmypy.json
 
 # Documentation screenshots ARE tracked (regenerate with tools/make_screenshots.py)
 !docs/images/*.png
-!docs/source
+!docs/source\api\generated
 
 
 # Large media files (should not be tracked in git)
