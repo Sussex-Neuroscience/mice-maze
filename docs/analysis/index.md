@@ -27,7 +27,7 @@ flowchart TB
 
 **Cross-session summaries** pool mice and days. These are the first figures that say anything about a result. Run them from the Analysis tab or with `amaze-summary`.
 
-**The research pipelines** are the scripts under `analysis/` used for the published work. For the auditory maze: the preference index and its statistics, the aesthetic value model, and photometry alignment. For the tactile maze: choice accuracy across training, phase-by-phase trajectory metrics, transition probabilities between compartments, and the pose estimation that feeds them. They are standalone scripts rather than part of the package, and they expect a data folder rather than a single session.
+**The research pipelines** are the scripts under `analysis/` used for the published work. For the auditory maze: the analyses of the two thesis experiments (preference indices against silence and between stimuli, mixed models, checks on place and day order, entering against staying, stimulus complexity), the value model of the grammar experiment, the four-arm pilot, and the photometry, from alignment to dopamine around every visit. For the tactile maze: choice accuracy across training, phase-by-phase trajectory metrics, transition probabilities between compartments, and the pose estimation that feeds them. They are standalone scripts rather than part of the package, and they expect a data folder rather than a single session.
 
 The automatic and cross-session figures above are specific to the auditory paradigm. Tactile sessions write their trial table as the session runs and are analysed entirely through the research pipelines.
 

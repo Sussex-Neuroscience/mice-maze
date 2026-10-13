@@ -1,8 +1,188 @@
-# Auditory analysis pipeline
+# Auditory analysis pipelines
 
-The auditory analysis pipeline lives under `analysis/auditory/`. It processes visit data from the 8-arm radial maze across 6 experiment days, producing publication-ready figures, interactive visualisations, and comprehensive statistical reports.
+Everything here lives under `analysis/auditory/`. The scripts are standalone research code, not part of the installed package: each takes a data folder, reads the session logs and writes its tables, statistics and figures to a folder of its own.
 
-For a detailed technical report on the computational modelling component, see [`analysis/auditory/REPORT_aesthetic_value_model.md`](https://github.com/MaravallLab/aMAZEing-maze/blob/main/analysis/auditory/REPORT_aesthetic_value_model.md).
+There are two generations of scripts.
+
+- **The thesis analyses**, named by experiment (`exp1_*`, `exp2_*`, `fibpho_*`, `pilot_four_arm.py`). These produce every number and figure in the thesis, and they are the ones to use for anything you report.
+- **The earlier batch pipeline** (`01_preference_analysis.py`, `run_batch_preference.py` and the rest), kept for reference and described at the end of this page.
+
+The code that recorded the thesis data is tagged [`v1.0-thesis`](https://github.com/MaravallLab/aMAZEing-maze/releases/tag/v1.0-thesis).
+
+## Before you start
+
+### Requirements
+
+```bash
+pip install -e ".[analysis]"
+```
+
+Some scripts need more than Python:
+
+| For | You also need |
+|---|---|
+| `exp1_lmm.py`, `exp1_approach.py`, `exp2_lmm.py` | R 4 with `lme4`, `lmerTest` and `emmeans`. The scripts look for `Rscript` on the PATH, then in the newest R under `C:/Program Files/R`. |
+| `model_validation/` (Experiment 2 Bayesian fits) | PyMC and ArviZ, at the versions pinned in its [quick guide](https://github.com/MaravallLab/aMAZEing-maze/blob/main/analysis/auditory/model_validation/QUICKGUIDE.md) |
+| `fibpho_alignment.py`, `fibpho_checks.py` | The `tdt` package, to read Tucker-Davis tanks |
+
+### Data layout
+
+```
+<data root>/
+  8_arms_w_voc/            Experiment 1, one folder per stimulus set
+    w1_d1/                   day 1: temporal envelope modulation
+    w1_d2/ w1_d3/ w1_d4/     days 2 to 4: musical intervals
+    w2_sequences/            day 5: tone sequences
+    w2_vocalisations/        day 6: recorded vocalisations
+  grammar/                 Experiment 2: training and test days
+  dopamine recordings/     photometry: TDT tanks, and the maze sessions recorded with them
+  vocalisationzzzzzz/      the vocalisation recordings the maze played
+  time_..._mouseN/         the four-arm pilot sessions, loose at the top
+```
+
+Every script takes its data folder as the first argument. Without one, the Experiment 1 scripts use `MAZE_DATA_DIR` (or the default in `preference_analysis_config.py`), and the photometry scripts use `MAZE_PHOTOMETRY_DIR`.
+
+### Conventions shared by every script
+
+**Outputs never go into the session folders.** Each script writes to `<data folder>/BATCH_ANALYSIS/<its name>/`. With `--thesis-figures DIR` it also writes the thesis version of its figures, in the thesis fonts and sizes, into `DIR`.
+
+**The preference index** is the one defined in the thesis, on mean visit length, with both arms taken from the same sound blocks:
+
+```
+PI = (mean visit with a - mean visit with b) / (mean visit with a + mean visit with b)
+```
+
+from -1 (only b) to +1 (only a). Visits are not capped. The earlier pipeline capped every visit at 10 s to absorb a logging fault, which also shortened genuine long stays; `exp1_vocalisation_pi.py` computes both, so the effect of the cap can be seen.
+
+**The first sound block was not shuffled.** In every session the first sound block placed each stimulus in the arm its place in the list gave it, and only the later blocks were reshuffled. In block 1, then, a stimulus and a place go together. The Experiment 1 scripts that compare stimuli take `--shuffled-only`, which refits everything on blocks 2 to 4 and writes to `<name>_shuffled/`. The Experiment 2 scripts report blocks 2 to 4, all four blocks and block 1 alone.
+
+**Exclusions are printed when a script runs**, with the reason for each.
+
+## Experiment 1: eight arms, six stimulus sets
+
+```mermaid
+flowchart LR
+    V[exp1_vocalisation_pi]
+    S[exp1_stimulus_pi] --> C[exp1_complexity]
+    L[exp1_lmm] --> O[exp1_order_place] --> A[exp1_approach]
+    E[exp1_exploration]
+```
+
+| Script | Question | Writes to `BATCH_ANALYSIS/` |
+|---|---|---|
+| `exp1_vocalisation_pi.py` | Do mice prefer the vocalisation to silence, the synthetic sounds to silence, and the vocalisation to the synthetic sounds? Per day, capped and uncapped. | `vocalisation_pi/` |
+| `exp1_stimulus_pi.py` | Each stimulus against the silent arm; consonant against dissonant intervals; rough against smooth envelopes. | `stimulus_pi/` |
+| `exp1_complexity.py` | Does preference follow spectral or temporal complexity, in a line or an inverted U? Also within the seven recordings of the vocalisation day, by spectral and temporal entropy. Run `exp1_stimulus_pi.py` first. | `complexity/` |
+| `exp1_lmm.py` (calls `exp1_lmm.R`) | Mixed models of visit length: class by set, consonance, roughness, modulation. Writes the arm-by-block table the next two scripts read. | `lmm/` |
+| `exp1_order_place.py` | Day order against habituation, and place bias: arm shares in habituation and sound blocks, the usual silent arm, first entries. | `order_place/` |
+| `exp1_approach.py` (calls `exp1_approach.R`) | Entering against staying: entries per arm and mean visit length, with a Poisson mixed model of the entries. | `approach/` |
+| `exp1_exploration.py` | Does exploratory drive in the silent habituation block go with engagement with the sounds? | `exploration/` |
+
+```bash
+cd analysis/auditory
+python exp1_vocalisation_pi.py D:/AuditoryExperiments/8_arms_w_voc
+python exp1_stimulus_pi.py     D:/AuditoryExperiments/8_arms_w_voc
+python exp1_complexity.py      D:/AuditoryExperiments/8_arms_w_voc
+python exp1_lmm.py             D:/AuditoryExperiments/8_arms_w_voc
+python exp1_order_place.py     D:/AuditoryExperiments/8_arms_w_voc
+python exp1_approach.py        D:/AuditoryExperiments/8_arms_w_voc
+python exp1_exploration.py     D:/AuditoryExperiments/8_arms_w_voc
+```
+
+Add `--shuffled-only` to `exp1_stimulus_pi.py`, `exp1_complexity.py` and `exp1_lmm.py` for blocks 2 to 4 alone.
+
+The second part of `exp1_complexity.py` reads the vocalisation recordings themselves. It looks for them in the folders listed in `VOCALISATION_FOLDERS` at the top of the script, and skips that part if none exists; add a line for your computer.
+
+## Experiment 2: the grammar experiment
+
+| Script | What it does | Writes to `BATCH_ANALYSIS/` |
+|---|---|---|
+| `exp2_lmm.py` (calls `exp2_lmm.R`) | The session-level preference for the grammar heard in the enriched cage over the one heard in the standard cage, block by block and per mouse, with place controlled; mixed models with the arm as a random effect. | `exp2/` |
+| `exp2_figures.py` | The thesis figures of the stimuli, the session-level preference and the model. Run `exp2_lmm.py` first. | thesis figures only |
+| `exp2_model_check.py` | Could place alone produce the semantic weight? And the ladder of models (original, sequential, full), cross-validated. | `exp2_model/` |
+| `exp2_model_compare.py` | AIC and BIC for the four nested value models (intercept, fluency, Brielmann and Dayan, full), at the grain of the session. | `exp2_model/` |
+| `model_validation/` | The Bayesian fits of the value model (PyMC): recovery, model comparison by leave-one-out, posterior predictive checks, grains of observation. See its [quick guide](https://github.com/MaravallLab/aMAZEing-maze/blob/main/analysis/auditory/model_validation/QUICKGUIDE.md). | an output folder you choose |
+
+```bash
+cd analysis/auditory
+python exp2_lmm.py           D:/AuditoryExperiments/grammar
+python exp2_figures.py       D:/AuditoryExperiments/grammar --thesis-figures <thesis>/figures
+python exp2_model_check.py   D:/AuditoryExperiments/grammar
+python exp2_model_compare.py D:/AuditoryExperiments/grammar
+```
+
+The `exp2_*` scripts read `model_validation/` (its data loading, exclusions and features) but never change it or its outputs, so the earlier analysis stays reproducible as it was.
+
+## Stimulus measures
+
+`stimulus_complexity.py` holds the measures of how complex a stimulus is. Run on its own, it prints a worked table.
+
+| Measure | What it is |
+|---|---|
+| Spectral complexity | The normalised entropy of the power spectrum, 0 to 96 kHz: about 0.10 for a pure tone, near 1 for noise |
+| Temporal complexity | The cycles of the lowest frequency before the waveform repeats, in bits (log2): 0 for a pure tone, log2 q for an interval p/q |
+| Temporal entropy | How evenly a sound's energy is spread over time, in 5 ms frames (after Sueur et al. 2008), for recordings, which never repeat |
+
+## The four-arm pilot
+
+The sessions recorded before the eight-arm protocol sit loose at the top of the data folder, written by several versions of the code.
+
+```bash
+python analysis/auditory/survey_standalone_sessions.py --root D:/AuditoryExperiments
+python analysis/auditory/pilot_four_arm.py
+```
+
+`survey_standalone_sessions.py` reads every session on its own terms and writes `sessions.csv` and `blocks.csv` to a folder beside the data (by default `D:/AuditoryExperiments_survey`). `pilot_four_arm.py` describes the three cohorts from those tables. With two to five mice per cohort it tests nothing; it shows each mouse.
+
+## Photometry
+
+Dopamine recordings (Tucker-Davis) made during maze sessions. `fibpho_alignment.py` runs first; the rest read what it saves.
+
+```mermaid
+flowchart LR
+    AL[fibpho_alignment] --> CH[fibpho_checks]
+    AL --> AR[fibpho_arms]
+    AL --> DY[fibpho_dynamics]
+    AL --> BE[fibpho_behaviour]
+    AL --> DW[fibpho_dwell]
+```
+
+Expected layout:
+
+```
+dopamine recordings/
+  dopaminergic recordings/        one TDT block (tank) per recording
+  temporal_envelope_modulation/   one folder per experiment day, holding the maze sessions
+  intervals/
+  sequences/
+  vocalisations/
+```
+
+**How the alignment works.** The TDT system and the maze keep separate clocks. The maze sends a TTL pulse on every sound, and every difference between a logged sound onset and a TTL onset is a candidate offset between the clocks; the true offset is the one most of them share, so stray pulses (tests sent before the session, a restarted session) do not move it. The block with the most matched pulses is the session's own. Delta F/F divides each channel by a double exponential fitted to remove bleaching, then corrects the 465 nm signal with the 405 nm isosbestic channel, fitted separately within each block. Every arm entry becomes an event, timed by its TTL where one matched and by its logged onset otherwise.
+
+| Script | What it does | Writes to `FIBPHO_ANALYSIS/` |
+|---|---|---|
+| `fibpho_alignment.py` | Aligns every recording with its session; delta F/F; overview, block and peri-event figures | `<day>/<mouse>/`, `alignment_summary.csv` |
+| `fibpho_checks.py` | Entries against random moments; each channel on its own; whether 405 nm is a clean motion reference | `checks/` |
+| `fibpho_arms.py` | Dopamine while the mouse is in each arm, against the behavioural preference for it | `arms/` |
+| `fibpho_dynamics.py` | How the response changes within blocks, across blocks and from arm to arm | `dynamics/` |
+| `fibpho_behaviour.py` | Dopamine by where the mouse was (arm, entrance, outside); the response to each stimulus from first to last exposure | `behaviour/` |
+| `fibpho_dwell.py` | Dopamine before, during and after each visit, against how long the mouse stayed; every long visit on its own | `dwell/` |
+
+```bash
+cd analysis/auditory
+python fibpho_alignment.py "D:/AuditoryExperiments/dopamine recordings"
+python fibpho_checks.py    "D:/AuditoryExperiments/dopamine recordings"
+python fibpho_dwell.py     "D:/AuditoryExperiments/dopamine recordings/FIBPHO_ANALYSIS"
+```
+
+`fibpho_arms.py`, `fibpho_dynamics.py` and `fibpho_behaviour.py` take the same `FIBPHO_ANALYSIS` folder as `fibpho_dwell.py`.
+
+With two mice, every photometry test is within these two animals; nothing here generalises to mice.
+
+## The earlier batch pipeline
+
+These scripts came before the thesis analyses and are kept so that earlier results can be reproduced. They cap every visit at 10 s, and the 4D aesthetic value model below is not the model of the thesis. For a technical report on that model, see [`analysis/auditory/REPORT_aesthetic_value_model.md`](https://github.com/MaravallLab/aMAZEing-maze/blob/main/analysis/auditory/REPORT_aesthetic_value_model.md).
 
 **Prerequisites:**
 
@@ -164,48 +344,3 @@ python 03_completers_lmm.py /path/to/8_arms_w_voc \
 **5. Computational model (Brielmann & Dayan 2022):**
 
 A 4-dimensional extension of the aesthetic value model, where stimuli are represented as vectors in a feature space of [location_familiarity, spectral_complexity, biological_relevance, temporal_predictability]. The model simulates an agent traversing the full experiment and predicts PI from the difference in aesthetic value between sound and silence. Fitted via 2000 random initialisations of SLSQP. Includes lesioned model comparisons, dimension dropout analysis, and location vs acoustic decomposition. See the [detailed report](https://github.com/MaravallLab/aMAZEing-maze/blob/main/analysis/auditory/REPORT_aesthetic_value_model.md) for full documentation.
-
-#### Fiber Photometry Alignment (`fibpho_alignment.py`)
-
-Aligns Tucker-Davis Technologies (TDT) fiber photometry recordings with auditory maze visit CSV timestamps using TTL pulse matching.
-
-**Prerequisites:**
-
-```bash
-pip install numpy pandas matplotlib scipy tdt
-```
-
-**Configuration:**
-
-Edit paths at the top of `fibpho_alignment.py`:
-- `TANK_PATH` -- path to the TDT tank folder (contains `.Tbk`, `.Tdx`, `.tev`, `.tsq` files)
-- `VISIT_CSV` -- path to the `mouseXXXXX_vocalisations_detailed_visits.csv`
-- `TRIALS_CSV` -- path to the `trials_time_YYYY-MM-DD_HH_MM_SS.csv`
-
-**Running:**
-
-```bash
-cd analysis/auditory
-python fibpho_alignment.py
-```
-
-**Outputs** (saved to `fibpho_analysis/` inside the session folder):
-
-| File | Description |
-|------|-------------|
-| `alignment_report.csv` | Event-by-event TTL-to-CSV mapping with residuals |
-| `fibpho_aligned_overview.png/pdf` | Full-session dF/F with colour-coded TTLs |
-| `fibpho_trial_panels.png/pdf` | Per-trial zoomed dF/F panels |
-| `fibpho_peri_event.png/pdf` | Peri-event average dF/F by vocalisation type |
-| `fibpho_peri_event_pooled.png/pdf` | Pooled peri-event dF/F (all stimuli) |
-
-**How alignment works:**
-
-1. The TDT recording starts before the maze experiment (different clocks)
-2. The script reads TTL onset times from the TDT `MTL_` epoc store
-3. It matches inter-event intervals to `sound_on_time` entries in the visit CSV
-4. The first TTL is identified as a test pulse and excluded
-5. A precise clock offset is computed (typical alignment: <70ms residual)
-6. Delta F/F is calculated using 405nm isosbestic correction of the 465nm GCaMP signal
-
----

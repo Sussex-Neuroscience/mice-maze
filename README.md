@@ -4,7 +4,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-yellow.svg)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/tests-219%20passing-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-228%20passing-brightgreen.svg)](#testing)
 [![Documentation](https://img.shields.io/badge/docs-website-blue.svg)](https://maravalllab.github.io/aMAZEing-maze/)
 
 ![The maze with tuneable walls](hardware/drawings/model.png)
@@ -39,6 +39,7 @@ The electronics are an Arduino driving an Adafruit PCA9685 sixteen-channel PWM c
 | Run the tactile task | [The tactile paradigm](https://maravalllab.github.io/aMAZEing-maze/guide/tactile/) |
 | Build a rig | [Build and set up the rig](https://maravalllab.github.io/aMAZEing-maze/hardware/build/) |
 | Analyse recordings | [Analyse a set of sessions](https://maravalllab.github.io/aMAZEing-maze/analysis/tutorial/) |
+| Reproduce the thesis analyses | [Auditory analysis pipelines](https://maravalllab.github.io/aMAZEing-maze/analysis/auditory/) |
 
 ## Install
 
@@ -90,7 +91,8 @@ amaze-tactile
 │   ├── auditory/         Auditory paradigm: config, session loop, audio, vision, analysis
 │   ├── simplermaze/      Tactile paradigm: session loop, grating maps, reward stages
 │   └── app/              Graphical interface
-├── analysis/           Post-hoc research pipelines (preference index, pose estimation, models)
+├── analysis/           Post-hoc research pipelines: the thesis analyses of both auditory
+│                         experiments, photometry, the value model, pose estimation
 ├── hardware/           CAD sources, STLs, drawings, construction photos
 ├── firmware/           Arduino and MicroPython sketches: grating and reward servos, TTL sync
 ├── docs/               Documentation site sources
@@ -121,7 +123,7 @@ python tools/make_screenshots.py  # regenerate the application screenshots
 
 ## Citing
 
-The code used for the original behavioural experiments is tagged [`v1.0-thesis`](https://github.com/MaravallLab/aMAZEing-maze/releases/tag/v1.0-thesis).
+The code used for the original behavioural experiments is tagged [`v1.0-thesis`](https://github.com/MaravallLab/aMAZEing-maze/releases/tag/v1.0-thesis). The analyses reported in the thesis are the scripts under `analysis/auditory/`, described on the [auditory analysis page](https://maravalllab.github.io/aMAZEing-maze/analysis/auditory/).
 
 ## Contributors
 
