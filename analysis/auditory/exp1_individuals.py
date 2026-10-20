@@ -552,14 +552,18 @@ def main():
         lines.append(text)
         print(text)
 
-    say("Rank of the vocalisation among the stimuli of each set, by median index over mice:")
+    say("Rank of the vocalisation among the stimuli of each set heard by at least five "
+        "mice (as in Figure 4.10), by median index over mice:")
+    shown = st.dropna(subset=["pi"])
+    shown = shown[shown.groupby(["set", "stimulus"])["pi"].transform("size") >= 5]
     for s in SET_ORDER[:4]:
-        med = st[st["set"] == s].groupby("stimulus")["pi"].median().sort_values(ascending=False)
+        med = shown[shown["set"] == s].groupby("stimulus")["pi"].median().sort_values(ascending=False)
         say(f"  {s:12s} {list(med.index).index('vocalisation') + 1} of {len(med)} "
             f"(vocalisation {med['vocalisation']:+.3f}, best other "
             f"{med.drop('vocalisation').iloc[0]:+.3f})")
-    v = st[st["set"] == "Vocalisations"].groupby("stimulus")["pi"].median()
-    say(f"  Vocalisations: {int((v > 0).sum())} of {len(v)} recordings with a median above zero")
+    v = shown[shown["set"] == "Vocalisations"].groupby("stimulus")["pi"].median()
+    say(f"  Vocalisations: {int((v > 0).sum())} of {len(v)} recordings with a median above zero, "
+        f"from {v[v > 0].min():+.3f} to {v.max():+.3f}")
     m = lmm[lmm["set"] == "Vocalisations"]
     say(f"  mixed model, vocalisation day: {int((m['pi'] > 0).sum())} of {len(m)} recordings "
         f"above the silent arm, {int((m['p.holm'] < 0.05).sum())} with Holm p < 0.05")
@@ -568,6 +572,21 @@ def main():
     say(f"\nA session's mean index against the log of its silent arm's mean visit: "
         f"Spearman rho {rho:.2f}, r squared {sil['mean_pi'].corr(sil['log_silent']) ** 2:.2f}, "
         f"{len(sil)} sessions")
+    example = pick_example(d, cls)
+    say(f"\nThe close-up, {example}, day by day: mean visit (s) to each class, its visits, and "
+        "its indices")
+    g = d[d["mouse"] == example]
+    for s in SET_ORDER:
+        h = g[g["set"] == s]
+        if h.empty:
+            continue
+        mv = {c: mean_visit(h[h["cls"] == c]) for c in ("silent", "synthetic", "vocalisation")}
+        nv = {c: int(h.loc[h["cls"] == c, "visits"].sum()) for c in mv}
+        idx = cls[(cls["mouse"] == example) & (cls["set"] == s)][
+            ["voc_vs_silent", "voc_vs_synth"]].mean()
+        say(f"  {s:13s} " + ", ".join(f"{c} {mv[c]:.2f} s ({nv[c]})" for c in mv if np.isfinite(mv[c]))
+            + f"; vocalisation against silent {idx['voc_vs_silent']:+.3f}, against synthetic "
+            f"{idx['voc_vs_synth']:+.3f}")
     say("\nPCA of sessions (TEM, intervals 1 and 2, sequences): "
         + ", ".join(f"PC{i + 1} {e * 100:.0f}%" for i, e in enumerate(explained[:3])))
     say(loadings.round(2).to_string())
@@ -578,7 +597,6 @@ def main():
                          "axes.labelsize": 7, "xtick.labelsize": 6, "ytick.labelsize": 6,
                          "pdf.fonttype": 42, "hatch.linewidth": 0.6}):
         targets = [out] + ([args.thesis_figures] if args.thesis_figures else [])
-        example = pick_example(d, cls)
         for t in targets:
             fig_stimulus_lmm(st, lmm, os.path.join(t, "fig_exp1_stimulus_pi_lmm"))
             fig_individuals(st_session, d, cls, example, os.path.join(t, "fig_exp1_individuals"))

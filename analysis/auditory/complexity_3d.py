@@ -35,8 +35,12 @@ complexity/complexity.csv (exp1_complexity.py), stimulus_pi/stimulus_pi.csv
 (exp1_stimulus_pi.py) and lmm/arm_blocks.csv (exp1_lmm.py). Writes
 pilot_complexity_3d.html beside the pilot's figures (SURVEY/pilot/) and
 exp1_complexity_3d.html beside Experiment 1's (EXP1/BATCH_ANALYSIS/complexity/),
-each a page that opens without a connection. With --gallery, each view is also
-written there as JSON, for a page that loads plotly itself.
+each a page that opens without a connection, and the numbers the thesis quotes
+from these views to complexity/stats_3d.txt: the shares by kind of stimulus, the
+shares of the silent and vocalisation arms, and the complex tones of the envelope
+day against the smooth and rough ones (Wilcoxon signed rank over mice). With
+--gallery, each view is also written there as JSON, for a page that loads plotly
+itself.
 """
 
 import argparse
@@ -332,7 +336,7 @@ def pilot_figure(survey):
              mouse_hover="index %{z:.2f}"),
     ]
     return figure(places, mice, measures, PILOT_FAMILIES,
-                  "Figure 3.4 in three dimensions, the four arm pilot")
+                  "Figure 3.4 in three dimensions, the four arm pilot"), places, mice
 
 
 def exp1_figure(exp1):
@@ -357,6 +361,50 @@ def exp1_figure(exp1):
                   "Figure 4.12 in three dimensions, Experiment 1"), places, mice
 
 
+def share_stats(exp1, pilot_places, pilot_mice, say):
+    """The numbers the thesis quotes from these views: the pilot's shares by kind
+    of stimulus; in Experiment 1, the shares of the silent and the vocalisation
+    arm on each day, and the complex tones of the envelope day against the smooth
+    and rough ones, in time, entries and visit length (Wilcoxon signed rank over
+    mice, each mouse's arms of a kind pooled)."""
+    from scipy.stats import wilcoxon
+    s = summary(pilot_places, pilot_mice["share"], "mean")
+    say("The pilot, mean share of the time in the arms (%) over mice, chance 25:")
+    for fam, g in s.groupby("family"):
+        say(f"  {fam:10s} {g['centre'].min():5.1f} to {g['centre'].max():5.1f}  "
+            + ", ".join(f"{n} {c:.1f}" for n, c in zip(g["name"], g["centre"])))
+
+    arms = pd.read_csv(Path(exp1) / "BATCH_ANALYSIS" / "lmm" / "arm_blocks.csv")
+    arms = arms[arms["set"].isin(SET_SYMBOL)].copy()
+    arms["block_time"] = arms.groupby(["session", "block"])["time_s"].transform("sum")
+    # a block with no time in the arms adds nothing to a pooled share, and counts
+    # as no entries; every row is one arm in one block and carries the block's whole time, so the
+    # pooled share is that of one arm of the class
+    per = arms.groupby(["mouse", "set", "cls"])[["time_s", "block_time"]].sum()
+    per["share"] = 100 * per["time_s"] / per["block_time"]
+    share = per["share"].unstack("cls")
+    say("\nExperiment 1, mean share of the time in the arms (%) for one arm of each class, "
+        "chance 12.5:")
+    say(share.groupby("set").mean().round(1).to_string())
+
+    t = arms[(arms["set"] == "TEM") & (arms["cls"] == "synthetic")].copy()
+    t["kind"] = np.where(t["family"] == "rough_complex", "complex", "smooth or rough")
+    g = t.groupby(["mouse", "kind"]).agg(time=("time_s", "sum"), block_time=("block_time", "sum"),
+                                         visits=("visits", "sum"), arm_blocks=("arm", "size"))
+    g["share"] = 100 * g["time"] / g["block_time"]
+    g["entries"] = g["visits"] / g["arm_blocks"]
+    g["visit_s"] = g["time"] / g["visits"]
+    say("\nTemporal envelope modulation, the complex tones (one arm each) against the smooth "
+        "and rough ones, per mouse:")
+    for col, name in (("share", "share of the time in the arms (%)"),
+                      ("entries", "entries per arm in a block"), ("visit_s", "mean visit (s)")):
+        w = g[col].unstack().dropna()
+        p = wilcoxon(w["complex"], w["smooth or rough"]).pvalue
+        say(f"  {name:36s} complex {w['complex'].mean():.2f}, smooth or rough "
+            f"{w['smooth or rough'].mean():.2f}, higher in {int((w['complex'] > w['smooth or rough']).sum())} "
+            f"of {len(w)} mice, p = {p:.4f}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--survey", type=Path, default=pilot.SURVEY)
@@ -369,7 +417,7 @@ def main():
                              "(needs kaleido)")
     args = parser.parse_args()
 
-    fig = pilot_figure(args.survey)
+    fig, pilot_places, pilot_mice = pilot_figure(args.survey)
     path = args.survey / "pilot" / "pilot_complexity_3d.html"
     fig.write_html(path, include_plotlyjs=True, config=CONFIG)
     print(f"  {path}")
@@ -387,10 +435,20 @@ def main():
         write_static(fig, "share", str(args.thesis_figures / "fig_pilot_complexity_3d"))
         write_static(fig1, "share", str(args.thesis_figures / "fig_exp1_complexity_3d"))
 
+    lines = []
+
+    def say(text=""):
+        lines.append(text)
+        print(text)
+
+    share_stats(args.exp1, pilot_places, pilot_mice, say)
     s = summary(places, mice["share"], "mean")
-    print("\nExperiment 1, mean share of the time in the arms (%), chance 12.5:")
-    print(s.sort_values(["group", "temporal_bits"])[["group", "name", "centre", "n"]]
-          .round(2).to_string(index=False))
+    say("\nExperiment 1, mean share of the time in the arms (%) for each stimulus, chance 12.5:")
+    say(s.sort_values(["group", "temporal_bits"])[["group", "name", "centre", "n"]]
+        .round(2).to_string(index=False))
+    stats = Path(args.exp1) / "BATCH_ANALYSIS" / "complexity" / "stats_3d.txt"
+    stats.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"\n  {stats}")
 
 
 if __name__ == "__main__":

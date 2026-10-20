@@ -45,7 +45,7 @@ Outputs (FIBPHO_ANALYSIS/dwell/):
                                      each stay stretched or squeezed to one width
     stats_psth.txt                   during against before, per stimulus and day;
                                      the complex tones of the envelope day against
-                                     the smooth and rough ones
+                                     the smooth and rough ones; the longest visits
     fig_complex.png/.pdf             entries, time and dopamine for those tones
 
 With --thesis-figures DIR, also fig_fp_long_visits, fig_fp_before_during_after
@@ -521,6 +521,36 @@ def fig_psth(v, warps, holm, path, thesis=False):
     save(fig, path)
 
 
+def longest_visits(v, say):
+    """Which sounds held the longest visits. The visits of LONG_S or more by class;
+    and, on the days with one vocalisation arm among seven sound arms, whether the
+    single longest visit to a sound in each session was to the vocalisation, set
+    against the chance that it would be if visit length did not depend on what the
+    arm played (each session's share of sound visits to the vocalisation; the
+    count of sessions is Poisson binomial, the sessions taken as independent)."""
+    sv = v[v["trial_ID"] > 1]
+    long = sv[sv["visit_s"] >= LONG_S]
+    say(f"\n--- visits of {LONG_S:g} s or more: {len(long)}, by class "
+        + ", ".join(f"{c} {n}" for c, n in long["cls"].value_counts().items()))
+    lv = long[long["cls"] == "vocalisation"]
+    say(f"  to vocalisations {len(lv)}, of which on the vocalisation day {int((lv['day'] == 'vocalisations').sum())}")
+    sound = sv[sv["cls"].isin(["vocalisation", "synthetic sound"]) & (sv["day"] != "vocalisations")]
+    shares, hits = [], 0
+    say("  days with one vocalisation arm: the longest visit to a sound in each session")
+    for (day, mouse), g in sound.groupby(["day", "mouse"]):
+        top = g.sort_values("visit_s", ascending=False).iloc[0]
+        q = float((g["cls"] == "vocalisation").mean())
+        shares.append(q)
+        hits += int(top["cls"] == "vocalisation")
+        say(f"    {mouse} {THESIS_DAY[day]:17s} longest {top['visit_s']:5.1f} s to {thesis_label(top['stimulus']):10s} "
+            f"vocalisation share of sound visits {q:.2f}")
+    dist = np.array([1.0])
+    for q in shares:
+        dist = np.convolve(dist, [1 - q, q])
+    say(f"  the vocalisation held the longest visit in {hits} of {len(shares)} sessions, "
+        f"{sum(shares):.2f} expected, p = {dist[hits:].sum():.3f}")
+
+
 COMPLEX = "#AD1457"
 OTHER_TEM = "#546E7A"
 
@@ -647,6 +677,7 @@ def main():
 
     holm_p = psth_tests(v, say)
     cx, cx_beh = complex_tones(v, say)
+    longest_visits(v, say)
     with open(os.path.join(out, "stats_psth.txt"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     print("\nfigures:")
