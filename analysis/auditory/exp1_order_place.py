@@ -153,8 +153,9 @@ def first_entries(folder):
 def fig_order(blocks, path, thesis=False):
     sets = [s for s in SETS.values() if s in set(blocks["set"])]
     panels = [("synth_vs_silent", "Synthetic sounds\nagainst the silent arm"),
-              ("voc_vs_synth", "Vocalisation against\nsynthetic sounds")]
-    fig, axes = plt.subplots(1, 2, figsize=(6.3, 2.4) if thesis else (11, 3.4), sharey=True)
+              ("voc_vs_synth", "Vocalisation against\nsynthetic sounds"),
+              ("voc_vs_silent", "Vocalisation against\nthe silent arm")]
+    fig, axes = plt.subplots(1, 3, figsize=(6.3, 2.5) if thesis else (14, 3.4), sharey=True)
     for k, (ax, (col, name)) in enumerate(zip(axes, panels)):
         x0 = 0
         ticks, labels = [], []
@@ -162,8 +163,8 @@ def fig_order(blocks, path, thesis=False):
             g = blocks[blocks["set"] == s].groupby("block")[col]
             med, q1, q3 = g.median(), g.quantile(0.25), g.quantile(0.75)
             if med.notna().sum() == 0:
-                x0 += 5
-                continue
+                continue                  # a set without the index takes no space
+
             xs = x0 + med.index.to_numpy()
             ax.fill_between(xs, q1.to_numpy(), q3.to_numpy(), color="#BDBDBD", alpha=0.5, lw=0)
             ax.plot(xs, med.to_numpy(), color="#1F3864", marker="o", ms=3, lw=1.2)
@@ -174,7 +175,7 @@ def fig_order(blocks, path, thesis=False):
         ax.axhline(0, color="black", lw=0.6, ls=(0, (4, 2)))
         ax.set_xticks(ticks)
         ax.set_xticklabels(labels, rotation=30, ha="right")
-        ax.set_title(f"({'ab'[k]}) {name[0].lower() + name[1:]}" if thesis else name,
+        ax.set_title(f"({'abc'[k]}) {name[0].lower() + name[1:]}" if thesis else name,
                      loc="left" if thesis else "center")
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
@@ -294,7 +295,8 @@ def main():
     blocks.to_csv(os.path.join(out, "blocks.csv"), index=False)
     say("\nWithin each session: index ~ block (1 to 4) + (1 | mouse); slope per block")
     for col, name in (("synth_vs_silent", "synthetic against silent"),
-                      ("voc_vs_synth", "vocalisation against synthetic")):
+                      ("voc_vs_synth", "vocalisation against synthetic"),
+                      ("voc_vs_silent", "vocalisation against silent")):
         say(f"  {name}")
         for s in SETS.values():
             d = blocks[blocks["set"] == s].dropna(subset=[col])

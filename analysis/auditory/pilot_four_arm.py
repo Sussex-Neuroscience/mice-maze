@@ -11,10 +11,24 @@ per arm per block) and describes the three four-arm cohorts:
     67xx   5 mice, September-November 2024  sequences, then intervals
     80xx   4 mice, November-December 2024   pure tones, then intervals
 
-Nothing here is a test. With two to five animals per cohort the pilot can show
-what to change in the design, not what mice prefer, so every figure shows each
-mouse and every summary is a mean over mice: a mouse that ran more sessions
-does not count for more.
+With two to five animals per cohort the pilot was run to show what to change in
+the design, so every figure shows each mouse and every summary is a mean over
+mice: a mouse that ran more sessions does not count for more. The tests follow
+Section 2.7 of the thesis and are written to pilot/stats.txt and, for the mixed
+models (pilot_lmm.R, which needs R with lme4, lmerTest and emmeans), to
+pilot/lmm_results.txt:
+
+    sound against silent blocks, all eleven mice: share of the block in the
+        arms, entries a minute and seconds a visit, a Wilcoxon signed rank test
+        on each mouse's ratio, Holm across the three; and a Poisson mixed model
+        of entries and a mixed model of visit length
+    place: the arm each mouse favoured in its opening silent blocks, before any
+        sound, and its share of the sound blocks against the 25% of chance
+    the interval sessions, eight mice: each index against zero (all sounds,
+        each stimulus with Holm across stimuli, consonant against dissonant),
+        and mixed models of visit length in the arms of the same blocks
+    complexity: the index of each interval on its temporal complexity, with a
+        straight and a squared term and the mouse as a random intercept
 
 The preference index is the one defined in the thesis: the mean visit length in
 an arm against the mean visit length in the silent arm of the same blocks,
@@ -44,7 +58,9 @@ Figures and tables go in pilot/ beside the survey's tables.
 from __future__ import annotations
 
 import argparse
+import glob
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -53,8 +69,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import statsmodels.formula.api as smf
+from scipy.stats import spearmanr, wilcoxon
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
 import stimulus_complexity as sc
 
 SURVEY = Path(r"D:\AuditoryExperiments_survey")
@@ -200,12 +219,20 @@ def _family(stim: str) -> str:
     return "consonant" if stim in sc.CONSONANT else "dissonant"
 
 
-def fig_pi_stimuli(idx: pd.DataFrame, out: Path):
-    """Each stimulus against silence, ordered by temporal complexity."""
+def p_text(p: float) -> str:
+    return "p < 0.001" if p < 0.001 else f"p = {p:.3f}" if p < 0.1 else f"p = {p:.2f}"
+
+
+def stars(p: float) -> str:
+    return "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else ""
+
+
+def fig_pi_stimuli(idx: pd.DataFrame, out: Path, st: dict):
+    """Each stimulus against silence, ordered by temporal complexity, with its test."""
     stims = [s for s in idx["stimulus"].unique() if s != "all sounds"]
     stims.sort(key=lambda s: (sc.interval_periodicity_bits(s), s))
     order = ["all sounds"] + stims
-    fig, ax = plt.subplots(figsize=(4.6, 3.4))
+    fig, ax = plt.subplots(figsize=(5.0, 3.4))
     for row, stim in enumerate(order):
         d = idx[idx["stimulus"] == stim]
         colour = INK if stim == "all sounds" else FAMILY_COLOUR[_family(stim)]
@@ -218,6 +245,12 @@ def fig_pi_stimuli(idx: pd.DataFrame, out: Path):
         ax.plot([m, m], [row - 0.3, row + 0.3], color=colour, lw=2.2, zorder=4)
     ax.axvline(0, color=INK, lw=0.7, ls=(0, (4, 2)))
     ax.axhline(0.5, color=GREY, lw=0.5)
+    # the test of each row, at the right edge: Wilcoxon against zero, Holm across the
+    # single stimuli (the pooled row is one test of its own)
+    for row, stim in enumerate(order):
+        p = st["all"] if stim == "all sounds" else st["stim"][stim][1]
+        ax.text(1.02, row, f"{stars(p)} {p_text(p)}".strip(), transform=ax.get_yaxis_transform(),
+                ha="left", va="center", fontsize=6, color=INK if p < 0.05 else GREY, clip_on=False)
     labels = ["all sounds"] + [
         f"{PRETTY[s]}  {sc.RATIOS[s]}   ({sc.interval_periodicity_bits(s):.1f} bits)"
         for s in stims]
@@ -235,10 +268,11 @@ def fig_pi_stimuli(idx: pd.DataFrame, out: Path):
                           markeredgecolor=INK, label=c) for c in ("67xx", "80xx")]
     ax.legend(handles=handles, frameon=False, loc="lower right", fontsize=6.5)
     fig.tight_layout()
+    fig.subplots_adjust(right=0.86)                 # room for the p values
     save(fig, out, "pilot_pi_stimuli")
 
 
-def fig_pi_pairs(pairs: pd.DataFrame, out: Path):
+def fig_pi_pairs(pairs: pd.DataFrame, out: Path, st: dict):
     """The consonant against the dissonant interval of the same blocks."""
     pairs = pairs.copy()
     pairs["c_bits"] = pairs["consonant"].map(sc.interval_periodicity_bits)
@@ -269,6 +303,8 @@ def fig_pi_pairs(pairs: pd.DataFrame, out: Path):
     ax.set_yticklabels(ylabels + ["each mouse, all pairs"])
     ax.invert_yaxis()
     lim = max(0.6, np.nanmax(np.abs(pairs["pi"])) * 1.1)
+    ax.text(lim * 0.98, row, f"{stars(st['pairs'])} {p_text(st['pairs'])}".strip(),
+            ha="right", va="center", fontsize=6, color=INK if st["pairs"] < 0.05 else GREY)
     ax.set_xlim(-lim, lim)
     ax.set_xlabel("Preference index, consonant against dissonant")
     ax.text(-lim, -0.9, "prefers the dissonant", ha="left", va="bottom",
@@ -279,7 +315,7 @@ def fig_pi_pairs(pairs: pd.DataFrame, out: Path):
     save(fig, out, "pilot_pi_pairs")
 
 
-def fig_complexity(table: pd.DataFrame, idx: pd.DataFrame, out: Path):
+def fig_complexity(table: pd.DataFrame, idx: pd.DataFrame, out: Path, st: dict):
     """The pilot's stimuli in complexity space, and preference against it."""
     fig, (a, b) = plt.subplots(1, 2, figsize=(6.9, 2.9),
                                gridspec_kw={"width_ratios": [1.15, 1]})
@@ -329,6 +365,14 @@ def fig_complexity(table: pd.DataFrame, idx: pd.DataFrame, out: Path):
         b.errorbar(r.x, r.mean, yerr=r.sem, fmt="o", color=FAMILY_COLOUR[r.fam],
                    ms=4.5, lw=1.2, capsize=2, zorder=4)
     b.axhline(0, color=INK, lw=0.7, ls=(0, (4, 2)))
+    # the fixed part of the quadratic mixed model, and the tests of its terms
+    xs = np.linspace(d["bits"].min(), d["bits"].max(), 100)
+    q = st["complexity"]["quadratic"]
+    b.plot(xs, q["Intercept"] + q["bits"] * xs + q["I(bits ** 2)"] * xs ** 2, color=GREY,
+           lw=1.0, ls=(0, (4, 2)), zorder=1)
+    b.text(0.98, 0.04, f"straight term {p_text(st['complexity']['p_linear'])}\n"
+                       f"squared term {p_text(st['complexity']['p_squared'])}",
+           transform=b.transAxes, ha="right", va="bottom", fontsize=6, color=GREY)
     b.set_xlabel("Temporal complexity of the interval (bits)")
     b.set_ylabel("Preference index\nagainst the silent arm")
     # name every interval along the top, at its own position
@@ -344,16 +388,22 @@ def fig_complexity(table: pd.DataFrame, idx: pd.DataFrame, out: Path):
     save(fig, out, "pilot_complexity")
 
 
-def fig_place_bias(b: pd.DataFrame, out: Path):
-    """Each arm's share of the time spent in arms, in silence and with sound."""
+def fig_place_bias(b: pd.DataFrame, out: Path, st: dict):
+    """Each arm's share of the time spent in arms, in silence and with sound; and the
+    arm each mouse favoured before any sound, followed through the session."""
     d = b[~((b["block_type"] == "silent") & (b["block"] == 1))]
     arm = d.groupby(["cohort", "mouse", "block_type", "arm"])["time_s"].sum().reset_index()
     arm["share"] = arm["time_s"] / arm.groupby(["cohort", "mouse", "block_type"])[
         "time_s"].transform("sum")
     arms = sorted(arm["arm"].unique())
 
-    fig, axes = plt.subplots(1, 3, figsize=(6.9, 2.2), sharey=True)
-    for ax, cohort in zip(axes, COHORTS):
+    fig = plt.figure(figsize=(6.9, 2.4))
+    gs = fig.add_gridspec(1, 5, width_ratios=[1, 1, 1, 0.3, 1], wspace=0.12)
+    axes = [fig.add_subplot(gs[0, 0])]
+    axes += [fig.add_subplot(gs[0, k], sharey=axes[0]) for k in (1, 2)]
+    for ax in axes[1:]:
+        ax.tick_params(labelleft=False)
+    for k, (ax, cohort) in enumerate(zip(axes, COHORTS)):
         c = arm[arm["cohort"] == cohort]
         for kind, colour, dx in (("silent", GREY, -0.18), ("sound", ORANGE, 0.18)):
             ck = c[c["block_type"] == kind]
@@ -366,13 +416,34 @@ def fig_place_bias(b: pd.DataFrame, out: Path):
                            edgecolor="white", linewidth=0.3, zorder=3)
         ax.axhline(25, color=INK, lw=0.7, ls=(0, (4, 2)))
         ax.set_xticks(range(len(arms)))
-        ax.set_xticklabels([a.replace("ROI", "arm ") for a in arms])
-        ax.set_title(f"{cohort}: {c['mouse'].nunique()} mice", loc="left")
+        ax.set_xticklabels([a.replace("ROI", "") for a in arms])
+        ax.set_xlabel("Arm")
+        ax.set_title(f"({'abc'[k]}) {cohort}, {c['mouse'].nunique()} mice", loc="left")
     axes[0].set_ylabel("Share of time in arms (%)")
     axes[0].legend(frameon=False, loc="upper left")
-    axes[-1].text(0.98, 25, "chance", transform=axes[-1].get_yaxis_transform(),
-                  ha="right", va="bottom", fontsize=6.5, color=INK)
-    fig.tight_layout(w_pad=0.6)
+
+    # (d) the arm each mouse favoured in its opening silent blocks, followed afterwards
+    ax = fig.add_subplot(gs[0, 4])
+    fav = st["place"]["shares"]                       # mouse x phase, shares of that arm
+    phases = ["opening", "later silent", "sound"]
+    for mouse, r in fav.iterrows():
+        cohort = str(mouse)[:2] + "xx"
+        ax.plot(range(3), r[phases] * 100, color=GREY, lw=0.6, alpha=0.7, zorder=2)
+        ax.scatter(range(3), r[phases] * 100, marker=MARKER[cohort], s=12, facecolor="white",
+                   edgecolor=INK, linewidth=0.7, zorder=3)
+    ax.plot(range(3), fav[phases].median() * 100, color=ORANGE, lw=2.0, zorder=4)
+    ax.axhline(25, color=INK, lw=0.7, ls=(0, (4, 2)))
+    ax.set_xticks(range(3))
+    ax.set_xticklabels(["opening\nsilent", "later\nsilent", "sound"], fontsize=6.5)
+    ax.set_xlim(-0.4, 2.4)
+    ax.set_ylim(0, 68)
+    ax.set_ylabel("Share of time in that arm (%)", labelpad=1)
+    for i, phase in ((1, "later silent"), (2, "sound")):
+        p = st["place"]["p"][phase]
+        ax.text(i, 66, f"{stars(p)} {p_text(p)}".strip(), ha="center", va="top", fontsize=6,
+                color=INK if p < 0.05 else GREY)
+    ax.set_title("(d) favoured arm", loc="left")
+    fig.subplots_adjust(left=0.07, right=0.99, bottom=0.2, top=0.88)
     save(fig, out, "pilot_place_bias")
 
 
@@ -425,6 +496,161 @@ def entries_summary(b: pd.DataFrame) -> pd.DataFrame:
     return g
 
 
+# -- tests ---------------------------------------------------------------------------
+def holm(p):
+    """Holm adjusted p values; missing values stay missing."""
+    p = np.asarray(p, float)
+    out = np.full(len(p), np.nan)
+    ok = ~np.isnan(p)
+    q = p[ok]
+    adj, run = np.empty(len(q)), 0.0
+    for k, i in enumerate(np.argsort(q)):
+        run = max(run, min(1.0, (len(q) - k) * q[i]))
+        adj[i] = run
+    out[ok] = adj
+    return out
+
+
+def signed_rank(x):
+    """Wilcoxon signed rank test against zero, two sided, exact for small samples."""
+    x = np.asarray(x, float)
+    x = x[~np.isnan(x)]
+    p = wilcoxon(x).pvalue if len(x) > 1 and np.any(x != 0) else np.nan
+    return {"n": len(x), "median": float(np.median(x)) if len(x) else np.nan,
+            "above": int((x > 0).sum()), "p": p}
+
+
+def rscript():
+    found = shutil.which("Rscript")
+    if found:
+        return found
+    candidates = sorted(glob.glob(r"C:\Program Files\R\R-*\bin\Rscript.exe"))
+    return candidates[-1] if candidates else None
+
+
+def block_table(b: pd.DataFrame) -> pd.DataFrame:
+    """One row per block, all cohorts, the opening silent block left out."""
+    t = (b.groupby(["cohort", "mouse", "date", "block", "block_type"], as_index=False)
+           .agg(time_s=("time_s", "sum"), visits=("visits", "sum"),
+                block_min=("block_min", "first")))
+    t = t[~((t["block_type"] == "silent") & (t["block"] == 1))].copy()
+    t["session"] = t["mouse"] + "_" + t["date"]
+    return t
+
+
+def arm_table(b: pd.DataFrame) -> pd.DataFrame:
+    """One row per arm and sound block of the interval sessions."""
+    s = interval_sound_blocks(b).copy()
+    s["family"] = ["silent" if x == "silent" else _family(x) for x in s["stimulus"]]
+    s["session"] = s["mouse"] + "_" + s["date"]
+    s["mean_s"] = s["time_s"] / s["visits"].replace(0, np.nan)
+    return s[["cohort", "mouse", "session", "block", "arm", "stimulus", "family",
+              "visits", "time_s", "mean_s"]]
+
+
+def tests(b: pd.DataFrame, idx: pd.DataFrame, pairs: pd.DataFrame, out: Path):
+    lines = []
+
+    def say(text=""):
+        lines.append(text)
+        print(text)
+
+    # A. sound blocks against silent blocks
+    t = block_table(b)
+    g = (t.groupby(["mouse", "block_type"])
+           .agg(time=("time_s", "sum"), visits=("visits", "sum"), mins=("block_min", "sum"))
+           .unstack("block_type"))
+    measures = [("share of the block spent in the arms", g["time"] / (g["mins"] * 60)),
+                ("entries a minute", g["visits"] / g["mins"]),
+                ("seconds a visit", g["time"] / g["visits"])]
+    res = [signed_rank(np.log(m["sound"] / m["silent"])) for _, m in measures]
+    say("A. Sound blocks against silent blocks, opening block out, all cohorts")
+    say("   per mouse, Wilcoxon signed rank on log(sound / silent), Holm across the three")
+    for (name, m), r, p in zip(measures, res, holm([r["p"] for r in res])):
+        say(f"   {name}: median over mice {m['silent'].median():.3g} in silent blocks, "
+            f"{m['sound'].median():.3g} in sound blocks; median ratio {np.exp(r['median']):.2f}, "
+            f"higher with sound in {r['above']} of {r['n']} mice, p = {r['p']:.4f}, "
+            f"Holm p = {p:.4f}")
+
+    # B. place: the arm favoured before any sound, and its share afterwards
+    opening = b[(b["block_type"] == "silent") & (b["block"] == 1)]
+    fav = opening.groupby(["mouse", "arm"])["time_s"].sum().unstack().idxmax(axis=1)
+
+    def shares(sub):
+        x = sub.groupby(["mouse", "arm"])["time_s"].sum().unstack().fillna(0)
+        return x.div(x.sum(axis=1), axis=0)
+
+    found = {"stim": {}, "place": {"p": {}}, "complexity": {}}
+    say("\nB. Place: the arm each mouse favoured in its opening silent blocks, before any sound")
+    say("   favoured arms: " + ", ".join(f"{m} {fav[m].replace('ROI', 'arm ')}" for m in fav.index))
+    fav_shares = pd.DataFrame(index=fav.index)
+    for label, key, sh in (
+            ("opening silent blocks", "opening", shares(opening)),
+            ("later silent blocks", "later silent",
+             shares(b[(b["block_type"] == "silent") & (b["block"] > 1)])),
+            ("sound blocks", "sound", shares(b[b["block_type"] == "sound"]))):
+        fav_shares[key] = [sh.loc[m, fav[m]] if m in sh.index else np.nan for m in fav.index]
+        v = fav_shares[key].dropna().to_numpy()
+        r = signed_rank(v - 0.25)
+        found["place"]["p"][key] = r["p"]
+        say(f"   its share of the {label}: median {np.median(v) * 100:.0f}% (range "
+            f"{v.min() * 100:.0f} to {v.max() * 100:.0f}%), above 25% in {r['above']} of "
+            f"{r['n']} mice, Wilcoxon against 25% p = {r['p']:.4f}")
+    found["place"]["shares"] = fav_shares
+
+    # C. the interval sessions: indices against zero
+    say("\nC. Interval sessions, preference index against the silent arm of the same blocks")
+    r = signed_rank(idx.loc[idx["stimulus"] == "all sounds", "pi"])
+    found["all"] = r["p"]
+    say(f"   all sounds: median {r['median']:+.2f}, {r['above']} of {r['n']} mice above zero, "
+        f"p = {r['p']:.3f}")
+    single = idx[idx["stimulus"] != "all sounds"]
+    rows = [(s, signed_rank(g["pi"])) for s, g in single.groupby("stimulus")]
+    say("   each stimulus, Wilcoxon against zero, Holm across the stimuli:")
+    for (s, r), p in sorted(zip(rows, holm([r["p"] for _, r in rows])),
+                            key=lambda z: (sc.interval_periodicity_bits(z[0][0]), z[0][0])):
+        found["stim"][s] = (r["p"], p)
+        say(f"     {PRETTY.get(s, s):12s} median {r['median']:+.2f}, {r['above']} of {r['n']} "
+            f"above zero, p = {r['p']:.3f}, Holm p = {p:.3f}")
+    r = signed_rank(pairs.groupby(["cohort", "mouse"])["pi"].mean())
+    found["pairs"] = r["p"]
+    say(f"   consonant against dissonant, each mouse over its pairs: median {r['median']:+.2f}, "
+        f"{r['above']} of {r['n']} above zero, p = {r['p']:.3f}")
+
+    # D. complexity
+    d = single.copy()
+    d["bits"] = d["stimulus"].map(sc.interval_periodicity_bits)
+    say("\nD. Complexity: index of each interval on its temporal complexity (bits), "
+        "mouse as a random intercept")
+    for formula in ("pi ~ bits", "pi ~ bits + I(bits ** 2)"):
+        fit = smf.mixedlm(formula, d, groups=d["mouse"]).fit(reml=True)
+        terms = [k for k in fit.params.index if "bits" in k]
+        say("   " + formula + ": " + "; ".join(
+            f"{k} {fit.params[k]:+.4f}, p = {fit.pvalues[k]:.3f}" for k in terms))
+        if formula == "pi ~ bits":
+            found["complexity"]["p_linear"] = fit.pvalues["bits"]
+        else:
+            found["complexity"]["p_squared"] = fit.pvalues["I(bits ** 2)"]
+            found["complexity"]["quadratic"] = fit.params.to_dict()
+    means = d.groupby("stimulus").agg(pi=("pi", "mean"), bits=("bits", "first"))
+    rho, p = spearmanr(means["bits"], means["pi"])
+    say(f"   over the {len(means)} stimuli, mean index against bits: Spearman rho {rho:+.2f}, "
+        f"p = {p:.3f}")
+    (out / "stats.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # the mixed models, in R
+    t.to_csv(out / "lmm_blocks.csv", index=False)
+    arm_table(b).to_csv(out / "lmm_arms.csv", index=False)
+    rs = rscript()
+    if rs is None:
+        print("Rscript not found: the mixed models were skipped")
+        return found
+    print()
+    subprocess.run([rs, str(HERE / "pilot_lmm.R"), str(out / "lmm_blocks.csv"),
+                    str(out / "lmm_arms.csv"), str(out)], check=False)
+    return found
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--survey", type=Path, default=SURVEY,
@@ -450,11 +676,14 @@ def main(argv=None) -> int:
     pairs.to_csv(out / "pilot_pi_pairs.csv", index=False)
     table.to_csv(out / "pilot_complexity.csv", index=False)
 
-    fig_pi_stimuli(idx, out)
-    fig_pi_pairs(pairs, out)
-    fig_complexity(table, idx, out)
-    fig_place_bias(b, out)
+    st = tests(b, idx, pairs, out)
+    print()
+    fig_pi_stimuli(idx, out, st)
+    fig_pi_pairs(pairs, out, st)
+    fig_complexity(table, idx, out, st)
+    fig_place_bias(b, out, st)
     fig_silent_arm(b, out)
+    print()
 
     if args.thesis_figures:
         names = {"pilot_pi_stimuli": "fig_pilot_pi_stimuli",

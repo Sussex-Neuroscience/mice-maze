@@ -40,6 +40,16 @@ Outputs (FIBPHO_ANALYSIS/dwell/):
                                      longest at the top, aligned at entry
     fig_long_visits.png/.pdf         each visit of at least LONG_S on its own
     fig_before_during_after.png/.pdf the three windows by class and length
+    fig_psth.png/.pdf                the time course before, during and after a
+                                     visit, for every stimulus of every day, with
+                                     each stay stretched or squeezed to one width
+    stats_psth.txt                   during against before, per stimulus and day;
+                                     the complex tones of the envelope day against
+                                     the smooth and rough ones
+    fig_complex.png/.pdf             entries, time and dopamine for those tones
+
+With --thesis-figures DIR, also fig_fp_long_visits, fig_fp_before_during_after
+and fig_fp_psth in DIR.
 """
 
 import argparse
@@ -53,16 +63,18 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import statsmodels.formula.api as smf
-from scipy.stats import wilcoxon
+from scipy.stats import mannwhitneyu, wilcoxon
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fibpho_alignment as fa
+import stimulus_complexity as sc
 from fibpho_behaviour import thesis_label
 
 WINDOW_S = 5.0             # before and after
 LONG_S = 10.0              # a long visit
 EDGE_S = 2.0               # first and last part of a long visit
 HEATMAP_MAX_S = 40.0       # x range of the sorted heatmap after entry
+WARP_N = 50                # samples for each of before, during and after
 LENGTH_BINS = [0, 1, 3, 10, np.inf]
 LENGTH_NAMES = ["< 1 s", "1 to 3 s", "3 to 10 s", "10 s or more"]
 
@@ -133,6 +145,24 @@ def measure(events, z, block, fs, day, mouse):
             row["last_2s"] = window(z, block, fs, t1 - EDGE_S, t1, tr)
         rows.append(row)
     return pd.DataFrame(rows)
+
+
+def warped(z, block, fs, t0, dur, trial):
+    """z before, during and after a visit on one time base: the WINDOW_S either
+    side in real time, and the stay stretched or squeezed to the same number of
+    samples, so that visits of any length line up from entry to exit. A part that
+    reaches outside the visit's block is left empty."""
+    def part(a, b):
+        i0, i1 = int(np.floor(a * fs)), int(np.ceil(b * fs))
+        if i0 < 0 or i1 > len(z) or i1 <= i0:
+            return np.full(WARP_N, np.nan)
+        seg = z[i0:i1]
+        if not ((block[i0:i1] == trial).all() and np.isfinite(seg).all()):
+            return np.full(WARP_N, np.nan)
+        grid = a + (np.arange(WARP_N) + 0.5) / WARP_N * (b - a)
+        return np.interp(grid, np.arange(i0, i1) / fs, seg)
+    return np.concatenate([part(t0 - WINDOW_S, t0), part(t0, t0 + dur),
+                           part(t0 + dur, t0 + dur + WINDOW_S)])
 
 
 def aligned(z, fs, t_entry, visit_s, pre, post_max):
@@ -360,6 +390,218 @@ def fig_bda(ok, path, thesis=False):
     save(fig, path)
 
 
+PSTH_DAYS = ["temporal_envelope_modulation", "intervals", "sequences", "vocalisations"]
+TEM_ORDER = {"smooth": 0, "rough": 1, "rough_complex": 2}
+SEQUENCE_ORDER = ["AAAAA", "AoAo", "ABAB", "BABA", "ABBA", "ABCABC"]
+
+
+def psth_columns(v, day):
+    """The stimuli of one day in the order of Figure 4.10, after the two silent
+    references: any arm in a silent block, and the silent arm of the sound blocks."""
+    d = v[(v["day"] == day) & v["cls"].isin(["vocalisation", "synthetic sound"])]
+    names = set(d["stimulus"]) - {"vocalisation"}
+    if day == "temporal_envelope_modulation":
+        key = lambda s: (TEM_ORDER[s[:-4].rsplit(" ", 1)[0]], s)
+    elif day == "intervals":
+        key = lambda s: (sc.interval_periodicity_bits(s), s)
+    elif day == "sequences":
+        key = lambda s: (SEQUENCE_ORDER.index(s) if s in SEQUENCE_ORDER else 99, s)
+    else:
+        key = lambda s: s
+    voc = ["vocalisation"] if "vocalisation" in set(d["stimulus"]) else []
+    return ["silent block", "silent arm"] + voc + sorted(names, key=key)
+
+
+def psth_tests(v, say):
+    """During against before, visit by visit, for each stimulus of each day; Holm
+    within the day. The visits of two mice, so these describe the two animals."""
+    found = {}
+    say("\n--- dopamine during a visit against the 5 s before, per stimulus and day "
+        "(Wilcoxon signed rank over visits, Holm within the day)")
+    for day in PSTH_DAYS:
+        rows = []
+        for stim in psth_columns(v, day):
+            g = v[(v["day"] == day) & (v["stimulus"] == stim)].dropna(subset=["before", "during"])
+            p = wilcoxon(g["during"], g["before"]).pvalue if len(g) >= 6 else np.nan
+            rows.append((stim, len(g), g["before"].mean(), g["during"].mean(),
+                         g["after"].mean(), p))
+        ps = [r[5] for r in rows]
+        ok = [i for i, p in enumerate(ps) if np.isfinite(p)]
+        adj = dict(zip(ok, holm([ps[i] for i in ok])))
+        say(f"  {THESIS_DAY[day]}")
+        for i, (stim, n, b, d, a, p) in enumerate(rows):
+            h = adj.get(i, np.nan)
+            found[(day, stim)] = h
+            say(f"    {thesis_label(stim):12s} n={n:3d}  before {b:+.2f}  during {d:+.2f}  "
+                f"after {a:+.2f}  p={p:.3f}  Holm p={h:.3f}")
+    return found
+
+
+def holm(p):
+    p = np.asarray(p, float)
+    order = np.argsort(p)
+    out = np.empty_like(p)
+    running = 0.0
+    for rank, i in enumerate(order):
+        running = max(running, min(1.0, (len(p) - rank) * p[i]))
+        out[i] = running
+    return out
+
+
+def stimulus_colour(stim, cls):
+    """The colour of a stimulus's kind, as in Figure 4.10: consonant blue, dissonant
+    orange, the envelopes in their own colours, sequences dark blue, vocalisations
+    green; the silent block light and the silent arm dark grey."""
+    from exp1_stimulus_pi import COLOURS
+    if cls == "silent block":
+        return "#9E9E9E"
+    if cls in ("silent arm", "vocalisation"):
+        return CLASS_COLOURS[cls]
+    if stim.endswith(" kHz"):
+        return COLOURS[stim[:-4].rsplit(" ", 1)[0]]
+    if stim in sc.DISSONANT:
+        return COLOURS["dissonant"]
+    if stim == "unison":
+        return COLOURS["unison"]
+    if stim in sc.CONSONANT:
+        return COLOURS["consonant"]
+    return COLOURS["sequence"]
+
+
+def fig_psth(v, warps, holm, path, thesis=False):
+    """Dopamine before, during and after a visit, for every stimulus of every day:
+    the stay of each visit stretched or squeezed to one width, between the 5 s
+    before entry and the 5 s after exit in real time. Mean over the visits of both
+    mice, with its standard error."""
+    cols = max(len(psth_columns(v, d)) for d in PSTH_DAYS)
+    size = (6.3, 5.0) if thesis else (2.0 * cols, 2.3 * len(PSTH_DAYS))
+    fig, axes = plt.subplots(len(PSTH_DAYS), cols, figsize=size, sharex=True, sharey=True,
+                             squeeze=False)
+    step = WINDOW_S / WARP_N
+    x = np.concatenate([-WINDOW_S + (np.arange(WARP_N) + 0.5) * step,
+                        (np.arange(WARP_N) + 0.5) * step,
+                        WINDOW_S + (np.arange(WARP_N) + 0.5) * step])
+    for r, day in enumerate(PSTH_DAYS):
+        names = psth_columns(v, day)
+        for c in range(cols):
+            ax = axes[r, c]
+            if c >= len(names):
+                ax.set_visible(False)
+                continue
+            stim = names[c]
+            idx = v.index[(v["day"] == day) & (v["stimulus"] == stim)]
+            cls = v.loc[idx[0], "cls"] if len(idx) else "silent block"
+            colour = stimulus_colour(stim, cls)
+            mat = np.vstack([warps[i] for i in idx]) if len(idx) else np.full((1, 3 * WARP_N), np.nan)
+            n_t = np.isfinite(mat).sum(axis=0)
+            with np.errstate(invalid="ignore", divide="ignore"):
+                m = np.nanmean(mat, axis=0)
+                e = np.nanstd(mat, axis=0, ddof=1) / np.sqrt(n_t)
+            ax.axvspan(0, WINDOW_S, color=colour, alpha=0.10, lw=0)
+            ax.axhline(0, color="grey", lw=0.4)
+            ax.axvline(0, color="black", lw=0.5)
+            ax.axvline(WINDOW_S, color="black", lw=0.5, ls=(0, (3, 2)))
+            ax.fill_between(x, m - e, m + e, color=colour, alpha=0.25, lw=0)
+            ax.plot(x, m, color=colour, lw=0.9)
+            mark = "*" if np.isfinite(holm.get((day, stim), np.nan)) and holm[(day, stim)] < 0.05 else ""
+            name = "silent block" if stim == "silent block" else thesis_label(stim)
+            ax.set_title(f"{name}{mark}\nn = {len(idx)}", fontsize=6 if thesis else 8, pad=2)
+            ax.set_xticks([-WINDOW_S, 0, WINDOW_S, 2 * WINDOW_S])
+            # the ends are 5 s before entry and 5 s after exit
+            ax.set_xticklabels(["", "in", "out", ""])
+            ax.tick_params(labelsize=5 if thesis else 7, length=2, pad=1)
+            if c == 0:
+                ax.set_ylabel(f"{THESIS_DAY[day]}\nDopamine (z)", fontsize=6.5 if thesis else 8)
+    axes[0, 0].set_ylim(-1.5, 1.5)
+    axes[0, 0].set_xlim(-WINDOW_S, 2 * WINDOW_S)
+    if not thesis:
+        fig.suptitle("Dopamine before, during (stretched to one width) and after a visit, "
+                     "per stimulus and day; mean ± SEM of visits, both mice", fontsize=10)
+    fig.tight_layout(h_pad=0.6, w_pad=0.3)
+    save(fig, path)
+
+
+COMPLEX = "#AD1457"
+OTHER_TEM = "#546E7A"
+
+
+def complex_tones(v, say):
+    """With temporal envelope modulation the cohort entered the two complex tones
+    (changing in rate) more often than the four smooth and rough ones, and so spent
+    more time on them (Chapter 4). The same comparison in the two photometry mice,
+    and dopamine around those visits: the windows of each visit, complex against
+    smooth or rough (Mann-Whitney over visits)."""
+    day = "temporal_envelope_modulation"
+    s = v[(v["day"] == day) & (v["cls"] == "synthetic sound")].copy()
+    s["kind"] = np.where(s["stimulus"].str.startswith("rough_complex"), "complex", "smooth or rough")
+    blocks = v[(v["day"] == day) & (v["trial_ID"] % 2 == 0)].groupby("mouse")["trial_ID"].nunique()
+    rows = []
+    for (mouse, kind), h in s.groupby(["mouse", "kind"]):
+        arms = 2 if kind == "complex" else 4
+        rows.append({"mouse": mouse, "kind": kind, "entries": len(h) / arms / blocks[mouse],
+                     "time_s": h["visit_s"].sum() / arms / blocks[mouse],
+                     "mean_visit_s": h["visit_s"].mean(), "visits": len(h)})
+    beh = pd.DataFrame(rows)
+    say("\n--- complex tones against smooth and rough, envelope day, per mouse "
+        "(per arm in a sound block)")
+    say(beh.round(2).to_string(index=False))
+    ok = s.dropna(subset=["before", "during", "after"]).copy()
+    ok["entry_change"] = ok["during"] - ok["before"]
+    ok["exit_change"] = ok["after"] - ok["during"]
+    say("dopamine, complex against smooth or rough (visits of both mice, Mann-Whitney)")
+    for col in ("before", "during", "after", "entry_change", "exit_change"):
+        a, b = ok.loc[ok["kind"] == "complex", col], ok.loc[ok["kind"] != "complex", col]
+        say(f"  {col:12s} complex {a.mean():+.2f} (n={len(a)})  smooth or rough {b.mean():+.2f} "
+            f"(n={len(b)})  p = {mannwhitneyu(a, b).pvalue:.3f}")
+    return s, beh
+
+
+def fig_complex(s, beh, warps, path, thesis=False):
+    """(a, b) Entries and time per arm in a block, complex against smooth or rough,
+    for each photometry mouse; (c) dopamine through those visits, each stay stretched
+    to one width as in fig_psth."""
+    fig, axes = plt.subplots(1, 3, figsize=(6.3, 2.2) if thesis else (11, 3.4),
+                             gridspec_kw={"width_ratios": [0.7, 0.7, 1.6]})
+    for ax, col, label in ((axes[0], "entries", "Entries per arm\nin a block"),
+                           (axes[1], "time_s", "Time per arm\nin a block (s)")):
+        for mouse, g in beh.groupby("mouse"):
+            g = g.set_index("kind")
+            y = [g.loc["smooth or rough", col], g.loc["complex", col]]
+            ax.plot([0, 1], y, color="#9E9E9E", lw=0.8, zorder=1)
+            ax.scatter([0, 1], y, color=[OTHER_TEM, COMPLEX], s=16, zorder=2)
+            ax.text(1.08, y[1], mouse.replace("_", "."), va="center", fontsize=5.5 if thesis else 7)
+        ax.set_xticks([0, 1])
+        ax.set_xticklabels(["smooth\nor rough", "complex"])
+        ax.set_xlim(-0.4, 1.6)
+        ax.set_ylim(0, None)
+        ax.set_ylabel(label)
+    axes[0].set_title("(a)" if thesis else "(a) entries", loc="left")
+    axes[1].set_title("(b)" if thesis else "(b) time", loc="left")
+    ax = axes[2]
+    step = WINDOW_S / WARP_N
+    x = np.concatenate([-WINDOW_S + (np.arange(WARP_N) + 0.5) * step, (np.arange(WARP_N) + 0.5) * step,
+                        WINDOW_S + (np.arange(WARP_N) + 0.5) * step])
+    ax.axvspan(0, WINDOW_S, color="#ECEFF1", lw=0)
+    for kind, colour in (("smooth or rough", OTHER_TEM), ("complex", COMPLEX)):
+        mat = np.vstack([warps[i] for i in s.index[s["kind"] == kind]])
+        n_t = np.isfinite(mat).sum(axis=0)
+        m = np.nanmean(mat, axis=0)
+        e = np.nanstd(mat, axis=0, ddof=1) / np.sqrt(n_t)
+        ax.fill_between(x, m - e, m + e, color=colour, alpha=0.2, lw=0)
+        ax.plot(x, m, color=colour, lw=1.0, label=f"{kind} (n = {len(mat)})")
+    ax.axhline(0, color="grey", lw=0.4)
+    ax.axvline(0, color="black", lw=0.5)
+    ax.axvline(WINDOW_S, color="black", lw=0.5, ls=(0, (3, 2)))
+    ax.set_xticks([-WINDOW_S, 0, WINDOW_S, 2 * WINDOW_S])
+    ax.set_xticklabels(["−5 s", "entry", "exit", "+5 s"])
+    ax.set_xlim(-WINDOW_S, 2 * WINDOW_S)
+    ax.set_ylabel("Dopamine (z)")
+    ax.legend(fontsize=5.5 if thesis else 7, frameon=False, loc="lower right")
+    ax.set_title("(c)" if thesis else "(c) dopamine through the visit", loc="left")
+    fig.tight_layout()
+    save(fig, path)
+
+
 # -- main --------------------------------------------------------------
 
 def main():
@@ -381,6 +623,8 @@ def main():
         v = measure(events, z, block, fs, s["day"], s["mouse"])
         v["_z"] = [aligned(z, fs, t0, d, WINDOW_S, HEATMAP_MAX_S)
                    for t0, d in zip(v["t_entry"], v["visit_s"])]
+        v["_w"] = [warped(z, block, fs, t0, d, tr)
+                   for t0, d, tr in zip(v["t_entry"], v["visit_s"], v["trial_ID"])]
         # long visits: 10 s either side, in full
         v["_long"] = [None] * len(v)
         for k in v.index[v["visit_s"] >= LONG_S]:
@@ -390,14 +634,27 @@ def main():
         frames.append(v)
     v = pd.concat(frames, ignore_index=True)
     traces = dict(zip(v.index, v.pop("_z")))
+    warps = dict(zip(v.index, v.pop("_w")))
     long_traces = {k: x for k, x in zip(v.index, v.pop("_long")) if x is not None}
     v.to_csv(os.path.join(out, "visits.csv"), index=False)
 
     ok = run_stats(v, os.path.join(out, "stats.txt"))
+    lines = []
+
+    def say(s=""):
+        lines.append(s)
+        print(s)
+
+    holm_p = psth_tests(v, say)
+    cx, cx_beh = complex_tones(v, say)
+    with open(os.path.join(out, "stats_psth.txt"), "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
     print("\nfigures:")
     fig_sorted(v, traces, out)
     fig_long(v, long_traces, os.path.join(out, "fig_long_visits"))
     fig_bda(ok, os.path.join(out, "fig_before_during_after"))
+    fig_psth(v, warps, holm_p, os.path.join(out, "fig_psth"))
+    fig_complex(cx, cx_beh, warps, os.path.join(out, "fig_complex"))
     if args.thesis_figures:
         with plt.rc_context({"font.family": "serif", "font.size": 7, "axes.titlesize": 7,
                              "axes.labelsize": 7, "xtick.labelsize": 6, "ytick.labelsize": 6,
@@ -406,6 +663,10 @@ def main():
                      thesis=True)
             fig_bda(ok, os.path.join(args.thesis_figures, "fig_fp_before_during_after"),
                     thesis=True)
+            fig_psth(v, warps, holm_p, os.path.join(args.thesis_figures, "fig_fp_psth"),
+                     thesis=True)
+            fig_complex(cx, cx_beh, warps, os.path.join(args.thesis_figures, "fig_fp_complex"),
+                        thesis=True)
     print(f"\nAll outputs saved to:\n  {out}")
 
 

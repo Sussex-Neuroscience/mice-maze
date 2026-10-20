@@ -167,6 +167,67 @@ def fig_model(mv, path):
     plt.close(fig)
 
 
+def tint(colour, share):
+    """A colour mixed with white, share 1 being the colour itself."""
+    from matplotlib.colors import to_rgb
+    return tuple(1 - share * (1 - c) for c in to_rgb(colour))
+
+
+def draw_chain(ax, M, sym, khz, colour):
+    """A grammar as a Markov chain: the six tones round a ring, and an arrow for
+    every transition, thicker and darker the more likely it is (0.60, 0.12,
+    0.07). Staying on a tone (0.02) is a loop outside its node."""
+    from matplotlib.patches import Circle, FancyArrowPatch, Arc
+    n = len(sym)
+    angle = np.pi / 2 - 2 * np.pi * np.arange(n) / n
+    pos = np.c_[np.cos(angle), np.sin(angle)]
+    r_node = 0.15
+    nodes = [Circle(p, r_node, facecolor=colour, edgecolor="white", lw=0.8, zorder=4) for p in pos]
+    style = {0.60: (1.0, 1.7, 7), 0.12: (0.62, 0.9, 5), 0.07: (0.38, 0.6, 4)}
+    rad = {1: 0.25, 2: 0.18, 3: 0.22}
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                continue
+            p = M[i, j]
+            share, lw, head = style[min(style, key=lambda s: abs(s - p))]
+            step = min((j - i) % n, (i - j) % n)
+            r = rad[step]
+            ax.add_patch(FancyArrowPatch(pos[i], pos[j], patchA=nodes[i], patchB=nodes[j],
+                                         connectionstyle=f"arc3,rad={r}", arrowstyle="-|>",
+                                         mutation_scale=head, lw=lw, color=tint(colour, share),
+                                         shrinkA=1, shrinkB=1, zorder=2 if p < 0.5 else 3))
+            # the label sits on the curve two thirds of the way along, nearer the
+            # tone it leads to, so that the labels spread round the nodes
+            dx, dy = pos[j] - pos[i]
+            ctrl = (pos[i] + pos[j]) / 2 + r * np.array([dy, -dx])
+            t = 0.68 if step == 3 else 0.5
+            at = (1 - t) ** 2 * pos[i] + 2 * t * (1 - t) * ctrl + t ** 2 * pos[j]
+            # every tone has the same pattern turned round the ring, so the
+            # probabilities are written on the arrows from the first tone and on
+            # the dominant ones; the matrix above gives the rest
+            if not (i == 0 or p > 0.5):
+                continue
+            ax.text(*at, f"{p:.2f}", ha="center", va="center", fontsize=5 if p < 0.5 else 5.4,
+                    color=tint(colour, max(share, 0.75)), fontweight="bold" if p > 0.5 else None,
+                    zorder=5, bbox=dict(boxstyle="round,pad=0.08", fc="white", ec="none", alpha=0.85))
+    for k, (p, c) in enumerate(zip(pos, nodes)):
+        ax.add_patch(c)
+        ax.text(*p, f"{sym[k]}\n{khz[k]:.1f}", ha="center", va="center", fontsize=5,
+                color="white", fontweight="bold", zorder=5, linespacing=0.9)
+        # staying on the same tone, a loop outside the node
+        out = p / np.linalg.norm(p)
+        ax.add_patch(Arc(p + out * (r_node + 0.07), 0.15, 0.15, theta1=0, theta2=360,
+                         color=tint(colour, 0.38), lw=0.6, zorder=1))
+        if k == 0:
+            ax.text(*(p + out * (r_node + 0.25)), f"{M[k, k]:.2f}", ha="center", va="center",
+                    fontsize=5, color=tint(colour, 0.75))
+    ax.set_xlim(-1.45, 1.45)
+    ax.set_ylim(-1.45, 1.45)
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+
 def fig_stimuli(root, path):
     """The two grammars and one delivered melody of each at each level."""
     import sys
@@ -184,12 +245,15 @@ def fig_stimuli(root, path):
     khz = [gcfg.TONES[s] / 1000 for s in sym]
     colour = {"A": "#00695C", "B": "#6A1B9A"}
 
-    fig = plt.figure(figsize=(6.3, 5.2))
-    gs = GridSpec(3, 6, figure=fig, height_ratios=[1.35, 1, 1], hspace=0.75, wspace=0.9)
+    fig = plt.figure(figsize=(6.3, 8.4))
+    gs = GridSpec(4, 6, figure=fig, height_ratios=[1.3, 2.9, 1, 1], hspace=0.5, wspace=0.9)
+    from matplotlib.colors import LinearSegmentedColormap
     for k, g in enumerate(("A", "B")):
         ax = fig.add_subplot(gs[0, 3 * k:3 * k + 3])
         M = gcfg.GRAMMARS[g]
-        ax.imshow(M, cmap="Greys", vmin=0, vmax=0.75)
+        # each matrix in its grammar's colour, as the melodies below
+        cmap = LinearSegmentedColormap.from_list(f"grammar_{g}", ["#FFFFFF", colour[g]])
+        ax.imshow(M, cmap=cmap, vmin=0, vmax=0.65)
         for i in range(6):
             for j in range(6):
                 ax.text(j, i, f"{M[i, j]:.2f}", ha="center", va="center", fontsize=5.5,
@@ -199,8 +263,11 @@ def fig_stimuli(root, path):
         ax.set_xlabel("next tone"); ax.set_ylabel("current tone")
         name = "ascending cycle" if g == "A" else "alternation three steps apart"
         ax.set_title(f"({'ab'[k]}) grammar {g}, {name}", loc="left")
-    letters = iter("cdefgh")
-    for row, g in enumerate(("A", "B"), start=1):
+        ax = fig.add_subplot(gs[1, 3 * k:3 * k + 3])
+        draw_chain(ax, M, sym, khz, colour[g])
+        ax.set_title(f"({'cd'[k]}) grammar {g} as a Markov chain", loc="left")
+    letters = iter("efghij")
+    for row, g in enumerate(("A", "B"), start=2):
         for col, tier in enumerate(("dominant", "secondary", "rare")):
             ax = fig.add_subplot(gs[row, 2 * col:2 * col + 2])
             mel = examples.get((g, tier), "")
@@ -210,11 +277,11 @@ def fig_stimuli(root, path):
             ax.set_xlim(0, 2.4); ax.set_ylim(-0.6, 5.6)
             ax.set_yticks(range(6))
             ax.set_yticklabels([f"{s} {f:.1f}" for s, f in zip(sym, khz)] if col == 0 else [])
-            if row == 2:
+            if row == 3:
                 ax.set_xlabel("Time (s)")
             ax.set_title(f"({next(letters)}) {g}, {tier}", loc="left")
             ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
-    fig.text(0.02, 0.36, "Tone (kHz)", rotation=90, va="center", fontsize=7)
+    fig.text(0.02, 0.24, "Tone (kHz)", rotation=90, va="center", fontsize=7)
     for ext in ("png", "pdf"):
         fig.savefig(f"{path}.{ext}", dpi=200, bbox_inches="tight")
     plt.close(fig)

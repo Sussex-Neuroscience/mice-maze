@@ -65,6 +65,8 @@ flowchart LR
     V[exp1_vocalisation_pi]
     S[exp1_stimulus_pi] --> C[exp1_complexity]
     L[exp1_lmm] --> O[exp1_order_place] --> A[exp1_approach]
+    S --> I[exp1_individuals]
+    L --> I
     E[exp1_exploration]
 ```
 
@@ -74,9 +76,11 @@ flowchart LR
 | `exp1_stimulus_pi.py` | Each stimulus against the silent arm; consonant against dissonant intervals; rough against smooth envelopes. | `stimulus_pi/` |
 | `exp1_complexity.py` | Does preference follow spectral or temporal complexity, in a line or an inverted U? Also within the seven recordings of the vocalisation day, by spectral and temporal entropy. Run `exp1_stimulus_pi.py` first. | `complexity/` |
 | `exp1_lmm.py` (calls `exp1_lmm.R`) | Mixed models of visit length: class by set, consonance, roughness, modulation. Writes the arm-by-block table the next two scripts read. | `lmm/` |
-| `exp1_order_place.py` | Day order against habituation, and place bias: arm shares in habituation and sound blocks, the usual silent arm, first entries. | `order_place/` |
+| `exp1_order_place.py` | Day order against habituation, and place bias: the three indices (synthetic against silent, vocalisation against synthetic, vocalisation against silent) block by block, arm shares in habituation and sound blocks, the usual silent arm, first entries. | `order_place/` |
 | `exp1_approach.py` (calls `exp1_approach.R`) | Entering against staying: entries per arm and mean visit length, with a Poisson mixed model of the entries. | `approach/` |
 | `exp1_exploration.py` | Does exploratory drive in the silent habituation block go with engagement with the sounds? | `exploration/` |
+| `exp1_bd_model.py` | Does the model of Brielmann and Dayan, with each stimulus described only by its measured spectral and temporal complexity, account for the index of every stimulus on every day, and does it single out the vocalisation? Nested models (intercept, vocalisation only, fluency, Brielmann and Dayan, the same with the expected world fixed at the centre, and with an extra value for a vocalisation) fitted by least squares and compared by AIC and by predicting each left out day. Run `exp1_stimulus_pi.py`, `exp1_complexity.py` and `exp1_lmm.py` first. | `bd_model/` |
+| `exp1_individuals.py` (calls `exp1_individuals.R`) | How the averages divide among the mice: each stimulus against silence in a mixed model beside the mice; every mouse's index for every stimulus and day; the vocalisation day by day, mouse by mouse; how the variance of the index divides between the day, the stimulus, the mouse and the session, with and without the silent arm's own visits; the share between mice of three indices; principal components of what each session did. Run `exp1_stimulus_pi.py` and `exp1_lmm.py` first. | `individuals/` |
 
 ```bash
 cd analysis/auditory
@@ -87,6 +91,8 @@ python exp1_lmm.py             D:/AuditoryExperiments/8_arms_w_voc
 python exp1_order_place.py     D:/AuditoryExperiments/8_arms_w_voc
 python exp1_approach.py        D:/AuditoryExperiments/8_arms_w_voc
 python exp1_exploration.py     D:/AuditoryExperiments/8_arms_w_voc
+python exp1_individuals.py     D:/AuditoryExperiments/8_arms_w_voc
+python exp1_bd_model.py        D:/AuditoryExperiments/8_arms_w_voc
 ```
 
 Add `--shuffled-only` to `exp1_stimulus_pi.py`, `exp1_complexity.py` and `exp1_lmm.py` for blocks 2 to 4 alone.
@@ -123,6 +129,12 @@ The `exp2_*` scripts read `model_validation/` (its data loading, exclusions and 
 | Temporal complexity | The cycles of the lowest frequency before the waveform repeats, in bits (log2): 0 for a pure tone, log2 q for an interval p/q |
 | Temporal entropy | How evenly a sound's energy is spread over time, in 5 ms frames (after Sueur et al. 2008), for recordings, which never repeat |
 
+`complexity_3d.py` draws Figures 3.4 and 4.12 in three dimensions with plotly, so the view can be turned with the mouse. Each stimulus sits at its temporal and spectral complexity and is raised to how the mice treated it. A menu switches the height between the share of the time in the arms spent on the stimulus's arm (chance 25% in the pilot, 12.5% in Experiment 1) and the preference index against the silent arm. Run `pilot_four_arm.py`'s survey and `exp1_complexity.py` first. It writes `pilot/pilot_complexity_3d.html` and `complexity/exp1_complexity_3d.html`, pages that open without a connection; `--gallery DIR` also writes each view as JSON for a page that loads plotly itself, and `--thesis-figures DIR` writes the time on the arm view of each as a still image, through `kaleido` (`pip install kaleido`, which drives an installed Chrome).
+
+```bash
+python analysis/auditory/complexity_3d.py
+```
+
 ## The four-arm pilot
 
 The sessions recorded before the eight-arm protocol sit loose at the top of the data folder, written by several versions of the code.
@@ -132,7 +144,7 @@ python analysis/auditory/survey_standalone_sessions.py --root D:/AuditoryExperim
 python analysis/auditory/pilot_four_arm.py
 ```
 
-`survey_standalone_sessions.py` reads every session on its own terms and writes `sessions.csv` and `blocks.csv` to a folder beside the data (by default `D:/AuditoryExperiments_survey`). `pilot_four_arm.py` describes the three cohorts from those tables. With two to five mice per cohort it tests nothing; it shows each mouse.
+`survey_standalone_sessions.py` reads every session on its own terms and writes `sessions.csv` and `blocks.csv` to a folder beside the data (by default `D:/AuditoryExperiments_survey`). `pilot_four_arm.py` describes the three cohorts from those tables, with every figure showing each mouse, and tests them as the thesis does for Experiment 1. Wilcoxon signed rank tests across mice (Holm within a family) cover sound against silent blocks, the arm each mouse favoured before any sound, the indices of the interval sessions and the consonant against dissonant pairs; a mixed model relates the index to temporal complexity. The mixed models of entries and visit length run in R (`pilot_lmm.R`, with lme4, lmerTest and emmeans). The numbers go to `pilot/stats.txt` and `pilot/lmm_results.txt`. With two to five mice per cohort the cohorts are pooled, and the tests describe these animals rather than mice in general.
 
 ## Photometry
 
@@ -167,7 +179,7 @@ dopamine recordings/
 | `fibpho_arms.py` | Dopamine while the mouse is in each arm, against the behavioural preference for it | `arms/` |
 | `fibpho_dynamics.py` | How the response changes within blocks, across blocks and from arm to arm | `dynamics/` |
 | `fibpho_behaviour.py` | Dopamine by where the mouse was (arm, entrance, outside); the response to each stimulus from first to last exposure | `behaviour/` |
-| `fibpho_dwell.py` | Dopamine before, during and after each visit, against how long the mouse stayed; every long visit on its own | `dwell/` |
+| `fibpho_dwell.py` | Dopamine before, during and after each visit, against how long the mouse stayed; every long visit on its own; the time course around a visit for every stimulus of every day, with each stay stretched to one width (`fig_psth`, tests in `stats_psth.txt`); the complex tones of the envelope day against the smooth and rough ones, in entries, time and dopamine (`fig_complex`) | `dwell/` |
 
 ```bash
 cd analysis/auditory
