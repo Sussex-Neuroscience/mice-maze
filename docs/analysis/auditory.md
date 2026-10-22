@@ -109,6 +109,8 @@ The second part of `exp1_complexity.py` reads the vocalisation recordings themse
 | `exp2_figures.py` | The thesis figures of the stimuli, the session-level preference and the model. Run `exp2_lmm.py` first. | thesis figures only |
 | `exp2_model_check.py` | Could place alone produce the semantic weight? And the ladder of models (original, sequential, full), cross-validated. | `exp2_model/` |
 | `exp2_model_compare.py` | AIC and BIC for the four nested value models (intercept, fluency, Brielmann and Dayan, full), at the grain of the session. | `exp2_model/` |
+| `exp2_model_explainer.py` | An explanatory figure of the fit, step by step: each arm's three scores, a worked example of the two dominant arms, observed and predicted shares of time with and without semantic value, recovery on simulated mice, and the AIC of the nested models. Run `exp2_model_compare.py` and `model_validation/` first. | `exp2_model/` |
+| `bayes_principle_figure.py` | The figure of Section 2.7.1: the principle of Bayesian fitting for readers new to it (the procedure, what the likelihood means, prior times likelihood gives the posterior). Schematic; it reads no data. | `bayes_principle/` |
 | `model_validation/` | The Bayesian fits of the value model (PyMC): recovery, model comparison by leave-one-out, posterior predictive checks, grains of observation. See its [quick guide](https://github.com/MaravallLab/aMAZEing-maze/blob/main/analysis/auditory/model_validation/QUICKGUIDE.md). | an output folder you choose |
 
 ```bash
@@ -117,6 +119,8 @@ python exp2_lmm.py           D:/AuditoryExperiments/grammar
 python exp2_figures.py       D:/AuditoryExperiments/grammar --thesis-figures <thesis>/figures
 python exp2_model_check.py   D:/AuditoryExperiments/grammar
 python exp2_model_compare.py D:/AuditoryExperiments/grammar
+python exp2_model_explainer.py D:/AuditoryExperiments/grammar
+python bayes_principle_figure.py --thesis-figures <thesis>/figures
 ```
 
 The `exp2_*` scripts read `model_validation/` (its data loading, exclusions and features) but never change it or its outputs, so the earlier analysis stays reproducible as it was.
